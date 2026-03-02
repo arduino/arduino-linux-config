@@ -12,7 +12,7 @@ The initial skeleton implements the following core commands and global flags (cu
 
 ## Commands
 
-- **`list`**: View all available device configurations.
+- **`list`**: View all available media careers and device configurations.
 - **`show`**: Display detailed information for a specific device.
 - **`enable`**: Activate a hardware device or overlay.
 - **`disable`**: Deactivate a hardware device or overlay.
