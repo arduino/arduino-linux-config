@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/cmd/i18n"
 
@@ -42,7 +43,10 @@ func run() error {
 	rootCmd.PersistentFlags().StringVar(&format, "format", "text", "Output format (text, json)")
 	rootCmd.PersistentFlags().StringVar(&logLevelStr, "log-level", "error", "Set the log level (debug, info, warn, error)")
 
-	rootCmd.AddCommand()
+	rootCmd.AddCommand(
+		carrier.NewCarrierCmd(),
+		// show.NewShowCmd(),
+	)
 
 	ctx := context.Background()
 	ctx, _ = cleanup.InterruptableContext(ctx)
@@ -54,6 +58,7 @@ func run() error {
 }
 
 func main() {
+	// TODO: Check for running uid
 	if err := run(); err != nil {
 		feedback.FatalError(err, 1)
 	}
