@@ -2,9 +2,12 @@ package carrier
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	hardwareinfo "github.com/arduino/arduino-linux-config/internal/hwinfo"
 	"github.com/spf13/cobra"
 )
 
@@ -20,50 +23,45 @@ func newListCmd() *cobra.Command {
 	return cmd
 }
 
-func listHandler(ctx context.Context) {
-	mediaCarrier, err := stubbedMediaCarrier(ctx)
+func listHandler(_ context.Context) {
+	hwInfo, err := hardwareinfo.GetAvailableDeviceList()
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	builtInCarrier, err := stubbedBuiltInCarrier(ctx)
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
+	carrier := extractCarrierResult(hwInfo.Carrier)
 
 	feedback.PrintResult(carriersResult{
-		BuiltInCarrier: builtInCarrier,
-		MediaCarrier:   mediaCarrier,
+		MediaCarrier:   carrier,
+		BuiltInCarrier: CarrierResult{},
 	})
-
 }
 
 type carriersResult struct {
-	BuiltInCarrier Carrier `json:"builtin_carrier"`
-	MediaCarrier   Carrier `json:"media_carrier"`
+	MediaCarrier   CarrierResult `json:"media_carrier"`
+	BuiltInCarrier CarrierResult `json:"builtin_carrier"`
+}
+
+type CarrierResult struct {
+	Name    string   `json:"name"`
+	Devices []Device `json:"devices"`
+}
+
+type Device struct {
+	Name             string   `json:"name"`
+	AvailableDevices []string `json:"available_devices"`
 }
 
 func (deviceList carriersResult) String() string {
 	var sb strings.Builder
 
-	sb.WriteString(deviceList.BuiltInCarrier.Name + ":\n")
-	for _, carrier := range deviceList.BuiltInCarrier.Devices {
-		sb.WriteString("- ")
-		sb.WriteString(carrier.Name)
-		sb.WriteString(": ")
-		sb.WriteString(strings.Join(carrier.Options, " | "))
-		sb.WriteByte('\n')
+	w := tabwriter.NewWriter(&sb, 0, 8, 2, ' ', 0)
+	fmt.Fprintf(&sb, "- %s\n", deviceList.MediaCarrier.Name)
+	for _, dev := range deviceList.MediaCarrier.Devices {
+		options := strings.Join(dev.AvailableDevices, ", ")
+		fmt.Fprintf(w, "\t%s\t%s\n", dev.Name, options)
 	}
-
-	sb.WriteString(deviceList.MediaCarrier.Name + ":\n")
-	for _, carrier := range deviceList.MediaCarrier.Devices {
-		sb.WriteString("- ")
-		sb.WriteString(carrier.Name)
-		sb.WriteString(": ")
-		sb.WriteString(strings.Join(carrier.Options, " | "))
-		sb.WriteByte('\n')
-	}
-
+	w.Flush()
 	return sb.String()
 }
 
@@ -71,39 +69,31 @@ func (r carriersResult) Data() interface{} {
 	return r
 }
 
-// Stubbed data
-type Carrier struct {
-	Name    string   `json:"name"`
-	Devices []Device `json:"devices"`
-}
+func extractCarrierResult(input hardwareinfo.Carrier) CarrierResult {
+	var orderedDeviceList []string
 
-type Device struct {
-	Name    string   `json:"name"`
-	Options []string `json:"options"`
-}
+	// group hardware data by DeviceName
+	grouping := make(map[string][]string)
+	for _, overlay := range input.Overlays {
+		device := overlay.DeviceName
+		if _, exist := grouping[device]; !exist {
+			orderedDeviceList = append(orderedDeviceList, device)
+			grouping[device] = append(grouping[device], "none")
+		}
+		grouping[device] = append(grouping[device], overlay.HardwareData)
+	}
 
-// nolint:unparam
-func stubbedMediaCarrier(_ context.Context) (Carrier, error) {
-	return Carrier{
-		Name: "media-carrier",
-		Devices: []Device{
-			{Name: "camera1", Options: []string{"none", "type1-2lane", "type1-4lane", "other-camera"}},
-			{Name: "camera2", Options: []string{"none", "type1-2lane", "type1-4lane", "other-camera"}},
-			{Name: "camera3", Options: []string{"none", "type1-2lane", "type1-4lane", "other-camera"}},
-			{Name: "display1", Options: []string{"none", "8-dsi-touch-a"}},
-		},
-	}, nil
-}
+	// build the final Devices slice
+	var devices []Device
+	for _, device := range orderedDeviceList {
+		devices = append(devices, Device{
+			Name:             device,
+			AvailableDevices: grouping[device],
+		})
+	}
 
-// nolint:unparam
-func stubbedBuiltInCarrier(_ context.Context) (Carrier, error) {
-	return Carrier{
-		Name: "builtin-carrier",
-		Devices: []Device{
-			{Name: "camera1", Options: []string{"none", "type1-2lane", "type1-4lane", "other-camera"}},
-			{Name: "camera2", Options: []string{"none", "type1-2lane", "type1-4lane", "other-camera"}},
-			{Name: "camera3", Options: []string{"none", "type1-2lane", "type1-4lane", "other-camera"}},
-			{Name: "display1", Options: []string{"none", "8-dsi-touch-a"}},
-		},
-	}, nil
+	return CarrierResult{
+		Name:    input.Name,
+		Devices: devices,
+	}
 }
