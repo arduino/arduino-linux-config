@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	hardwareinfo "github.com/arduino/arduino-linux-config/internal/hwinfo"
+	"github.com/arduino/arduino-linux-config/internal/hardwareinfo"
 )
 
 func TestExtractCarrierResult(t *testing.T) {

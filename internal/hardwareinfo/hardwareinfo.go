@@ -25,16 +25,16 @@ var (
 	once     sync.Once
 )
 
-func GetAvailableDeviceList() (*HardwareInfo, error) {
+func GetAvailableDeviceList() *HardwareInfo {
 	once.Do(func() {
 		instance = &HardwareInfo{}
-		carrier, _ := initCarrier()
+		carrier := initCarrier()
 		instance.Carrier = carrier
 	})
-	return instance, nil
+	return instance
 }
 
-func initCarrier() (Carrier, error) {
+func initCarrier() Carrier {
 	return Carrier{
 		Name: "media-carrier",
 		Overlays: []Overlay{
@@ -69,5 +69,5 @@ func initCarrier() (Carrier, error) {
 				FileName:     "qrb2210-arduino-imola-carrier-media-panel-8in-touch-a-dsi.dtbo",
 			},
 		},
-	}, nil
+	}
 }

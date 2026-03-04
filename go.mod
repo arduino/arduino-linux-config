@@ -9,6 +9,8 @@ require (
 	go.bug.st/cleanup v1.0.0
 )
 
+require github.com/spf13/cobra v1.10.2
+
 require (
 	cel.dev/expr v0.24.0 // indirect
 	charm.land/bubbles/v2 v2.0.0-rc.1 // indirect
@@ -96,6 +98,7 @@ require (
 	github.com/hashicorp/go-version v1.8.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+<<<<<<< HEAD
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
@@ -118,6 +121,9 @@ require (
 	github.com/puzpuzpuz/xsync/v4 v4.3.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sajari/fuzzy v1.0.0 // indirect
+=======
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+>>>>>>> 87170cf (Fix lint.)
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect

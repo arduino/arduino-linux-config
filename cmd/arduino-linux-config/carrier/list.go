@@ -7,7 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
-	hardwareinfo "github.com/arduino/arduino-linux-config/internal/hwinfo"
+	"github.com/arduino/arduino-linux-config/internal/hardwareinfo"
 	"github.com/spf13/cobra"
 )
 
@@ -24,10 +24,7 @@ func newListCmd() *cobra.Command {
 }
 
 func listHandler(_ context.Context) {
-	hwInfo, err := hardwareinfo.GetAvailableDeviceList()
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
+	hwInfo := hardwareinfo.GetAvailableDeviceList()
 
 	carrier := extractCarrierResult(hwInfo.Carrier)
 
@@ -84,7 +81,7 @@ func extractCarrierResult(input hardwareinfo.Carrier) CarrierResult {
 	}
 
 	// build the final Devices slice
-	var devices []Device
+	devices := make([]Device, 0, len(orderedDeviceList))
 	for _, device := range orderedDeviceList {
 		devices = append(devices, Device{
 			Name:             device,
