@@ -1,0 +1,41 @@
+name: test the system update flow
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-update:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Run dep package update test
+        env:
+          GH_TOKEN: ${{ secrets.ARDUINOBOT_TOKEN }}
+        run: |
+          go tool task test:update
+
+      - name: Slack notification of unexpected failure
+        if: ${{ failure() }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.TEAM_TOOLING_CHANNEL_SLACK_WEBHOOK }}
+          SLACK_MESSAGE: |
+            :warning::warning::warning::warning:
+            WARNING: ${{ github.repository }} ${{ github.workflow }} workflow run had an unexpected failure!!!
+            :warning::warning::warning::warning:
+          SLACK_COLOR: danger
+          MSG_MINIMAL: true
