@@ -39,7 +39,6 @@ tasks:
   test:internal:
     cmds:
       - go build ./cmd/arduino-linux-config
-      - task: generate
       - go tool gotest.tools/gotestsum $(go list ./internal/... ./cmd/...) -v -race {{ .CLI_ARGS }}
 
   test:cover:
