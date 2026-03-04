@@ -8,15 +8,14 @@ The project bridges the gap between high-level user requirements and low-level k
 
 # 🛠 CLI Interface
 
-The initial skeleton implements the following core commands and global flags (currently provided as functional stubs):
+arduino-linux-config allows you to manage media carrier devices.
 
 ## Commands
 
-- **`list`**: View all available media careers and device configurations.
-- **`show`**: Display detailed information for a specific device.
-- **`enable`**: Activate a hardware device or overlay.
-- **`disable`**: Deactivate a hardware device or overlay.
-- **`reset`**: Revert hardware configurations to factory defaults.
+- **`list`**: Lists all available carriers and devices for the current hardware.
+- **`show`**: Displays current configuration values for a specific carrier name, along with the pending configuration.
+- **`enable`**: Enables a specified carrier. Devices can be optionally specified. Note: Factory defaults are applied before enabling the new configuration.
+- **`disable`**: Deactivates all media carrierd and restores the system to factory defaults.
 
 ## Global Flags
 
