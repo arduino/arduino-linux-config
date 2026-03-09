@@ -7,7 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
-	"github.com/arduino/arduino-linux-config/internal/hardwareinfo"
+	"github.com/arduino/arduino-linux-config/internal/carrierinfo"
 	"github.com/spf13/cobra"
 )
 
@@ -24,9 +24,9 @@ func newListCmd() *cobra.Command {
 }
 
 func listHandler(_ context.Context) {
-	hwInfo := hardwareinfo.GetAvailableDeviceList()
+	boardCarrierInfo := carrierinfo.GetAvailableDeviceList()
 
-	carrier := extractCarrierResult(hwInfo.Carrier)
+	carrier := extractCarrierResult(boardCarrierInfo.MediaCarrier)
 
 	feedback.PrintResult(carriersResult{
 		MediaCarrier:   carrier,
@@ -34,6 +34,7 @@ func listHandler(_ context.Context) {
 	})
 }
 
+// User result structures
 type carriersResult struct {
 	MediaCarrier   CarrierResult `json:"media_carrier"`
 	BuiltInCarrier CarrierResult `json:"builtin_carrier"`
@@ -66,25 +67,23 @@ func (r carriersResult) Data() interface{} {
 	return r
 }
 
-func extractCarrierResult(input hardwareinfo.Carrier) CarrierResult {
-	var orderedDeviceList []string
+func extractCarrierResult(input carrierinfo.Carrier) CarrierResult {
 
 	// group hardware data by DeviceName
-	grouping := make(map[string][]string)
+	grouping := make(map[carrierinfo.MediaCarrierDevice][]string)
 	for _, overlay := range input.Overlays {
 		device := overlay.DeviceName
 		if _, exist := grouping[device]; !exist {
-			orderedDeviceList = append(orderedDeviceList, device)
 			grouping[device] = append(grouping[device], "none")
 		}
 		grouping[device] = append(grouping[device], overlay.HardwareData)
 	}
 
 	// build the final Devices slice
-	devices := make([]Device, 0, len(orderedDeviceList))
-	for _, device := range orderedDeviceList {
+	devices := make([]Device, 0, len(carrierinfo.MediaCarrierDeviceList))
+	for _, device := range carrierinfo.MediaCarrierDeviceList {
 		devices = append(devices, Device{
-			Name:             device,
+			Name:             string(device),
 			AvailableDevices: grouping[device],
 		})
 	}

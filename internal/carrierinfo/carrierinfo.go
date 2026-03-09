@@ -1,35 +1,48 @@
-package hardwareinfo
+package carrierinfo
 
 import (
 	"sync"
 )
 
-type HardwareInfo struct {
-	Carrier        Carrier
+type BoardCarriers struct {
+	MediaCarrier   Carrier
 	BuiltInCarrier Carrier // Monza only
 }
 
+// UnoQ specific media carrier
+type MediaCarrierDevice string
+
+const (
+	Leds     MediaCarrierDevice = "leds"
+	Camera1  MediaCarrierDevice = "camera1"
+	Camera2  MediaCarrierDevice = "camera2"
+	Display1 MediaCarrierDevice = "display1"
+)
+
+var MediaCarrierDeviceList = []MediaCarrierDevice{Leds, Camera1, Camera2, Display1}
+
+// Overlay relate structures
 type Carrier struct {
 	Name     string
 	Overlays []Overlay
 }
 
 type Overlay struct {
-	DeviceName   string
+	DeviceName   MediaCarrierDevice
 	HardwareData string
 	FileName     string
 }
 
 var (
-	instance *HardwareInfo
+	instance *BoardCarriers
 	once     sync.Once
 )
 
-func GetAvailableDeviceList() *HardwareInfo {
+func GetAvailableDeviceList() *BoardCarriers {
 	once.Do(func() {
-		instance = &HardwareInfo{}
+		instance = &BoardCarriers{}
 		carrier := initCarrier()
-		instance.Carrier = carrier
+		instance.MediaCarrier = carrier
 	})
 	return instance
 }
@@ -39,32 +52,32 @@ func initCarrier() Carrier {
 		Name: "media-carrier",
 		Overlays: []Overlay{
 			{
-				DeviceName:   "leds",
+				DeviceName:   Leds,
 				HardwareData: "carrier-leds",
 				FileName:     "qrb2210-arduino-imola-carrier-media.dtbo",
 			},
 			{
-				DeviceName:   "camera1",
+				DeviceName:   Camera1,
 				HardwareData: "imx219-csi0-2lanes",
 				FileName:     "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
 			},
 			{
-				DeviceName:   "camera1",
+				DeviceName:   Camera1,
 				HardwareData: "imx219-csi0-4lanes",
 				FileName:     "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo",
 			},
 			{
-				DeviceName:   "camera2",
+				DeviceName:   Camera2,
 				HardwareData: "imx219-csi1-2lanes",
 				FileName:     "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
 			},
 			{
-				DeviceName:   "camera2",
+				DeviceName:   Camera2,
 				HardwareData: "imx219-csi1-4lanes",
 				FileName:     "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo",
 			},
 			{
-				DeviceName:   "display1",
+				DeviceName:   Display1,
 				HardwareData: "8in-touch-a-dsi",
 				FileName:     "qrb2210-arduino-imola-carrier-media-panel-8in-touch-a-dsi.dtbo",
 			},

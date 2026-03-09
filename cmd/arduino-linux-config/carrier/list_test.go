@@ -1,34 +1,41 @@
 package carrier
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/arduino/arduino-linux-config/internal/hardwareinfo"
+	carrierinfo "github.com/arduino/arduino-linux-config/internal/carrierinfo"
 )
 
 func TestExtractCarrierResult(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    hardwareinfo.Carrier
+		input    carrierinfo.Carrier
 		expected CarrierResult
 	}{
 		{
 			name: "Successfully groups and prepends none",
-			input: hardwareinfo.Carrier{
-				Name: "arduino-max",
-				Overlays: []hardwareinfo.Overlay{
+			input: carrierinfo.Carrier{
+				Name: "arduino-carrier",
+				Overlays: []carrierinfo.Overlay{
 					{DeviceName: "camera1", HardwareData: "imx219-2lane"},
 					{DeviceName: "camera1", HardwareData: "imx219-4lane"},
 					{DeviceName: "display1", HardwareData: "8in-dsi"},
 				},
 			},
 			expected: CarrierResult{
-				Name: "arduino-max",
+				Name: "arduino-carrier",
 				Devices: []Device{
+					{
+						Name:             "leds",
+						AvailableDevices: []string{},
+					},
 					{
 						Name:             "camera1",
 						AvailableDevices: []string{"none", "imx219-2lane", "imx219-4lane"},
+					},
+					{
+						Name:             "camera2",
+						AvailableDevices: []string{},
 					},
 					{
 						Name:             "display1",
@@ -39,13 +46,30 @@ func TestExtractCarrierResult(t *testing.T) {
 		},
 		{
 			name: "Empty input returns empty result",
-			input: hardwareinfo.Carrier{
+			input: carrierinfo.Carrier{
 				Name:     "empty",
-				Overlays: []hardwareinfo.Overlay{},
+				Overlays: []carrierinfo.Overlay{},
 			},
 			expected: CarrierResult{
-				Name:    "empty",
-				Devices: nil,
+				Name: "empty",
+				Devices: []Device{
+					{
+						Name:             "leds",
+						AvailableDevices: []string{},
+					},
+					{
+						Name:             "camera1",
+						AvailableDevices: []string{},
+					},
+					{
+						Name:             "camera2",
+						AvailableDevices: []string{},
+					},
+					{
+						Name:             "display1",
+						AvailableDevices: []string{},
+					},
+				},
 			},
 		},
 	}
@@ -60,7 +84,7 @@ func TestExtractCarrierResult(t *testing.T) {
 			}
 
 			// Validate Device grouping and "none" insertion
-			if !reflect.DeepEqual(got.Devices, tt.expected.Devices) {
+			if !compareDevices(got.Devices, tt.expected.Devices) {
 				t.Errorf("Devices = %v, want %v", got.Devices, tt.expected.Devices)
 			}
 		})
@@ -116,4 +140,26 @@ func TestCarriersResult_String(t *testing.T) {
 			}
 		})
 	}
+}
+
+func compareDevices(got, want []Device) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i].Name != want[i].Name {
+			return false
+		}
+		// Check the options slice length
+		if len(got[i].AvailableDevices) != len(want[i].AvailableDevices) {
+			return false
+		}
+		// Check every string in the options slice
+		for j := range got[i].AvailableDevices {
+			if got[i].AvailableDevices[j] != want[i].AvailableDevices[j] {
+				return false
+			}
+		}
+	}
+	return true
 }
