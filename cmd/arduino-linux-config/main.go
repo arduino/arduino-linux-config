@@ -19,7 +19,6 @@ var format string
 var logLevelStr string
 
 func run() error {
-
 	rootCmd := &cobra.Command{
 		Use:   "arduino-linux-config",
 		Short: "A CLI to manage Arduino Linux Configurations",
@@ -58,7 +57,8 @@ func run() error {
 }
 
 func main() {
-	// TODO: Check for running uid
+	// TODO: Should this run as root?
+
 	if err := run(); err != nil {
 		feedback.FatalError(err, 1)
 	}
