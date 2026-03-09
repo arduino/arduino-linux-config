@@ -3,4 +3,4 @@ Version: $VERSION
 Architecture: $ARCH
 Maintainer: arduino <support@arduino.cc>
 Description: Arduino application arduino-linux-config
-Depends: linux-image-6.16.7-gd1b1a80fb764 #TODO: update to the latest kernel package name
+Depends: linux-image (>= 6.16.7-gd1b1a80fb764)
