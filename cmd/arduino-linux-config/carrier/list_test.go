@@ -2,94 +2,7 @@ package carrier
 
 import (
 	"testing"
-
-	carrierinfo "github.com/arduino/arduino-linux-config/internal/carrierinfo"
 )
-
-func TestExtractCarrierResult(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    carrierinfo.Carrier
-		expected CarrierResult
-	}{
-		{
-			name: "Successfully groups and prepends none",
-			input: carrierinfo.Carrier{
-				Name: "arduino-carrier",
-				Overlays: []carrierinfo.Overlay{
-					{DeviceName: "camera1", HardwareData: "imx219-2lane"},
-					{DeviceName: "camera1", HardwareData: "imx219-4lane"},
-					{DeviceName: "display1", HardwareData: "8in-dsi"},
-				},
-			},
-			expected: CarrierResult{
-				Name: "arduino-carrier",
-				Devices: []Device{
-					{
-						Name:             "leds",
-						AvailableDevices: []string{},
-					},
-					{
-						Name:             "camera1",
-						AvailableDevices: []string{"none", "imx219-2lane", "imx219-4lane"},
-					},
-					{
-						Name:             "camera2",
-						AvailableDevices: []string{},
-					},
-					{
-						Name:             "display1",
-						AvailableDevices: []string{"none", "8in-dsi"},
-					},
-				},
-			},
-		},
-		{
-			name: "Empty input returns empty result",
-			input: carrierinfo.Carrier{
-				Name:     "empty",
-				Overlays: []carrierinfo.Overlay{},
-			},
-			expected: CarrierResult{
-				Name: "empty",
-				Devices: []Device{
-					{
-						Name:             "leds",
-						AvailableDevices: []string{},
-					},
-					{
-						Name:             "camera1",
-						AvailableDevices: []string{},
-					},
-					{
-						Name:             "camera2",
-						AvailableDevices: []string{},
-					},
-					{
-						Name:             "display1",
-						AvailableDevices: []string{},
-					},
-				},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := extractCarrierResult(tt.input)
-
-			// Validate Carrier Name
-			if got.Name != tt.expected.Name {
-				t.Errorf("Name = %v, want %v", got.Name, tt.expected.Name)
-			}
-
-			// Validate Device grouping and "none" insertion
-			if !compareDevices(got.Devices, tt.expected.Devices) {
-				t.Errorf("Devices = %v, want %v", got.Devices, tt.expected.Devices)
-			}
-		})
-	}
-}
 
 func TestCarriersResult_String(t *testing.T) {
 	tests := []struct {
@@ -98,43 +11,92 @@ func TestCarriersResult_String(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "Standard carrier with multiple devices",
+			name: "Single carrier with multiple devices",
 			input: carriersResult{
-				MediaCarrier: CarrierResult{
-					Name: "arduino-max-carrier",
-					Devices: []Device{
-						{
-							Name:             "camera1",
-							AvailableDevices: []string{"none", "imx219-2lane", "imx219-4lane"},
-						},
-						{
-							Name:             "display1",
-							AvailableDevices: []string{"none", "8in-touch-a-dsi"},
+				Carriers: []Carrier{
+					{
+						Name: "media-carrier",
+						Devices: []Device{
+							{
+								Name: "camera1",
+								Options: []DeviceOption{
+									{Name: "none", DtboFile: ""},
+									{Name: "type1-2lane", DtboFile: "camera-imx219-csi0-2lanes.dtbo"},
+									{Name: "type1-4lane", DtboFile: "camera-imx219-csi0-4lanes.dtbo"},
+								},
+							},
+							{
+								Name: "display1",
+								Options: []DeviceOption{
+									{Name: "none", DtboFile: ""},
+									{Name: "8-dsi-touch-a", DtboFile: "panel-8in-touch-a-dsi.dtbo"},
+								},
+							},
 						},
 					},
 				},
 			},
-			// Note: The spaces below must match the tabwriter's calculation (8 tab-width, 2 padding)
-			expected: "- arduino-max-carrier\n" +
-				"  camera1   none, imx219-2lane, imx219-4lane\n" +
-				"  display1  none, 8in-touch-a-dsi\n",
+			expected: "media-carrier:\n" +
+				"  - camera1: none | type1-2lane | type1-4lane\n" +
+				"  - display1: none | 8-dsi-touch-a\n",
 		},
 		{
-			name: "Empty devices list",
+			name: "Multiple carriers",
 			input: carriersResult{
-				MediaCarrier: CarrierResult{
-					Name:    "empty-carrier",
-					Devices: nil,
+				Carriers: []Carrier{
+					{
+						Name: "media-carrier",
+						Devices: []Device{
+							{
+								Name: "camera1",
+								Options: []DeviceOption{
+									{Name: "none", DtboFile: ""},
+									{Name: "type1-2lane", DtboFile: "camera-imx219-csi0-2lanes.dtbo"},
+								},
+							},
+						},
+					},
+					{
+						Name: "builtin",
+						Devices: []Device{
+							{
+								Name: "camera1",
+								Options: []DeviceOption{
+									{Name: "none", DtboFile: ""},
+									{Name: "type1-4lane", DtboFile: "camera-imx219-csi0-4lanes.dtbo"},
+								},
+							},
+						},
+					},
 				},
 			},
-			expected: "- empty-carrier\n",
+			expected: "media-carrier:\n" +
+				"  - camera1: none | type1-2lane\n" +
+				"builtin:\n" +
+				"  - camera1: none | type1-4lane\n",
+		},
+		{
+			name: "Carrier with no devices",
+			input: carriersResult{
+				Carriers: []Carrier{
+					{
+						Name:    "empty-carrier",
+						Devices: []Device{},
+					},
+				},
+			},
+			expected: "empty-carrier:\n",
+		},
+		{
+			name:     "Empty registry",
+			input:    carriersResult{Carriers: []Carrier{}},
+			expected: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.input.String()
-
 			if got != tt.expected {
 				t.Errorf("String() mismatch.\nGot:\n%q\nWant:\n%q", got, tt.expected)
 			}
@@ -142,24 +104,48 @@ func TestCarriersResult_String(t *testing.T) {
 	}
 }
 
-func compareDevices(got, want []Device) bool {
-	if len(got) != len(want) {
-		return false
+func TestGetCarrierRegistry(t *testing.T) {
+	carriers := getCarrierRegistry()
+
+	if len(carriers) == 0 {
+		t.Fatal("registry is empty, expected at least one carrier")
 	}
-	for i := range got {
-		if got[i].Name != want[i].Name {
-			return false
-		}
-		// Check the options slice length
-		if len(got[i].AvailableDevices) != len(want[i].AvailableDevices) {
-			return false
-		}
-		// Check every string in the options slice
-		for j := range got[i].AvailableDevices {
-			if got[i].AvailableDevices[j] != want[i].AvailableDevices[j] {
-				return false
+
+	for _, carrier := range carriers {
+		t.Run(carrier.Name, func(t *testing.T) {
+			if carrier.Name == "" {
+				t.Error("carrier has empty name")
 			}
-		}
+
+			for _, device := range carrier.Devices {
+				if device.Name == "" {
+					t.Errorf("device in carrier %q has empty name", carrier.Name)
+				}
+
+				if len(device.Options) == 0 {
+					t.Errorf("device %q in carrier %q has no options", device.Name, carrier.Name)
+				}
+
+				// First option must always be "none"
+				if device.Options[0].Name != "none" {
+					t.Errorf("device %q in carrier %q: first option must be 'none', got %q",
+						device.Name, carrier.Name, device.Options[0].Name)
+				}
+
+				// "none" must have no dtbo file
+				if device.Options[0].DtboFile != "" {
+					t.Errorf("device %q in carrier %q: 'none' option must have empty DtboFile, got %q",
+						device.Name, carrier.Name, device.Options[0].DtboFile)
+				}
+
+				// All other options must have a dtbo file
+				for _, opt := range device.Options[1:] {
+					if opt.DtboFile == "" {
+						t.Errorf("device %q in carrier %q: option %q has empty DtboFile",
+							device.Name, carrier.Name, opt.Name)
+					}
+				}
+			}
+		})
 	}
-	return true
 }
