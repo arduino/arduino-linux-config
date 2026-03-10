@@ -19,31 +19,62 @@ func newListCmd() *cobra.Command {
 }
 
 func listHandler(_ context.Context) {
-	carriers := getCarrierRegistry()
-	feedback.PrintResult(carriersResult{Carriers: carriers})
+	carrier := extractCarrierResult(MediaCarrierRegistry)
+
+	feedback.PrintResult(carriersResult{
+		MediaCarrier: carrier,
+	})
 }
 
+// User result structures
 type carriersResult struct {
-	Carriers []Carrier `json:"carriers"`
+	MediaCarrier CarrierResult `json:"media_carrier"`
+}
+
+type CarrierResult struct {
+	Name    string         `json:"name"`
+	Devices []DeviceResult `json:"devices"`
+}
+
+type DeviceResult struct {
+	Name             string   `json:"name"`
+	AvailableDevices []string `json:"available_devices"`
+}
+
+func extractCarrierResult(input MediaCarrier) CarrierResult {
+	devices := make([]DeviceResult, 0, len(input.Devices))
+
+	for _, device := range input.Devices {
+		options := make([]string, 0, len(device.Options))
+		for _, opt := range device.Options {
+			options = append(options, opt.Name)
+		}
+
+		devices = append(devices, DeviceResult{
+			Name:             string(device.Name),
+			AvailableDevices: options,
+		})
+	}
+
+	return CarrierResult{
+		Name:    input.Name,
+		Devices: devices,
+	}
 }
 
 func (r carriersResult) String() string {
 	var sb strings.Builder
 
-	for _, carrier := range r.Carriers {
-		sb.WriteString(carrier.Name + ":\n")
-		for _, device := range carrier.Devices {
-			options := make([]string, len(device.Options))
-			for i, opt := range device.Options {
-				options[i] = opt.Name
-			}
-			sb.WriteString("  - ")
-			sb.WriteString(device.Name)
-			sb.WriteString(": ")
-			sb.WriteString(strings.Join(options, " | "))
-			sb.WriteByte('\n')
+	formatCarrier := func(cr CarrierResult) {
+		sb.WriteString("- " + cr.Name + "\n")
+		for _, device := range cr.Devices {
+			sb.WriteString("    " + string(device.Name) + ": ")
+			sb.WriteString(strings.Join(device.AvailableDevices, ", "))
+			sb.WriteString("\n")
 		}
 	}
+
+	formatCarrier(r.MediaCarrier)
 
 	return sb.String()
 }

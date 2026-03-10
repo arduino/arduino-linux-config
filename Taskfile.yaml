@@ -58,10 +58,9 @@ tasks:
     desc: Check format
     cmds:
       - ${PWD}/.bin/dprint check
+
   build-deb:
-    desc: Build debian package
-    deps:
-      - build-deb:clone-examples
+    desc: Build debian package using docker
     cmds:
       - docker build --build-arg BINARY_NAME=arduino-linux-config --build-arg DEB_NAME=arduino-linux-config --build-arg VERSION={{ .VERSION }} --build-arg ARCH={{ .ARCH }} --build-arg RELEASE={{ .RELEASE }} --output={{ .OUTPUT }} -f debian/Dockerfile .
     vars:

@@ -1,0 +1,5 @@
+Package: arduino-linux-config
+Version: $VERSION
+Architecture: $ARCH
+Maintainer: arduino <support@arduino.cc>
+Description: Arduino application arduino-linux-config

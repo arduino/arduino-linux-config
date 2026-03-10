@@ -12,8 +12,9 @@ func NewCarrierCmd() *cobra.Command {
 	}
 
 	carrierCmd.AddCommand(newListCmd())
+	carrierCmd.AddCommand(newShowCmd())
 	carrierCmd.AddCommand(newEnableCmd())
-	// carrierCmd.AddCommand(newDisableCmd())
+	carrierCmd.AddCommand(newDisableCmd())
 
 	return carrierCmd
 }

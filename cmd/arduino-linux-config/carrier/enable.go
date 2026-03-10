@@ -2,22 +2,220 @@ package carrier
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
+	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/spf13/cobra"
 )
 
-func newEnableCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "enable",
-		Short: "Enables the specified carrier",
-		Run: func(cmd *cobra.Command, args []string) {
-			enableHandler(cmd.Context())
-		},
-	}
+var MediaCarrierDeviceList = []MediaCarrierDevice{Leds, Camera1, Camera2, Display1}
 
-	return cmd
+type CarrierStatus struct {
+	Configuration map[MediaCarrierDevice]string `json:"configuration,omitempty"`
 }
 
-func enableHandler(_ context.Context) {
-	// Implementation for enabling carrier
+// Since a board reboot can occur asynchronously with the carrier configuration,
+// we must track both the current and desired states.
+//
+// This is managed by maintaining two status files,
+// representing the actual and desired configurations,
+// that will be synchronized during the next boot sequence.
+//
+// At boot time we:
+// mv wanted.json actual.json
+
+// TODO: update these paths with the real ones
+/*
+how to create test environment for this code:
+ cd /tmp/
+ mkdir test_media_carrier
+ cd test_media_carrier/
+ cp /usr/lib/linux-image-6.16.7-gd1b1a80fb764/qcom/qrb2210-arduino-imola*.dt* /tmp/test_media_carrier/
+ mkdir status
+
+should have now:
+-rw-r--r-- 1 arduino arduino 71925 Mar 10 16:18 qrb2210-arduino-imola-base.dtb
+-rw-r--r-- 1 arduino arduino  2230 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo
+-rw-r--r-- 1 arduino arduino  2246 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo
+-rw-r--r-- 1 arduino arduino  2255 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo
+-rw-r--r-- 1 arduino arduino  2271 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo
+-rw-r--r-- 1 arduino arduino  4118 Mar 10 16:18 qrb2210-arduino-imola-carrier-media.dtbo
+-rw-r--r-- 1 arduino arduino  2623 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-panel-8in-touch-a-dsi.dtbo
+-rw-r--r-- 1 arduino arduino 72384 Mar 10 16:18 qrb2210-arduino-imola.dtb
+drwxrwxr-x 2 arduino arduino    40 Mar 10 16:21 status
+
+*/
+const (
+	stateDir    = "/tmp/test_media_carrier/status"
+	baseDTB     = "/tmp/test_media_carrier/qrb2210-arduino-imola-base.dtb"
+	actualDTB   = "/tmp/test_media_carrier/qrb2210-arduino-imola.dtb"
+	overlaysDir = "/tmp/test_media_carrier"
+)
+
+func newEnableCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "enable <carrier-name> [device=option...]",
+		Short: "Enable a carrier with the specified device options",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			enableHandler(cmd.Context(), args[0], args[1:])
+		},
+	}
+}
+
+func enableHandler(_ context.Context, carrierName string, deviceArgs []string) {
+	wantedDevicesList, err := parseAndValidateDeviceArgs(carrierName, deviceArgs)
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+
+	wantedDtboFiles := collectDtboFiles(wantedDevicesList)
+
+	if len(wantedDtboFiles) > 0 {
+		if err := applyOverlays(wantedDtboFiles); err != nil {
+			feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		}
+	}
+
+	if err := createWantedMarkers(wantedDevicesList); err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+}
+
+// parseAndValidateDeviceArgs does the following:
+// - checks carrierName is valid
+// - for each device=option argument:
+//   - splits into device and option
+//   - validates device exists for this carrier
+//   - validates option exists for this device
+//   - stores selection in map
+//
+// example input: "media-carrier", ["camera1=type1-2lane", "display1=8-dsi-touch-a"]
+// example output: {Camera1: "type1-2lane", Display1: "8-dsi-touch-a"}
+func parseAndValidateDeviceArgs(carrierName string, args []string) (map[MediaCarrierDevice]string, error) {
+	//we support only media-carrier for now,builtin in the future
+	if carrierName != MediaCarrierRegistry.Name {
+		return nil, fmt.Errorf("carrier %q not supported", carrierName)
+	}
+	selection := make(map[MediaCarrierDevice]string)
+	for _, arg := range args {
+		arg = strings.TrimRight(arg, ",")
+
+		parts := strings.SplitN(arg, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid argument %q: expected device=option format", arg)
+		}
+
+		deviceName := parts[0]
+		optionName := parts[1]
+
+		deviceCarrierName, err := ParseMediaCarrierDevice(deviceName)
+		if err != nil {
+			return nil, fmt.Errorf("device "+deviceName+" not supported for carrier "+carrierName, feedback.ErrGeneric)
+		}
+
+		device, err := findDevice(MediaCarrierRegistry, deviceCarrierName)
+		if err != nil {
+			return nil, err
+		}
+		option, err := findOption(device, optionName)
+		if err != nil {
+			return nil, err
+		}
+		//example: selection["camera1"] = "type1-2lane"
+		selection[deviceCarrierName] = option.Name
+	}
+
+	return selection, nil
+}
+func findDevice(carrier MediaCarrier, deviceName MediaCarrierDevice) (Device, error) {
+	for _, d := range carrier.Devices {
+		if d.Name == deviceName {
+			return d, nil
+		}
+	}
+	return Device{}, fmt.Errorf("device %q not found in carrier %q", deviceName, carrier.Name)
+}
+
+func findOption(device Device, optionName string) (DeviceOption, error) {
+	for _, o := range device.Options {
+		if o.Name == optionName {
+			return o, nil
+		}
+	}
+	return DeviceOption{}, fmt.Errorf("option %q not found for device %q", optionName, device.Name)
+}
+
+func ParseMediaCarrierDevice(s string) (MediaCarrierDevice, error) {
+	for _, d := range MediaCarrierDeviceList {
+		if string(d) == s {
+			return d, nil
+		}
+	}
+	return "", fmt.Errorf("unknown MediaCarrierDevice: %q", s)
+}
+
+func collectDtboFiles(selection map[MediaCarrierDevice]string) []string {
+	var dtboFiles []string
+
+	for deviceName, optionName := range selection {
+		if optionName == "none" || optionName == "" {
+			continue
+		}
+
+		for _, device := range MediaCarrierRegistry.Devices {
+			if device.Name != deviceName {
+				continue
+			}
+			for _, opt := range device.Options {
+				if opt.Name == optionName {
+					if opt.DtboFile != "" {
+						dtboFiles = append(dtboFiles, filepath.Join(overlaysDir, opt.DtboFile))
+					}
+					break
+				}
+			}
+		}
+	}
+
+	return dtboFiles
+}
+
+func createWantedMarkers(selection map[MediaCarrierDevice]string) error {
+	cmd := exec.Command("sh", "-c", "rm -f wanted_*")
+	cmd.Dir = stateDir
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to clear old markers: %w", err)
+	}
+
+	for deviceName, optionName := range selection {
+		markerPath := filepath.Join(stateDir, "wanted_"+string(deviceName)+"_"+optionName)
+		if err := touchFile(markerPath); err != nil {
+			return fmt.Errorf("failed to create marker %q: %w", markerPath, err)
+		}
+	}
+	return nil
+}
+
+func touchFile(path string) error {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
+func applyOverlays(dtboFiles []string) error {
+	cmd := exec.Command("fdtoverlay", append([]string{"-i", baseDTB, "-o", actualDTB}, dtboFiles...)...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("fdtoverlay failed: %w", err)
+	}
+	return nil
 }
