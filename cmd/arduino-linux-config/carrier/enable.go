@@ -3,6 +3,7 @@ package carrier
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -51,7 +52,7 @@ drwxrwxr-x 2 arduino arduino    40 Mar 10 16:21 status
 
 */
 const (
-	stateDir    = "/tmp/test_media_carrier/status"
+	statusDir   = "/tmp/test_media_carrier/status"
 	baseDTB     = "/tmp/test_media_carrier/qrb2210-arduino-imola-base.dtb"
 	actualDTB   = "/tmp/test_media_carrier/qrb2210-arduino-imola.dtb"
 	overlaysDir = "/tmp/test_media_carrier"
@@ -187,16 +188,18 @@ func collectDtboFiles(selection map[MediaCarrierDevice]string) []string {
 }
 
 func createWantedMarkers(selection map[MediaCarrierDevice]string) error {
-	cmd := exec.Command("sh", "-c", "rm -f wanted_*")
-	cmd.Dir = stateDir
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to clear old markers: %w", err)
-	}
+	delete_wanted()
 
 	for deviceName, optionName := range selection {
-		markerPath := filepath.Join(stateDir, "wanted_"+string(deviceName)+"_"+optionName)
+		if optionName == "" || optionName == "none" {
+			continue // Skip creating status file for disabled devices
+		}
+
+		fileName := fmt.Sprintf("wanted_%s_%s", string(deviceName), optionName)
+		markerPath := filepath.Join(statusDir, fileName)
+
 		if err := touchFile(markerPath); err != nil {
-			return fmt.Errorf("failed to create marker %q: %w", markerPath, err)
+			slog.Warn("Failed to create status file")
 		}
 	}
 	return nil
@@ -224,5 +227,23 @@ func applyOverlays(ctx context.Context, dtboFiles []string) error {
 	if len(stdout) > 0 {
 		feedback.Print(string(stdout))
 	}
+	return nil
+}
+
+func delete_wanted() error {
+	pattern := filepath.Join(statusDir, "wanted_*")
+
+	files, err := filepath.Glob(pattern)
+	if err != nil {
+		slog.Warn("Fail to delete status files")
+		return err
+	}
+
+	for _, f := range files {
+		if err := os.Remove(f); err != nil {
+			slog.Warn("Fail to delete status file")
+		}
+	}
+
 	return nil
 }
