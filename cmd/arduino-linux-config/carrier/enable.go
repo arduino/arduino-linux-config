@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -83,9 +82,7 @@ func enableHandler(ctx context.Context, carrierName string, deviceArgs []string)
 		}
 	}
 
-	if err := createWantedMarkers(wantedDevicesList); err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
+	createWantedMarkers(wantedDevicesList)
 }
 
 // parseAndValidateDeviceArgs does the following:
@@ -187,8 +184,8 @@ func collectDtboFiles(selection map[MediaCarrierDevice]string) []string {
 	return dtboFiles
 }
 
-func createWantedMarkers(selection map[MediaCarrierDevice]string) error {
-	delete_wanted()
+func createWantedMarkers(selection map[MediaCarrierDevice]string) {
+	_ = delete_wanted()
 
 	for deviceName, optionName := range selection {
 		if optionName == "" || optionName == "none" {
@@ -202,7 +199,6 @@ func createWantedMarkers(selection map[MediaCarrierDevice]string) error {
 			slog.Warn("Failed to create status file")
 		}
 	}
-	return nil
 }
 
 func touchFile(path string) error {

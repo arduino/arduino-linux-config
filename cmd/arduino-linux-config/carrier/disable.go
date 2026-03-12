@@ -42,7 +42,7 @@ func disableHandler(_ context.Context, carrierName string) {
 	}
 
 	// 3. Remove wanted_* markers
-	files, _ := filepath.Glob(filepath.Join(stateDir, "wanted_*"))
+	files, _ := filepath.Glob(filepath.Join(statusDir, "wanted_*"))
 	for _, f := range files {
 		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
 			feedback.Fatal(fmt.Sprintf("failed to remove marker %q: %v", f, err), feedback.ErrGeneric)
