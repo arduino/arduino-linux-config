@@ -1,4 +1,4 @@
-package carrier
+package registry
 
 // UnoQ specific media carrier
 type MediaCarrierDevice string
@@ -9,6 +9,8 @@ const (
 	Camera2  MediaCarrierDevice = "camera2"
 	Display1 MediaCarrierDevice = "display1"
 )
+
+var MediaCarrierDeviceList = []MediaCarrierDevice{Leds, Camera1, Camera2, Display1}
 
 type MediaCarrier struct {
 	Name    string

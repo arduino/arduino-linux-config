@@ -44,7 +44,6 @@ func run() error {
 
 	rootCmd.AddCommand(
 		carrier.NewCarrierCmd(),
-		// show.NewShowCmd(),
 	)
 
 	ctx := context.Background()

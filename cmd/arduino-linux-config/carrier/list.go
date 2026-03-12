@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +20,7 @@ func newListCmd() *cobra.Command {
 }
 
 func listHandler(_ context.Context) {
-	carrier := extractCarrierResult(MediaCarrierRegistry)
+	carrier := extractCarrierResult(registry.MediaCarrierRegistry)
 
 	feedback.PrintResult(carriersResult{
 		MediaCarrier: carrier,
@@ -41,7 +42,7 @@ type DeviceResult struct {
 	AvailableDevices []string `json:"available_devices"`
 }
 
-func extractCarrierResult(input MediaCarrier) CarrierResult {
+func extractCarrierResult(input registry.MediaCarrier) CarrierResult {
 	devices := make([]DeviceResult, 0, len(input.Devices))
 
 	for _, device := range input.Devices {
