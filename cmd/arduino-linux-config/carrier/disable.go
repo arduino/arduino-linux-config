@@ -3,7 +3,8 @@ package carrier
 import (
 	"context"
 	"fmt"
-	"os/exec"
+	"os"
+	"path/filepath"
 
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/spf13/cobra"
@@ -26,16 +27,25 @@ func disableHandler(_ context.Context, carrierName string) {
 		feedback.Fatal("carrier "+carrierName+" not supported", feedback.ErrGeneric)
 	}
 
-	// 2. Remove wanted_* markers
-	cmd := exec.Command("sh", "-c", "rm -f wanted_*")
-	cmd.Dir = stateDir
-	if err := cmd.Run(); err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to clear markers: %v", err), feedback.ErrGeneric)
+	// 2. Restore base DTB by copying it over the actual DTB
+	tmp := actualDTB + ".tmp"
+
+	data, err := os.ReadFile(baseDTB)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to read base DTB: %v", err), feedback.ErrGeneric)
+	}
+	if err := os.WriteFile(tmp, data, 0600); err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to write DTB: %v", err), feedback.ErrGeneric)
+	}
+	if err := os.Rename(tmp, actualDTB); err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to rename DTB: %v", err), feedback.ErrGeneric)
 	}
 
-	cmd = exec.Command("cp", baseDTB, actualDTB)
-	cmd.Dir = overlaysDir
-	if err := cmd.Run(); err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to restore base DTB: %v", err), feedback.ErrGeneric)
+	// 3. Remove wanted_* markers
+	files, _ := filepath.Glob(filepath.Join(stateDir, "wanted_*"))
+	for _, f := range files {
+		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+			feedback.Fatal(fmt.Sprintf("failed to remove marker %q: %v", f, err), feedback.ErrGeneric)
+		}
 	}
 }

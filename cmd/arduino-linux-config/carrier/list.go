@@ -68,7 +68,7 @@ func (r carriersResult) String() string {
 	formatCarrier := func(cr CarrierResult) {
 		sb.WriteString("- " + cr.Name + "\n")
 		for _, device := range cr.Devices {
-			sb.WriteString("    " + string(device.Name) + ": ")
+			sb.WriteString("    " + device.Name + ": ")
 			sb.WriteString(strings.Join(device.AvailableDevices, ", "))
 			sb.WriteString("\n")
 		}

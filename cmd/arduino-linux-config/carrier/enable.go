@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/go-paths-helper"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +68,7 @@ func newEnableCmd() *cobra.Command {
 	}
 }
 
-func enableHandler(_ context.Context, carrierName string, deviceArgs []string) {
+func enableHandler(ctx context.Context, carrierName string, deviceArgs []string) {
 	wantedDevicesList, err := parseAndValidateDeviceArgs(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -76,7 +77,7 @@ func enableHandler(_ context.Context, carrierName string, deviceArgs []string) {
 	wantedDtboFiles := collectDtboFiles(wantedDevicesList)
 
 	if len(wantedDtboFiles) > 0 {
-		if err := applyOverlays(wantedDtboFiles); err != nil {
+		if err := applyOverlays(ctx, wantedDtboFiles); err != nil {
 			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
 	}
@@ -97,7 +98,7 @@ func enableHandler(_ context.Context, carrierName string, deviceArgs []string) {
 // example input: "media-carrier", ["camera1=type1-2lane", "display1=8-dsi-touch-a"]
 // example output: {Camera1: "type1-2lane", Display1: "8-dsi-touch-a"}
 func parseAndValidateDeviceArgs(carrierName string, args []string) (map[MediaCarrierDevice]string, error) {
-	//we support only media-carrier for now,builtin in the future
+	// we support only media-carrier for now,builtin in the future
 	if carrierName != MediaCarrierRegistry.Name {
 		return nil, fmt.Errorf("carrier %q not supported", carrierName)
 	}
@@ -202,20 +203,26 @@ func createWantedMarkers(selection map[MediaCarrierDevice]string) error {
 }
 
 func touchFile(path string) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
 	return f.Close()
 }
 
-func applyOverlays(dtboFiles []string) error {
-	cmd := exec.Command("fdtoverlay", append([]string{"-i", baseDTB, "-o", actualDTB}, dtboFiles...)...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+func applyOverlays(ctx context.Context, dtboFiles []string) error {
+	args := append([]string{"fdtoverlay", "-i", baseDTB, "-o", actualDTB}, dtboFiles...)
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("fdtoverlay failed: %w", err)
+	proc, err := paths.NewProcess(nil, args...)
+	if err != nil {
+		return fmt.Errorf("failed to create process: %w", err)
+	}
+	stdout, stderr, err := proc.RunAndCaptureOutput(ctx)
+	if err != nil {
+		return fmt.Errorf("fdtoverlay failed: %w\n%s", err, stderr)
+	}
+	if len(stdout) > 0 {
+		feedback.Print(string(stdout))
 	}
 	return nil
 }

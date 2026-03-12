@@ -2,10 +2,10 @@ package carrier
 
 import (
 	"context"
-	"fmt"
 
-	//main "github.com/arduino/arduino-linux-config/cmd/arduino-linux-config"
-	//"github.com/arduino/arduino-linux-config/cmd/feedback"
+	// main "github.com/arduino/arduino-linux-config/cmd/arduino-linux-config"
+	// "github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/spf13/cobra"
 )
 
@@ -38,12 +38,12 @@ func showHandler(_ context.Context) {
 		"- display1: current state: none         | next reboot: 8-dsi-touch-a",
 	}
 
-	//actualStatus, _ := main.LoadCarriers(main.ActualFile)
-	//wantedStatus, _ := main.LoadCarriers(main.WantedFile)
+	// actualStatus, _ := main.LoadCarriers(main.ActualFile)
+	// wantedStatus, _ := main.LoadCarriers(main.WantedFile)
 
 	for _, line := range lines {
-		fmt.Println(line)
+		feedback.Print(line)
 	}
 
-	//feedback.PrintResult(CarriersStatusResult{ActualStatus: actualStatus, WantedStatus: wantedStatus})
+	// feedback.PrintResult(CarriersStatusResult{ActualStatus: actualStatus, WantedStatus: wantedStatus})
 }
