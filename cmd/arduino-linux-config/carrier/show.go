@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	// main "github.com/arduino/arduino-linux-config/cmd/arduino-linux-config"
-	// "github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
