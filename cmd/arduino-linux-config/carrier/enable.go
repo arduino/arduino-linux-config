@@ -74,6 +74,9 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
+	// we can't remove an overlay
+	// restore the base image and start from scratch
+	disableHandler(cfg, ctx, carrierName)
 	wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
 
 	if len(wantedDtboFiles) > 0 {
@@ -149,13 +152,13 @@ func findOption(device registry.Device, optionName string) (registry.DeviceOptio
 	return registry.DeviceOption{}, fmt.Errorf("option %q not found for device %q", optionName, device.Name)
 }
 
-func ParseMediaCarrierDevice(s string) (registry.MediaCarrierDevice, error) {
-	for _, d := range registry.MediaCarrierDeviceList {
-		if string(d) == s {
-			return d, nil
+func ParseMediaCarrierDevice(configuredDeviceName string) (registry.MediaCarrierDevice, error) {
+	for _, deviceName := range registry.MediaCarrierDeviceList {
+		if string(deviceName) == configuredDeviceName {
+			return deviceName, nil
 		}
 	}
-	return "", fmt.Errorf("unknown MediaCarrierDevice: %q", s)
+	return "", fmt.Errorf("unknown MediaCarrierDevice: %q", configuredDeviceName)
 }
 
 func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarrierDevice]string) []string {
