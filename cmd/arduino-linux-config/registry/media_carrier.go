@@ -4,13 +4,13 @@ package registry
 type MediaCarrierDevice string
 
 const (
-	Leds     MediaCarrierDevice = "leds"
-	Camera1  MediaCarrierDevice = "camera1"
-	Camera2  MediaCarrierDevice = "camera2"
-	Display1 MediaCarrierDevice = "display1"
+	Leds    MediaCarrierDevice = "leds"
+	Camera1 MediaCarrierDevice = "camera1"
+	Camera2 MediaCarrierDevice = "camera2"
+	Display MediaCarrierDevice = "display"
 )
 
-var MediaCarrierDeviceList = []MediaCarrierDevice{Leds, Camera1, Camera2, Display1}
+var MediaCarrierDeviceList = []MediaCarrierDevice{Leds, Camera1, Camera2, Display}
 
 type MediaCarrier struct {
 	Name    string
@@ -48,7 +48,7 @@ var MediaCarrierRegistry = MediaCarrier{
 			},
 		},
 		{
-			Name: Display1,
+			Name: Display,
 			Options: []DeviceOption{
 				{Name: "none", DtboFile: ""},
 				{Name: "8-dsi-touch-a", DtboFile: "qrb2210-arduino-imola-carrier-media-panel-8in-touch-a-dsi.dtbo"},
