@@ -2,7 +2,9 @@ package carrier
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
@@ -65,18 +67,15 @@ func extractCarrierResult(input registry.MediaCarrier) CarrierResult {
 
 func (r carriersResult) String() string {
 	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("- %s\n", r.MediaCarrier.Name))
 
-	formatCarrier := func(cr CarrierResult) {
-		sb.WriteString("- " + cr.Name + "\n")
-		for _, device := range cr.Devices {
-			sb.WriteString("    " + device.Name + ": ")
-			sb.WriteString(strings.Join(device.AvailableDevices, ", "))
-			sb.WriteString("\n")
-		}
+	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	for _, dev := range r.MediaCarrier.Devices {
+		options := strings.Join(dev.AvailableDevices, ", ")
+		fmt.Fprintf(w, "    %s\t: %s\n", dev.Name, options)
 	}
 
-	formatCarrier(r.MediaCarrier)
-
+	w.Flush()
 	return sb.String()
 }
 
