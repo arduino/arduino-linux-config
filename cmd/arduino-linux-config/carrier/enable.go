@@ -3,7 +3,6 @@ package carrier
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -78,7 +77,15 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	fileStatusList, err := loadOverlayFiles(cfg)
+	wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
+
+	if len(wantedDtboFiles) > 0 {
+		if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
+			feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		}
+	}
+
+	fileStatusList, err := loadStateMarkers(cfg)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
@@ -88,30 +95,18 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 
 		// Pulisci SEMPRE i file post-boot per questo device,
 		// indipendentemente dall'optionValue
-		if err := pruneOldPostRebootFiles(string(device), fileStatusList, cfg); err != nil {
+		if err := pruneOldPostBootStateMarker(string(device), fileStatusList); err != nil {
 			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
 
 		// Poi, solo se non è "none", crea il nuovo file
 		if optionValue != "none" {
-			fmt.Printf("Creating overlay file for device %q with option %q\n", device, optionValue)
-			if err := createOverlayFile(overlayFileName, cfg); err != nil {
+			if err := createStateMarker(overlayFileName, cfg); err != nil {
 				feedback.Fatal(err.Error(), feedback.ErrGeneric)
 			}
 		}
 	}
 
-	/*
-	   wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
-
-	   	if len(wantedDtboFiles) > 0 {
-	   		if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
-	   			feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	   		}
-	   	}
-
-	   createWantedMarkers(cfg, wantedDevicesList)
-	*/
 }
 
 // parseAndValidateDeviceArgs does the following:
@@ -161,14 +156,14 @@ func parseAndValidateDeviceArgs(carrierName string, args []string) (map[registry
 	return selection, nil
 }
 
-func loadOverlayFiles(cfg config.Configuration) ([]registry.OverlayFile, error) {
-	entries, err := cfg.OverlaysDir().ReadDir()
+func loadStateMarkers(cfg config.Configuration) ([]registry.OverlayFile, error) {
+	entries, err := cfg.StatusDir().ReadDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read overlays dir: %w", err)
 	}
 
 	const layout = "20060102-150405"
-	var files []registry.OverlayFile
+	files := make([]registry.OverlayFile, 0, len(entries))
 
 	for _, entry := range entries {
 		name := entry.Base() // e.g. "camera1_20260313-150945.dtbo"
@@ -206,24 +201,15 @@ func loadOverlayFiles(cfg config.Configuration) ([]registry.OverlayFile, error) 
 	return files, nil
 }
 
-func containsOverlayFile(files []registry.OverlayFile, overlayFileName string) bool {
-	for _, f := range files {
-		if f.Device == overlayFileName {
-			return true
-		}
-	}
-	return false
-}
-
-func createOverlayFile(deviceName string, cfg config.Configuration) error {
+func createStateMarker(deviceName string, cfg config.Configuration) error {
 	const layout = "20060102-150405"
 	timestamp := time.Now().UTC().Format(layout)
 	filename := fmt.Sprintf("%s_%s.dtbo", deviceName, timestamp)
-	return cfg.OverlaysDir().Join(filename).WriteFile([]byte{})
+	return cfg.StatusDir().Join(filename).WriteFile([]byte{})
 }
 
-// pruneOldPostRebootFiles removes all overlay files for the specified device that were created after the last boot time.
-func pruneOldPostRebootFiles(deviceName string, files []registry.OverlayFile, cfg config.Configuration) error {
+// pruneOldPostBootStateMarker removes all overlay files for the specified device that were created after the last boot time.
+func pruneOldPostBootStateMarker(deviceName string, files []registry.OverlayFile) error {
 	bootTime, err := getBootTime()
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)
@@ -231,7 +217,7 @@ func pruneOldPostRebootFiles(deviceName string, files []registry.OverlayFile, cf
 	// Filtra solo i file del device
 	var deviceFiles []registry.OverlayFile
 	for _, f := range files {
-		if string(f.Device) == deviceName {
+		if f.Device == deviceName {
 			deviceFiles = append(deviceFiles, f)
 		}
 	}
@@ -340,31 +326,6 @@ func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarr
 	return dtboFiles
 }
 
-func createWantedMarkers(cfg config.Configuration, selection map[registry.MediaCarrierDevice]string) {
-	_ = deleteWanted(cfg)
-
-	for deviceName, optionName := range selection {
-		if optionName == "" || optionName == deviceOptionNone {
-			continue // Skip creating status file for disabled devices
-		}
-
-		fileName := fmt.Sprintf("wanted_%s_%s", string(deviceName), optionName)
-		markerPath := filepath.Join(cfg.StatusDir().String(), fileName)
-
-		if err := touchFile(markerPath); err != nil {
-			slog.Warn("Failed to create status file")
-		}
-	}
-}
-
-func touchFile(path string) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	return f.Close()
-}
-
 func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []string) error {
 	args := append([]string{"fdtoverlay", "-i", cfg.BaseDTB().String(), "-o", cfg.ActualDTB().String()}, dtboFiles...)
 
@@ -379,23 +340,5 @@ func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []st
 	if len(stdout) > 0 {
 		feedback.Print(string(stdout))
 	}
-	return nil
-}
-
-func deleteWanted(cfg config.Configuration) error {
-	pattern := filepath.Join(cfg.StatusDir().String(), "wanted_*")
-
-	files, err := filepath.Glob(pattern)
-	if err != nil {
-		slog.Warn("Fail to delete status files")
-		return err
-	}
-
-	for _, f := range files {
-		if err := os.Remove(f); err != nil {
-			slog.Warn("Fail to delete status file")
-		}
-	}
-
 	return nil
 }

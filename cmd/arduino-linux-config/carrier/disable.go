@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
@@ -24,30 +23,43 @@ func newDisableCmd(cfg config.Configuration) *cobra.Command {
 }
 
 func disableHandler(cfg config.Configuration, _ context.Context, carrierName string) {
-	// 1. Validate carrier name
 	if carrierName != registry.MediaCarrierRegistry.Name {
 		feedback.Fatal("carrier "+carrierName+" not supported", feedback.ErrGeneric)
 	}
 
-	// 2. Restore base DTB by copying it over the actual DTB
-	tmp := cfg.ActualDTB().String() + ".tmp"
-
-	data, err := os.ReadFile(cfg.BaseDTB().String())
+	fileStatusList, err := loadStateMarkers(cfg)
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to read base DTB: %v", err), feedback.ErrGeneric)
-	}
-	if err := os.WriteFile(tmp, data, 0600); err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to write DTB: %v", err), feedback.ErrGeneric)
-	}
-	if err := os.Rename(tmp, cfg.ActualDTB().String()); err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to rename DTB: %v", err), feedback.ErrGeneric)
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	// 3. Remove wanted_* markers
-	files, _ := filepath.Glob(filepath.Join(cfg.StatusDir().String(), "wanted_*"))
-	for _, f := range files {
-		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
-			feedback.Fatal(fmt.Sprintf("failed to remove marker %q: %v", f, err), feedback.ErrGeneric)
+	bootTime, err := getBootTime()
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+
+	for _, f := range fileStatusList {
+		if f.CreatedAt.After(bootTime) {
+			if err := f.Path.Remove(); err != nil {
+				feedback.Fatal(fmt.Sprintf("failed to remove marker: %v", err), feedback.ErrGeneric)
+			}
 		}
 	}
+	if err := restoreBaseDTB(cfg); err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+}
+
+func restoreBaseDTB(cfg config.Configuration) error {
+	tmp := cfg.ActualDTB().String() + ".tmp"
+	data, err := os.ReadFile(cfg.BaseDTB().String())
+	if err != nil {
+		return fmt.Errorf("failed to read base DTB: %w", err)
+	}
+	if err := os.WriteFile(tmp, data, 0600); err != nil {
+		return fmt.Errorf("failed to write DTB: %w", err)
+	}
+	if err := os.Rename(tmp, cfg.ActualDTB().String()); err != nil {
+		return fmt.Errorf("failed to rename DTB: %w", err)
+	}
+	return nil
 }

@@ -3,7 +3,6 @@ package carrier
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
@@ -28,56 +27,45 @@ func showHandler(cfg config.Configuration, _ context.Context, carrierName string
 		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
 	}
 
-	configuration, err := readWantedMarkers(cfg.StatusDir().String())
+	markers, err := loadStateMarkers(cfg)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
 	}
 
+	bootTime, err := getBootTime()
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+	}
+
+	states := make(map[string]deviceState)
+	for _, device := range registry.MediaCarrierRegistry.Devices {
+		states[string(device.Name)] = deviceState{Current: deviceOptionNone, Next: ""}
+	}
+
+	for _, f := range markers {
+		state := states[f.Device]
+		if f.CreatedAt.After(bootTime) {
+			state.Next = f.Option
+		} else {
+			state.Current = f.Option
+		}
+		states[f.Device] = state
+	}
+
 	feedback.PrintResult(showResult{
-		CarrierName:   carrierName,
-		Configuration: configuration,
+		CarrierName: carrierName,
+		States:      states,
 	})
 }
 
-// readWantedMarkers reads the wanted_* files from statusDir and returns
-// a map of device -> option for each configured device.
-// Devices with no marker file are reported as "none".
-func readWantedMarkers(statusDir string) (map[string]string, error) {
-	result := make(map[string]string)
-	for _, device := range registry.MediaCarrierRegistry.Devices {
-		result[string(device.Name)] = deviceOptionNone
-	}
-
-	pattern := filepath.Join(statusDir, "wanted_*")
-	files, err := filepath.Glob(pattern)
-	if err != nil {
-		return nil, err
-	}
-
-	// Each marker file is named: wanted_<device>_<option>
-	for _, f := range files {
-		base := filepath.Base(f)
-		rest := strings.TrimPrefix(base, "wanted_")
-
-		idx := strings.Index(rest, "_")
-		if idx < 0 {
-			continue // malformed marker, skip
-		}
-		device := rest[:idx]
-		option := rest[idx+1:]
-
-		if _, ok := result[device]; ok {
-			result[device] = option
-		}
-	}
-
-	return result, nil
+type deviceState struct {
+	Current string `json:"current"`
+	Next    string `json:"next,omitempty"`
 }
 
-// showResult holds the data returned by the show command.
 type showResult struct {
-	CarrierName   string            `json:"carrier_name"`
-	Configuration map[string]string `json:"configuration"`
+	CarrierName string                 `json:"carrier_name"`
+	States      map[string]deviceState `json:"states"`
 }
 
 func (r showResult) String() string {
@@ -85,21 +73,16 @@ func (r showResult) String() string {
 	sb.WriteString(r.CarrierName + "\n")
 
 	for _, device := range registry.MediaCarrierRegistry.Devices {
-		option, ok := r.Configuration[string(device.Name)]
+		state, ok := r.States[string(device.Name)]
 		if !ok {
-			option = deviceOptionNone
+			state = deviceState{Current: deviceOptionNone}
 		}
 
-		opts := make([]string, 0, len(device.Options))
-		for _, opt := range device.Options {
-			if opt.Name == option {
-				opts = append(opts, "*"+opt.Name)
-			} else {
-				opts = append(opts, opt.Name)
-			}
+		line := fmt.Sprintf("    %s: [current: %s]", device.Name, state.Current)
+		if state.Next != "" {
+			line += fmt.Sprintf(" [next boot: %s]", state.Next)
 		}
-
-		sb.WriteString(fmt.Sprintf("    %s: %s\n", device.Name, strings.Join(opts, ", ")))
+		sb.WriteString(line + "\n")
 	}
 
 	return sb.String()
