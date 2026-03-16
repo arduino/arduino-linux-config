@@ -73,82 +73,45 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 
 func enableHandler(cfg config.Configuration, ctx context.Context, carrierName string, deviceArgs []string) {
 
-	/*
-	   qui devo fare la disable sempreeeeee
-
-	*/
-
 	wantedDevicesList, err := parseAndValidateDeviceArgs(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
-	fmt.Println("**** Wanted devices list: ", wantedDevicesList)
 
 	fileStatusList, err := loadOverlayFiles(cfg)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	fmt.Println("**** Loaded overlay files:")
-	for _, f := range fileStatusList {
-		fmt.Printf("device: %-10s created: %s\n", f.Device, f.CreatedAt.Format("2006-01-02 15:04:05"))
-	}
-	fmt.Println("\n")
-
 	for device, optionValue := range wantedDevicesList {
 		overlayFileName := fmt.Sprintf("%s-%s", device, optionValue)
-		fmt.Println("\n")
-		fmt.Printf("Creating overlay file for device %q with option %q: %s\n", device, optionValue, overlayFileName)
 
-		if optionValue != "none" {
-			if !containsOverlayFile(fileStatusList, overlayFileName) {
-				// se non esiste già un file per questa combinazione device-option, lo creo
-				fmt.Printf("creo file per device %q con option %q\n", device, optionValue)
-				err := createOverlayFile(overlayFileName, cfg)
-				if err != nil {
-					feedback.Fatal(err.Error(), feedback.ErrGeneric)
-				}
-				continue
-			} else {
-				// se invece nella folder ho già un file con lo stesso nome, che è stato creato dopo l'utimo boot, lo devo cancellare e rimpiazzare con questo nuovo.
-				// se invece ho un file con lo stesso nome, ma creato prima del boot lo lascio stare e ne creo uno nuovo.
-				//a questo punto controllo se ho più di 2 file per questa combinazione device-option, se si, pruno i più vecchi lasciando solo i 2 più recenti (quello che è stato creato prima del boot e questo nuovo)
-				fmt.Printf("devo fare prune per device %q\n", overlayFileName)
-
-				err := pruneOverlayFiles(overlayFileName, fileStatusList, cfg)
-				if err != nil {
-					feedback.Fatal(err.Error(), feedback.ErrGeneric)
-				}
-				continue
-			}
-		} else {
-			fmt.Printf("qui entro se optionValue è none ")
-			bootTime, err := getBootTime()
-			if err != nil {
-				feedback.Fatal(err.Error(), feedback.ErrGeneric)
-			}
-			fmt.Printf("il boot time è alle : %s\n", bootTime)
-			for _, f := range fileStatusList {
-				if string(f.Device) == overlayFileName && f.CreatedAt.After(bootTime) {
-					if err := f.Path.Remove(); err != nil {
-						feedback.Fatal(err.Error(), feedback.ErrGeneric)
-					}
-				}
-			}
+		// Pulisci SEMPRE i file post-boot per questo device,
+		// indipendentemente dall'optionValue
+		if err := pruneOldPostRebootFiles(string(device), fileStatusList, cfg); err != nil {
+			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
 
-		/*
-		   wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
-
-		   	if len(wantedDtboFiles) > 0 {
-		   		if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
-		   			feedback.Fatal(err.Error(), feedback.ErrGeneric)
-		   		}
-		   	}
-
-		   createWantedMarkers(cfg, wantedDevicesList)
-		*/
+		// Poi, solo se non è "none", crea il nuovo file
+		if optionValue != "none" {
+			fmt.Printf("Creating overlay file for device %q with option %q\n", device, optionValue)
+			if err := createOverlayFile(overlayFileName, cfg); err != nil {
+				feedback.Fatal(err.Error(), feedback.ErrGeneric)
+			}
+		}
 	}
+
+	/*
+	   wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
+
+	   	if len(wantedDtboFiles) > 0 {
+	   		if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
+	   			feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	   		}
+	   	}
+
+	   createWantedMarkers(cfg, wantedDevicesList)
+	*/
 }
 
 // parseAndValidateDeviceArgs does the following:
@@ -213,20 +176,28 @@ func loadOverlayFiles(cfg config.Configuration) ([]registry.OverlayFile, error) 
 		// Rimuovi estensione
 		nameNoExt := strings.TrimSuffix(name, filepath.Ext(name))
 
-		// Split su "_"
 		parts := strings.SplitN(nameNoExt, "_", 2)
 		if len(parts) != 2 {
-			continue // skip file con formato non atteso
+			continue
 		}
 
-		device := parts[0]
+		// Splitta device e option sul primo "-"
+		deviceParts := strings.SplitN(parts[0], "-", 2)
+		if len(deviceParts) != 2 {
+			continue
+		}
+
+		device := deviceParts[0] // "camera1"
+		option := deviceParts[1] // "type1-2lane"
+
 		createdAt, err := time.Parse(layout, parts[1])
 		if err != nil {
-			continue // skip file con timestamp non valido
+			continue
 		}
 
 		files = append(files, registry.OverlayFile{
 			Device:    device,
+			Option:    option,
 			CreatedAt: createdAt,
 			Path:      entry,
 		})
@@ -246,17 +217,17 @@ func containsOverlayFile(files []registry.OverlayFile, overlayFileName string) b
 
 func createOverlayFile(deviceName string, cfg config.Configuration) error {
 	const layout = "20060102-150405"
-	timestamp := time.Now().Format(layout)
+	timestamp := time.Now().UTC().Format(layout)
 	filename := fmt.Sprintf("%s_%s.dtbo", deviceName, timestamp)
 	return cfg.OverlaysDir().Join(filename).WriteFile([]byte{})
 }
 
-func pruneOverlayFiles(deviceName string, files []registry.OverlayFile, cfg config.Configuration) error {
+// pruneOldPostRebootFiles removes all overlay files for the specified device that were created after the last boot time.
+func pruneOldPostRebootFiles(deviceName string, files []registry.OverlayFile, cfg config.Configuration) error {
 	bootTime, err := getBootTime()
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)
 	}
-
 	// Filtra solo i file del device
 	var deviceFiles []registry.OverlayFile
 	for _, f := range files {
@@ -269,7 +240,6 @@ func pruneOverlayFiles(deviceName string, files []registry.OverlayFile, cfg conf
 	var surviving []registry.OverlayFile
 	for _, f := range deviceFiles {
 		if f.CreatedAt.After(bootTime) {
-			fmt.Printf("[prune] removing post-boot file %s\n", f.Path)
 			if err := f.Path.Remove(); err != nil {
 				return fmt.Errorf("failed to remove post-boot overlay file %s: %w", f.Path, err)
 			}
@@ -286,7 +256,6 @@ func pruneOverlayFiles(deviceName string, files []registry.OverlayFile, cfg conf
 		})
 		// Cancella tutti i pre-boot tranne il più recente
 		for _, f := range surviving[1:] {
-			fmt.Printf("[prune] removing old pre-boot file %s\n", f.Path)
 			if err := f.Path.Remove(); err != nil {
 				return fmt.Errorf("failed to remove old overlay file %s: %w", f.Path, err)
 			}
@@ -314,7 +283,7 @@ func getBootTime() (time.Time, error) {
 		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
 	}
 
-	bootTime := time.Now().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
+	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
 	return bootTime, nil
 }
 

@@ -64,7 +64,8 @@ var MediaCarrierRegistry = MediaCarrier{
 }
 
 type OverlayFile struct {
-	Device    string
+	Device    string // "camera1"
+	Option    string // "type1-2lane"
 	CreatedAt time.Time
 	Path      *paths.Path
 }
