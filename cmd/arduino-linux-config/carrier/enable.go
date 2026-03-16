@@ -77,6 +77,7 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
+	disableHandler(cfg, ctx, carrierName)
 	wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
 
 	if len(wantedDtboFiles) > 0 {
