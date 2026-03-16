@@ -1,5 +1,11 @@
 package registry
 
+import (
+	"time"
+
+	"github.com/arduino/go-paths-helper"
+)
+
 // UnoQ specific media carrier
 type MediaCarrierDevice string
 
@@ -55,4 +61,10 @@ var MediaCarrierRegistry = MediaCarrier{
 			},
 		},
 	},
+}
+
+type OverlayFile struct {
+	Device    string
+	CreatedAt time.Time
+	Path      *paths.Path
 }

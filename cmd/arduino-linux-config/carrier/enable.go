@@ -6,7 +6,10 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
@@ -69,23 +72,83 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 }
 
 func enableHandler(cfg config.Configuration, ctx context.Context, carrierName string, deviceArgs []string) {
+
+	/*
+	   qui devo fare la disable sempreeeeee
+
+	*/
+
 	wantedDevicesList, err := parseAndValidateDeviceArgs(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
+	fmt.Println("**** Wanted devices list: ", wantedDevicesList)
 
-	// we can't remove an overlay
-	// restore the base image and start from scratch
-	disableHandler(cfg, ctx, carrierName)
-	wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
-
-	if len(wantedDtboFiles) > 0 {
-		if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
-			feedback.Fatal(err.Error(), feedback.ErrGeneric)
-		}
+	fileStatusList, err := loadOverlayFiles(cfg)
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	createWantedMarkers(cfg, wantedDevicesList)
+	fmt.Println("**** Loaded overlay files:")
+	for _, f := range fileStatusList {
+		fmt.Printf("device: %-10s created: %s\n", f.Device, f.CreatedAt.Format("2006-01-02 15:04:05"))
+	}
+	fmt.Println("\n")
+
+	for device, optionValue := range wantedDevicesList {
+		overlayFileName := fmt.Sprintf("%s-%s", device, optionValue)
+		fmt.Println("\n")
+		fmt.Printf("Creating overlay file for device %q with option %q: %s\n", device, optionValue, overlayFileName)
+
+		if optionValue != "none" {
+			if !containsOverlayFile(fileStatusList, overlayFileName) {
+				// se non esiste già un file per questa combinazione device-option, lo creo
+				fmt.Printf("creo file per device %q con option %q\n", device, optionValue)
+				err := createOverlayFile(overlayFileName, cfg)
+				if err != nil {
+					feedback.Fatal(err.Error(), feedback.ErrGeneric)
+				}
+				continue
+			} else {
+				// se invece nella folder ho già un file con lo stesso nome, che è stato creato dopo l'utimo boot, lo devo cancellare e rimpiazzare con questo nuovo.
+				// se invece ho un file con lo stesso nome, ma creato prima del boot lo lascio stare e ne creo uno nuovo.
+				//a questo punto controllo se ho più di 2 file per questa combinazione device-option, se si, pruno i più vecchi lasciando solo i 2 più recenti (quello che è stato creato prima del boot e questo nuovo)
+				fmt.Printf("devo fare prune per device %q\n", overlayFileName)
+
+				err := pruneOverlayFiles(overlayFileName, fileStatusList, cfg)
+				if err != nil {
+					feedback.Fatal(err.Error(), feedback.ErrGeneric)
+				}
+				continue
+			}
+		} else {
+			fmt.Printf("qui entro se optionValue è none ")
+			bootTime, err := getBootTime()
+			if err != nil {
+				feedback.Fatal(err.Error(), feedback.ErrGeneric)
+			}
+			fmt.Printf("il boot time è alle : %s\n", bootTime)
+			for _, f := range fileStatusList {
+				if string(f.Device) == overlayFileName && f.CreatedAt.After(bootTime) {
+					if err := f.Path.Remove(); err != nil {
+						feedback.Fatal(err.Error(), feedback.ErrGeneric)
+					}
+				}
+			}
+		}
+
+		/*
+		   wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
+
+		   	if len(wantedDtboFiles) > 0 {
+		   		if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
+		   			feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		   		}
+		   	}
+
+		   createWantedMarkers(cfg, wantedDevicesList)
+		*/
+	}
 }
 
 // parseAndValidateDeviceArgs does the following:
@@ -134,6 +197,127 @@ func parseAndValidateDeviceArgs(carrierName string, args []string) (map[registry
 
 	return selection, nil
 }
+
+func loadOverlayFiles(cfg config.Configuration) ([]registry.OverlayFile, error) {
+	entries, err := cfg.OverlaysDir().ReadDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read overlays dir: %w", err)
+	}
+
+	const layout = "20060102-150405"
+	var files []registry.OverlayFile
+
+	for _, entry := range entries {
+		name := entry.Base() // e.g. "camera1_20260313-150945.dtbo"
+
+		// Rimuovi estensione
+		nameNoExt := strings.TrimSuffix(name, filepath.Ext(name))
+
+		// Split su "_"
+		parts := strings.SplitN(nameNoExt, "_", 2)
+		if len(parts) != 2 {
+			continue // skip file con formato non atteso
+		}
+
+		device := parts[0]
+		createdAt, err := time.Parse(layout, parts[1])
+		if err != nil {
+			continue // skip file con timestamp non valido
+		}
+
+		files = append(files, registry.OverlayFile{
+			Device:    device,
+			CreatedAt: createdAt,
+			Path:      entry,
+		})
+	}
+
+	return files, nil
+}
+
+func containsOverlayFile(files []registry.OverlayFile, overlayFileName string) bool {
+	for _, f := range files {
+		if f.Device == overlayFileName {
+			return true
+		}
+	}
+	return false
+}
+
+func createOverlayFile(deviceName string, cfg config.Configuration) error {
+	const layout = "20060102-150405"
+	timestamp := time.Now().Format(layout)
+	filename := fmt.Sprintf("%s_%s.dtbo", deviceName, timestamp)
+	return cfg.OverlaysDir().Join(filename).WriteFile([]byte{})
+}
+
+func pruneOverlayFiles(deviceName string, files []registry.OverlayFile, cfg config.Configuration) error {
+	bootTime, err := getBootTime()
+	if err != nil {
+		return fmt.Errorf("failed to get boot time: %w", err)
+	}
+
+	// Filtra solo i file del device
+	var deviceFiles []registry.OverlayFile
+	for _, f := range files {
+		if string(f.Device) == deviceName {
+			deviceFiles = append(deviceFiles, f)
+		}
+	}
+
+	// Cancella i file post-boot (verranno rimpiazzati dal nuovo)
+	var surviving []registry.OverlayFile
+	for _, f := range deviceFiles {
+		if f.CreatedAt.After(bootTime) {
+			fmt.Printf("[prune] removing post-boot file %s\n", f.Path)
+			if err := f.Path.Remove(); err != nil {
+				return fmt.Errorf("failed to remove post-boot overlay file %s: %w", f.Path, err)
+			}
+		} else {
+			surviving = append(surviving, f)
+		}
+	}
+
+	// Tra i file pre-boot, tieni solo il più recente (ne basta 1 pre-boot + 1 nuovo post-boot = 2 totali)
+	if len(surviving) > 1 {
+		// Ordina dal più recente al più vecchio
+		sort.Slice(surviving, func(i, j int) bool {
+			return surviving[i].CreatedAt.After(surviving[j].CreatedAt)
+		})
+		// Cancella tutti i pre-boot tranne il più recente
+		for _, f := range surviving[1:] {
+			fmt.Printf("[prune] removing old pre-boot file %s\n", f.Path)
+			if err := f.Path.Remove(); err != nil {
+				return fmt.Errorf("failed to remove old overlay file %s: %w", f.Path, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func getBootTime() (time.Time, error) {
+	data, err := os.ReadFile("/proc/uptime")
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to read /proc/uptime: %w", err)
+	}
+
+	// /proc/uptime format: "12345.67 23456.78"
+	// il primo valore è i secondi di uptime
+	fields := strings.Fields(string(data))
+	if len(fields) == 0 {
+		return time.Time{}, fmt.Errorf("unexpected /proc/uptime format")
+	}
+
+	uptimeSeconds, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
+	}
+
+	bootTime := time.Now().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
+	return bootTime, nil
+}
+
 func findDevice(carrier registry.MediaCarrier, deviceName registry.MediaCarrierDevice) (registry.Device, error) {
 	for _, d := range carrier.Devices {
 		if d.Name == deviceName {
