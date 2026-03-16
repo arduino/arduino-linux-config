@@ -2,4 +2,4 @@
 
 set -e
 
-mkdir /var/lib/arduino-linux-config || true
+mkdir /var/lib/arduino-linux-config/status || true
