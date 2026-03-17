@@ -27,7 +27,7 @@ func disableHandler(cfg config.Configuration, _ context.Context, carrierName str
 		feedback.Fatal("carrier "+carrierName+" not supported", feedback.ErrGeneric)
 	}
 
-	fileStatusList, err := loadStateMarkers(cfg)
+	fileStatusList, err := loadStatus(cfg)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}

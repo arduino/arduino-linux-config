@@ -7,16 +7,16 @@ import (
 )
 
 // UnoQ specific media carrier
-type MediaCarrierDevice string
+type MediaCarrierDeviceName string
 
 const (
-	Leds    MediaCarrierDevice = "leds"
-	Camera1 MediaCarrierDevice = "camera1"
-	Camera2 MediaCarrierDevice = "camera2"
-	Display MediaCarrierDevice = "display"
+	Leds    MediaCarrierDeviceName = "leds"
+	Camera1 MediaCarrierDeviceName = "camera1"
+	Camera2 MediaCarrierDeviceName = "camera2"
+	Display MediaCarrierDeviceName = "display"
 )
 
-var MediaCarrierDeviceList = []MediaCarrierDevice{Leds, Camera1, Camera2, Display}
+var MediaCarrierDeviceList = []MediaCarrierDeviceName{Leds, Camera1, Camera2, Display}
 
 type MediaCarrier struct {
 	Name    string
@@ -25,7 +25,7 @@ type MediaCarrier struct {
 
 // Device represents a configurable hardware device on a carrier.
 type Device struct {
-	Name    MediaCarrierDevice
+	Name    MediaCarrierDeviceName
 	Options []DeviceOption
 }
 
@@ -34,6 +34,7 @@ type DeviceOption struct {
 	DtboFile string
 }
 
+// TODO Read from files
 var MediaCarrierRegistry = MediaCarrier{
 	Name: "media-carrier",
 	Devices: []Device{
@@ -63,9 +64,9 @@ var MediaCarrierRegistry = MediaCarrier{
 	},
 }
 
-type OverlayFile struct {
-	Device    string
-	Option    string
-	CreatedAt time.Time
-	Path      *paths.Path
+type StatusFile struct {
+	DeviceName string
+	Option     string
+	CreatedAt  time.Time
+	Path       *paths.Path
 }
