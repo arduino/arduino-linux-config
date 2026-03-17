@@ -44,10 +44,12 @@ type showResult struct {
 }
 
 func (r showResult) String() string {
+	if len(r.CurrentDevices) <= 0 && len(r.NextDevices) <= 0 {
+		return fmt.Sprintf("Media carrier %s not yet configured\n", r.CarrierName)
+	}
+
 	var sb strings.Builder
-
 	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-
 	fmt.Fprintf(&sb, "%s\n", r.CarrierName)
 
 	nextMap := make(map[registry.MediaCarrierDeviceName]string)
@@ -67,11 +69,6 @@ func (r showResult) String() string {
 		if c.Device == "" || processed[c.Device] {
 			continue
 		}
-
-		// nextOpt, exists := nextMap[c.Device]
-		// if !exists {
-		// 	nextOpt = "none"
-		// }
 
 		if len(r.NextDevices) > 0 {
 			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.MediaCarrierDeviceName(c.Device)])
