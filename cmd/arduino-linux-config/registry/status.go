@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/arduino/arduino-linux-config/cmd/config"
+	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/go-paths-helper"
 )
 
@@ -126,4 +127,25 @@ func GetBootTime() (time.Time, error) {
 
 	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
 	return bootTime, nil
+}
+
+// TODO improve error messages
+func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceName]string) {
+
+	fileStatusList, err := LoadStatus(cfg)
+	if err != nil {
+		feedback.Warnf(err.Error(), feedback.ErrGeneric)
+	}
+
+	for device, optionValue := range statusUpdate {
+		statusFileName := fmt.Sprintf("%s-%s", device, optionValue)
+
+		if err := CreateStatusFile(cfg, statusFileName); err != nil {
+			feedback.Warnf(err.Error(), feedback.ErrGeneric)
+		}
+
+		if err := CleanOldStatus(string(device), fileStatusList); err != nil {
+			feedback.Warnf(err.Error(), feedback.ErrGeneric)
+		}
+	}
 }

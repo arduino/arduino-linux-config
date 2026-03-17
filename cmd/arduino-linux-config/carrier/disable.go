@@ -24,37 +24,20 @@ func newDisableCmd(cfg config.Configuration) *cobra.Command {
 
 func disableHandler(cfg config.Configuration, _ context.Context, carrierName string) {
 	if carrierName != registry.MediaCarrierRegistry.Name {
-		feedback.Fatal("carrier "+carrierName+" not supported", feedback.ErrGeneric)
+		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	statuses, err := registry.LoadStatus(cfg)
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-
-	bootTime, err := registry.GetBootTime()
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-
-	for _, f := range statuses {
-		if f.CreatedAt.After(bootTime) {
-			if err := f.Path.Remove(); err != nil {
-				feedback.Fatal(fmt.Sprintf("failed to remove marker: %v", err), feedback.ErrGeneric)
-			}
-		}
-	}
-
-	for _, deviceName := range registry.MediaCarrierDeviceList {
-		overlayFileName := fmt.Sprintf("%s-%s", deviceName, "none")
-		if err := registry.CreateStatusFile(cfg, string(overlayFileName)); err != nil {
-			feedback.Fatal(err.Error(), feedback.ErrGeneric)
-		}
+	selection := make(map[registry.MediaCarrierDeviceName]string)
+	for _, device := range registry.MediaCarrierDeviceList {
+		selection[device] = "none"
 	}
 
 	if err := restoreFactoryDTB(cfg); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
+	// TODO add feedback to the user
+
+	registry.StatusUpdate(cfg, selection)
 }
 
 func restoreFactoryDTB(cfg config.Configuration) error {

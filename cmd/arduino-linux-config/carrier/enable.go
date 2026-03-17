@@ -53,7 +53,7 @@ func enableHandler(ctx context.Context, cfg config.Configuration, carrierName st
 	}
 	// TODO Add return feedback on configuration done and the configured values
 
-	statusUpdate(cfg, wantedDevicesList)
+	registry.StatusUpdate(cfg, wantedDevicesList)
 
 }
 
@@ -135,25 +135,4 @@ func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []st
 		feedback.Print(string(stdout))
 	}
 	return nil
-}
-
-// TODO improve error messages
-func statusUpdate(cfg config.Configuration, wanted map[registry.MediaCarrierDeviceName]string) {
-
-	fileStatusList, err := registry.LoadStatus(cfg)
-	if err != nil {
-		feedback.Warnf(err.Error(), feedback.ErrGeneric)
-	}
-
-	for device, optionValue := range wanted {
-		statusFileName := fmt.Sprintf("%s-%s", device, optionValue)
-
-		if err := registry.CreateStatusFile(cfg, statusFileName); err != nil {
-			feedback.Warnf(err.Error(), feedback.ErrGeneric)
-		}
-
-		if err := registry.CleanOldStatus(string(device), fileStatusList); err != nil {
-			feedback.Warnf(err.Error(), feedback.ErrGeneric)
-		}
-	}
 }
