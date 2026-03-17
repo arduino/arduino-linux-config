@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -92,6 +93,7 @@ func CleanOldStatus(deviceName string, files []StatusFile) error {
 	var surviving []StatusFile
 	for _, f := range deviceFiles {
 		if f.CreatedAt.After(bootTime) {
+			fmt.Printf("Removing %s-%s-%s boot %s\n", f.DeviceName, f.Option, f.CreatedAt, bootTime)
 			if err := f.Path.Remove(); err != nil {
 				return fmt.Errorf("failed to remove post-boot overlay file %s: %w", f.Path, err)
 			}
@@ -131,7 +133,7 @@ func getBootTime() (time.Time, error) {
 	}
 
 	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
-	fmt.Printf("bootTime %s", bootTime)
+
 	return bootTime, nil
 }
 
@@ -157,24 +159,69 @@ func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceN
 }
 
 func GetStatuses(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
-	statuses, err := LoadStatus(cfg)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
-	}
+	CleanDuplicated(cfg)
 
 	bootTime, err := getBootTime()
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}
 
+	statusList, err := LoadStatus(cfg)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
+	}
+
 	current := []StatusDevice{}
 	next := []StatusDevice{}
-	for _, f := range statuses {
-		if f.CreatedAt.After(bootTime) {
-			next = append(next, StatusDevice{Device: f.DeviceName, Option: f.Option})
-		} else {
+
+	for _, f := range statusList {
+		if f.CreatedAt.Before(bootTime) {
 			current = append(current, StatusDevice{Device: f.DeviceName, Option: f.Option})
+		} else {
+			next = append(next, StatusDevice{Device: f.DeviceName, Option: f.Option})
 		}
 	}
 	return current, next
+}
+
+func CleanDuplicated(cfg config.Configuration) error {
+	bootTime, err := getBootTime()
+	if err != nil {
+		return fmt.Errorf("failed to get boot time: %w", err)
+	}
+
+	statusList, err := LoadStatus(cfg)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
+	}
+
+	// filter pre-boot file and group by device name
+	grouped := make(map[string][]StatusFile)
+	for _, f := range statusList {
+		if f.CreatedAt.Before(bootTime) {
+			grouped[f.DeviceName] = append(grouped[f.DeviceName], f)
+		}
+	}
+
+	// process by groups
+	for _, files := range grouped {
+		// newest first
+		slices.SortFunc(files, func(a, b StatusFile) int {
+			return b.CreatedAt.Compare(a.CreatedAt)
+		})
+
+		if len(files) > 1 {
+			deleteFiles(files[1:])
+		}
+	}
+	return nil
+}
+
+func deleteFiles(files []StatusFile) {
+	for _, f := range files {
+		err := os.Remove(f.Path.String())
+		if err != nil && !os.IsNotExist(err) {
+			fmt.Printf("Failed to delete %s: %v\n", f.Path.String(), err)
+		}
+	}
 }
