@@ -69,7 +69,6 @@ type deviceResult struct {
 
 func (r showResult) String() string {
 	var sb strings.Builder
-	sb.WriteString(r.CarrierName + "\n")
 
 	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 
