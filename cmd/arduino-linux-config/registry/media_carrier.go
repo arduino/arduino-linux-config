@@ -3,9 +3,6 @@ package registry
 import (
 	"fmt"
 	"slices"
-	"time"
-
-	"github.com/arduino/go-paths-helper"
 )
 
 const DeviceOptionNone = "none"
@@ -112,11 +109,4 @@ func ValidateInput(rawDevice string, rawOption string) (MediaCarrierDeviceName, 
 	}
 
 	return device, nil
-}
-
-type StatusFile struct {
-	DeviceName string
-	Option     string
-	CreatedAt  time.Time
-	Path       *paths.Path
 }

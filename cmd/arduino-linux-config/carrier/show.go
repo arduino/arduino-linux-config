@@ -28,12 +28,12 @@ func showHandler(cfg config.Configuration, _ context.Context, carrierName string
 		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
 	}
 
-	statuses, err := loadStatus(cfg)
+	statuses, err := registry.LoadStatus(cfg)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
 	}
 
-	bootTime, err := getBootTime()
+	bootTime, err := registry.GetBootTime()
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}

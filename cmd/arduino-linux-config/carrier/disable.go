@@ -27,12 +27,12 @@ func disableHandler(cfg config.Configuration, _ context.Context, carrierName str
 		feedback.Fatal("carrier "+carrierName+" not supported", feedback.ErrGeneric)
 	}
 
-	statuses, err := loadStatus(cfg)
+	statuses, err := registry.LoadStatus(cfg)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	bootTime, err := getBootTime()
+	bootTime, err := registry.GetBootTime()
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
@@ -47,7 +47,7 @@ func disableHandler(cfg config.Configuration, _ context.Context, carrierName str
 
 	for _, deviceName := range registry.MediaCarrierDeviceList {
 		overlayFileName := fmt.Sprintf("%s-%s", deviceName, "none")
-		if err := createStateMarker(string(overlayFileName), cfg); err != nil {
+		if err := registry.CreateStatusFile(cfg, string(overlayFileName)); err != nil {
 			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
 	}

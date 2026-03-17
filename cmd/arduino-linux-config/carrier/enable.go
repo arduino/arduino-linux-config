@@ -3,12 +3,8 @@ package carrier
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
-	"sort"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
@@ -58,23 +54,22 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 	// TODO Add feedback on configuration done
 
 	// register the current status
-	fileStatusList, err := loadStatus(cfg)
+	fileStatusList, err := registry.LoadStatus(cfg)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
 	for device, optionValue := range wantedDevicesList {
-		overlayFileName := fmt.Sprintf("%s-%s", device, optionValue)
+		statusFileName := fmt.Sprintf("%s-%s", device, optionValue)
 
-		if err := cleanOldStates(string(device), fileStatusList); err != nil {
+		if err := registry.CreateStatusFile(cfg, statusFileName); err != nil {
 			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
 
-		//if optionValue != "none" {
-		if err := createStateMarker(overlayFileName, cfg); err != nil {
+		if err := registry.CleanOldStates(string(device), fileStatusList); err != nil {
 			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
-		//}
+
 	}
 
 }
@@ -105,114 +100,6 @@ func parseArguments(carrierName string, args []string) (map[registry.MediaCarrie
 	}
 
 	return selection, nil
-}
-
-func loadStatus(cfg config.Configuration) ([]registry.StatusFile, error) {
-	entries, err := cfg.StatusDir().ReadDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read overlays dir: %w", err)
-	}
-
-	const layout = "20060102-150405"
-	files := make([]registry.StatusFile, 0, len(entries))
-
-	for _, entry := range entries {
-		name := entry.Base() // e.g. "camera1_20260313-150945.dtbo"
-		nameNoExt := strings.TrimSuffix(name, filepath.Ext(name))
-
-		parts := strings.SplitN(nameNoExt, "_", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		deviceParts := strings.SplitN(parts[0], "-", 2)
-		if len(deviceParts) != 2 {
-			continue
-		}
-
-		device := deviceParts[0] // "camera1"
-		option := deviceParts[1] // "type1-2lane"
-
-		createdAt, err := time.Parse(layout, parts[1])
-		if err != nil {
-			continue
-		}
-
-		files = append(files, registry.StatusFile{
-			DeviceName: device,
-			Option:     option,
-			CreatedAt:  createdAt,
-			Path:       entry,
-		})
-	}
-
-	return files, nil
-}
-
-func createStateMarker(deviceName string, cfg config.Configuration) error {
-	const layout = "20060102-150405"
-	timestamp := time.Now().UTC().Format(layout)
-	filename := fmt.Sprintf("%s_%s.dtbo", deviceName, timestamp)
-	return cfg.StatusDir().Join(filename).WriteFile([]byte{})
-}
-
-// cleanOldStates removes all overlay files for the specified device that were created after the last boot time.
-func cleanOldStates(deviceName string, files []registry.StatusFile) error {
-	bootTime, err := getBootTime()
-	if err != nil {
-		return fmt.Errorf("failed to get boot time: %w", err)
-	}
-
-	var deviceFiles []registry.StatusFile
-	for _, f := range files {
-		if f.DeviceName == deviceName {
-			deviceFiles = append(deviceFiles, f)
-		}
-	}
-
-	var surviving []registry.StatusFile
-	for _, f := range deviceFiles {
-		if f.CreatedAt.After(bootTime) {
-			if err := f.Path.Remove(); err != nil {
-				return fmt.Errorf("failed to remove post-boot overlay file %s: %w", f.Path, err)
-			}
-		} else {
-			surviving = append(surviving, f)
-		}
-	}
-
-	if len(surviving) > 1 {
-		sort.Slice(surviving, func(i, j int) bool {
-			return surviving[i].CreatedAt.After(surviving[j].CreatedAt)
-		})
-		for _, f := range surviving[1:] {
-			if err := f.Path.Remove(); err != nil {
-				return fmt.Errorf("failed to remove old overlay file %s: %w", f.Path, err)
-			}
-		}
-	}
-
-	return nil
-}
-
-func getBootTime() (time.Time, error) {
-	data, err := os.ReadFile("/proc/uptime")
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to read /proc/uptime: %w", err)
-	}
-
-	fields := strings.Fields(string(data))
-	if len(fields) == 0 {
-		return time.Time{}, fmt.Errorf("unexpected /proc/uptime format")
-	}
-
-	uptimeSeconds, err := strconv.ParseFloat(fields[0], 64)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
-	}
-
-	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
-	return bootTime, nil
 }
 
 func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarrierDeviceName]string) []string {
