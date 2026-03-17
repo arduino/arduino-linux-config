@@ -21,6 +21,11 @@ type StatusFile struct {
 	Path       *paths.Path
 }
 
+type StatusDevice struct {
+	Device string `json:"device"`
+	Option string `json:"option"`
+}
+
 func LoadStatus(cfg config.Configuration) ([]StatusFile, error) {
 	entries, err := cfg.StatusDir().ReadDir()
 	if err != nil {
@@ -72,7 +77,7 @@ func CreateStatusFile(cfg config.Configuration, deviceName string) error {
 
 // cleanOldStates removes all overlay files for the specified device that were created after the last boot time.
 func CleanOldStatus(deviceName string, files []StatusFile) error {
-	bootTime, err := GetBootTime()
+	bootTime, err := getBootTime()
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)
 	}
@@ -109,7 +114,7 @@ func CleanOldStatus(deviceName string, files []StatusFile) error {
 	return nil
 }
 
-func GetBootTime() (time.Time, error) {
+func getBootTime() (time.Time, error) {
 	data, err := os.ReadFile("/proc/uptime")
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to read /proc/uptime: %w", err)
@@ -126,6 +131,7 @@ func GetBootTime() (time.Time, error) {
 	}
 
 	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
+	fmt.Printf("bootTime %s", bootTime)
 	return bootTime, nil
 }
 
@@ -148,4 +154,27 @@ func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceN
 			feedback.Warnf(err.Error(), feedback.ErrGeneric)
 		}
 	}
+}
+
+func GetStatuses(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
+	statuses, err := LoadStatus(cfg)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
+	}
+
+	bootTime, err := getBootTime()
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+	}
+
+	current := []StatusDevice{}
+	next := []StatusDevice{}
+	for _, f := range statuses {
+		if f.CreatedAt.After(bootTime) {
+			next = append(next, StatusDevice{Device: f.DeviceName, Option: f.Option})
+		} else {
+			current = append(current, StatusDevice{Device: f.DeviceName, Option: f.Option})
+		}
+	}
+	return current, next
 }

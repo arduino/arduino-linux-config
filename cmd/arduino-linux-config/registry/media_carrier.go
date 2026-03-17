@@ -74,7 +74,7 @@ func GetMediaCarrierDeviceName(deviceName string) (MediaCarrierDeviceName, bool)
 	return "", false
 }
 
-// TODO Fix using a map in registry, see next func
+// TODO We could use a MediaCarrierDeviceName in registry, see next func
 func IsOptionValid(deviceName MediaCarrierDeviceName, optionName string) bool {
 	for _, device := range MediaCarrierRegistry.Devices {
 		if device.Name != deviceName {

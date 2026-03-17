@@ -18,36 +18,17 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 		Short: "Show the current configuration for a carrier",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			showHandler(cfg, cmd.Context(), args[0])
+			showHandler(cmd.Context(), cfg, args[0])
 		},
 	}
 }
 
-func showHandler(cfg config.Configuration, _ context.Context, carrierName string) {
+func showHandler(_ context.Context, cfg config.Configuration, carrierName string) {
 	if carrierName != registry.MediaCarrierRegistry.Name {
 		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
 	}
 
-	statuses, err := registry.LoadStatus(cfg)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
-	}
-
-	bootTime, err := registry.GetBootTime()
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
-	}
-
-	current := []deviceResult{}
-	next := []deviceResult{}
-
-	for _, f := range statuses {
-		if f.CreatedAt.After(bootTime) {
-			next = append(next, deviceResult{Device: f.DeviceName, Option: f.Option})
-		} else {
-			current = append(current, deviceResult{Device: f.DeviceName, Option: f.Option})
-		}
-	}
+	current, next := registry.GetStatuses(cfg)
 
 	feedback.PrintResult(showResult{
 		CarrierName:    carrierName,
@@ -57,14 +38,9 @@ func showHandler(cfg config.Configuration, _ context.Context, carrierName string
 }
 
 type showResult struct {
-	CarrierName    string         `json:"carrier_name"`
-	CurrentDevices []deviceResult `json:"current"`
-	NextDevices    []deviceResult `json:"next"`
-}
-
-type deviceResult struct {
-	Device string `json:"device"`
-	Option string `json:"option"`
+	CarrierName    string                  `json:"carrier_name"`
+	CurrentDevices []registry.StatusDevice `json:"current"`
+	NextDevices    []registry.StatusDevice `json:"next"`
 }
 
 func (r showResult) String() string {
@@ -74,12 +50,12 @@ func (r showResult) String() string {
 
 	fmt.Fprintf(&sb, "%s\n", r.CarrierName)
 
-	nextMap := make(map[string]string)
-	for _, n := range r.NextDevices {
-		if n.Device != "" {
-			nextMap[n.Device] = n.Option
-		}
-	}
+	// nextMap := make(map[string]string)
+	// for _, n := range r.NextDevices {
+	// 	if n.Device != "" {
+	// 		nextMap[n.Device] = n.Option
+	// 	}
+	// }
 
 	processed := make(map[string]bool)
 	for _, c := range r.CurrentDevices {
@@ -87,12 +63,12 @@ func (r showResult) String() string {
 			continue
 		}
 
-		nextOpt, exists := nextMap[c.Device]
-		if !exists {
-			nextOpt = "none"
-		}
+		// nextOpt, exists := nextMap[c.Device]
+		// if !exists {
+		// 	nextOpt = "none"
+		// }
 
-		fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextOpt)
+		fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, "nextOpt")
 		processed[c.Device] = true
 	}
 
