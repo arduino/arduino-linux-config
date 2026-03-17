@@ -17,42 +17,26 @@ package config
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/arduino/go-paths-helper"
 )
 
 type Configuration struct {
 	statusDir   *paths.Path
-	baseDTB     *paths.Path
+	factoryDTB  *paths.Path
 	actualDTB   *paths.Path
 	overlaysDir *paths.Path
 }
 
 func NewConfigFromEnv() (Configuration, error) {
-	statusDir := paths.New(getEnvOrDefault(
-		"ALC_CARRIER_STATUS_DIR",
-		"/boot/arduino/carrier/status",
-	))
-
-	baseDTB := paths.New(getEnvOrDefault(
-		"ALC_CARRIER_BASE_DTB",
-		"/boot/arduino/qrb2210-arduino-imola-base.dtb",
-	))
-
-	actualDTB := paths.New(getEnvOrDefault(
-		"ALC_CARRIER_ACTUAL_DTB",
-		"/boot/arduino/qrb2210-arduino-imola.dtb",
-	))
-
-	overlaysDir := paths.New(getEnvOrDefault(
-		"ALC_CARRIER_OVERLAYS_DIR",
-		"/boot/arduino/overlays",
-	))
+	statusDir := paths.New("/var/lib/arduino-linux-config/status")
+	baseDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola-factory.dtb")
+	actualDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb")
+	overlaysDir := paths.New("/boot/efi/dtb/qcom/")
 
 	c := Configuration{
 		statusDir:   statusDir,
-		baseDTB:     baseDTB,
+		factoryDTB:  baseDTB,
 		actualDTB:   actualDTB,
 		overlaysDir: overlaysDir,
 	}
@@ -65,8 +49,8 @@ func NewConfigFromEnv() (Configuration, error) {
 }
 
 func (c *Configuration) init() error {
-	if c.baseDTB.NotExist() {
-		return fmt.Errorf("base DTB not found: %s", c.baseDTB)
+	if c.factoryDTB.NotExist() {
+		return fmt.Errorf("base DTB not found: %s", c.factoryDTB)
 	}
 	if c.overlaysDir.NotExist() {
 		return fmt.Errorf("overlays directory not found: %s", c.overlaysDir)
@@ -81,8 +65,8 @@ func (c *Configuration) StatusDir() *paths.Path {
 	return c.statusDir
 }
 
-func (c *Configuration) BaseDTB() *paths.Path {
-	return c.baseDTB
+func (c *Configuration) FactoryDTB() *paths.Path {
+	return c.factoryDTB
 }
 
 func (c *Configuration) ActualDTB() *paths.Path {
@@ -91,11 +75,4 @@ func (c *Configuration) ActualDTB() *paths.Path {
 
 func (c *Configuration) OverlaysDir() *paths.Path {
 	return c.overlaysDir
-}
-
-func getEnvOrDefault(key, defaultValue string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultValue
 }

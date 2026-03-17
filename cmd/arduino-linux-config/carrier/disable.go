@@ -44,14 +44,14 @@ func disableHandler(cfg config.Configuration, _ context.Context, carrierName str
 			}
 		}
 	}
-	if err := restoreBaseDTB(cfg); err != nil {
+	if err := restoreFactoryDTB(cfg); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 }
 
-func restoreBaseDTB(cfg config.Configuration) error {
+func restoreFactoryDTB(cfg config.Configuration) error {
 	tmp := cfg.ActualDTB().String() + ".tmp"
-	data, err := os.ReadFile(cfg.BaseDTB().String())
+	data, err := os.ReadFile(cfg.FactoryDTB().String())
 	if err != nil {
 		return fmt.Errorf("failed to read base DTB: %w", err)
 	}

@@ -21,44 +21,6 @@ type CarrierStatus struct {
 	Configuration map[registry.MediaCarrierDevice]string `json:"configuration,omitempty"`
 }
 
-// Since a board reboot can occur asynchronously with the carrier configuration,
-// we must track both the current and desired states.
-//
-// This is managed by maintaining two status files,
-// representing the actual and desired configurations,
-// that will be synchronized during the next boot sequence.
-//
-// At boot time we:
-// mv wanted.json actual.json
-
-// TODO: update these paths with the real ones
-/*
-how to create test environment for this code:
- cd /tmp/
- mkdir test_media_carrier
- cd test_media_carrier/
- cp /usr/lib/linux-image-6.16.7-gd1b1a80fb764/qcom/qrb2210-arduino-imola*.dt* /tmp/test_media_carrier/
- mkdir status
-
-should have now:
--rw-r--r-- 1 arduino arduino 71925 Mar 10 16:18 qrb2210-arduino-imola-base.dtb
--rw-r--r-- 1 arduino arduino  2230 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo
--rw-r--r-- 1 arduino arduino  2246 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo
--rw-r--r-- 1 arduino arduino  2255 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo
--rw-r--r-- 1 arduino arduino  2271 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo
--rw-r--r-- 1 arduino arduino  4118 Mar 10 16:18 qrb2210-arduino-imola-carrier-media.dtbo
--rw-r--r-- 1 arduino arduino  2623 Mar 10 16:18 qrb2210-arduino-imola-carrier-media-panel-8in-touch-a-dsi.dtbo
--rw-r--r-- 1 arduino arduino 72384 Mar 10 16:18 qrb2210-arduino-imola.dtb
-drwxrwxr-x 2 arduino arduino    40 Mar 10 16:21 status
-
-
-const (
-	statusDir   = "/tmp/test_media_carrier/status"
-	baseDTB     = "/tmp/test_media_carrier/qrb2210-arduino-imola-base.dtb"
-	actualDTB   = "/tmp/test_media_carrier/qrb2210-arduino-imola.dtb"
-	overlaysDir = "/tmp/test_media_carrier"
-)
-*/
 func newEnableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "enable <carrier-name> [device=option...]",
@@ -70,6 +32,15 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 	}
 }
 
+// Since a board reboot can occur asynchronously with the carrier configuration,
+// we must track both the current and desired states.
+//
+// This is managed by creating a status file every time a device is congfigured.
+// The status file records the device name, the configured options, and a timestamp.
+//
+// At show time we check the last boot time.
+// Files with a timestamp before boot represent the current configuration.
+// Files with a timestamp after boot represent the pending (next) configuration.
 func enableHandler(cfg config.Configuration, ctx context.Context, carrierName string, deviceArgs []string) {
 
 	wantedDevicesList, err := parseAndValidateDeviceArgs(carrierName, deviceArgs)
@@ -79,7 +50,6 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 
 	disableHandler(cfg, ctx, carrierName)
 	wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
-
 	if len(wantedDtboFiles) > 0 {
 		if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
 			feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -94,13 +64,10 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 	for device, optionValue := range wantedDevicesList {
 		overlayFileName := fmt.Sprintf("%s-%s", device, optionValue)
 
-		// Pulisci SEMPRE i file post-boot per questo device,
-		// indipendentemente dall'optionValue
-		if err := pruneOldPostBootStateMarker(string(device), fileStatusList); err != nil {
+		if err := cleanOldStates(string(device), fileStatusList); err != nil {
 			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
 
-		// Poi, solo se non è "none", crea il nuovo file
 		if optionValue != "none" {
 			if err := createStateMarker(overlayFileName, cfg); err != nil {
 				feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -209,8 +176,8 @@ func createStateMarker(deviceName string, cfg config.Configuration) error {
 	return cfg.StatusDir().Join(filename).WriteFile([]byte{})
 }
 
-// pruneOldPostBootStateMarker removes all overlay files for the specified device that were created after the last boot time.
-func pruneOldPostBootStateMarker(deviceName string, files []registry.OverlayFile) error {
+// cleanOldStates removes all overlay files for the specified device that were created after the last boot time.
+func cleanOldStates(deviceName string, files []registry.OverlayFile) error {
 	bootTime, err := getBootTime()
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)
@@ -328,7 +295,7 @@ func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarr
 }
 
 func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []string) error {
-	args := append([]string{"fdtoverlay", "-i", cfg.BaseDTB().String(), "-o", cfg.ActualDTB().String()}, dtboFiles...)
+	args := append([]string{"fdtoverlay", "-i", cfg.FactoryDTB().String(), "-o", cfg.ActualDTB().String()}, dtboFiles...)
 
 	proc, err := paths.NewProcess(nil, args...)
 	if err != nil {
