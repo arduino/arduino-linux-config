@@ -43,19 +43,21 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 // Files with a timestamp after boot represent the pending (next) configuration.
 func enableHandler(cfg config.Configuration, ctx context.Context, carrierName string, deviceArgs []string) {
 
-	wantedDevicesList, err := parseAndValidateDeviceArgs(carrierName, deviceArgs)
+	wantedDevicesList, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	disableHandler(cfg, ctx, carrierName)
 	wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
-	if len(wantedDtboFiles) > 0 {
-		if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
-			feedback.Fatal(err.Error(), feedback.ErrGeneric)
-		}
-	}
 
+	// reset to default and apply the overlay
+	disableHandler(cfg, ctx, carrierName)
+	if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+	// TODO Add feedback on configuration done
+
+	// register the current status
 	fileStatusList, err := loadStatus(cfg)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -77,20 +79,11 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 
 }
 
-// parseAndValidateDeviceArgs does the following:
-// - checks carrierName is valid
-// - for each device=option argument:
-//   - splits into device and option
-//   - validates device exists for this carrier
-//   - validates option exists for this device
-//   - stores selection in map
-//
-// example input: "media-carrier", ["camera1=type1-2lane", "display1=8-dsi-touch-a"]
-// example output: {Camera1: "type1-2lane", Display1: "8-dsi-touch-a"}
-func parseAndValidateDeviceArgs(carrierName string, args []string) (map[registry.MediaCarrierDeviceName]string, error) {
+func parseArguments(carrierName string, args []string) (map[registry.MediaCarrierDeviceName]string, error) {
 	if carrierName != registry.MediaCarrierRegistry.Name {
 		return nil, fmt.Errorf("carrier %q not supported", carrierName)
 	}
+
 	selection := make(map[registry.MediaCarrierDeviceName]string)
 	for _, arg := range args {
 		arg = strings.TrimRight(arg, ",")
@@ -103,21 +96,12 @@ func parseAndValidateDeviceArgs(carrierName string, args []string) (map[registry
 		deviceName := parts[0]
 		optionName := parts[1]
 
-		deviceCarrierName, err := ParseMediaCarrierDevice(deviceName)
+		mediaDeviceName, err := registry.ValidateInput(deviceName, optionName)
 		if err != nil {
-			return nil, fmt.Errorf("device %q not supported for carrier %q", deviceName, carrierName)
+			return nil, err
 		}
 
-		device, err := findDevice(registry.MediaCarrierRegistry, deviceCarrierName)
-		if err != nil {
-			return nil, err
-		}
-		option, err := findOption(device, optionName)
-		if err != nil {
-			return nil, err
-		}
-		//example: selection["camera1"] = "type1-2lane"
-		selection[deviceCarrierName] = option.Name
+		selection[mediaDeviceName] = optionName
 	}
 
 	return selection, nil
@@ -231,33 +215,6 @@ func getBootTime() (time.Time, error) {
 	return bootTime, nil
 }
 
-func findDevice(carrier registry.MediaCarrier, deviceName registry.MediaCarrierDeviceName) (registry.Device, error) {
-	for _, d := range carrier.Devices {
-		if d.Name == deviceName {
-			return d, nil
-		}
-	}
-	return registry.Device{}, fmt.Errorf("device %q not found in carrier %q", deviceName, carrier.Name)
-}
-
-func findOption(device registry.Device, optionName string) (registry.DeviceOption, error) {
-	for _, o := range device.Options {
-		if o.Name == optionName {
-			return o, nil
-		}
-	}
-	return registry.DeviceOption{}, fmt.Errorf("option %q not found for device %q", optionName, device.Name)
-}
-
-func ParseMediaCarrierDevice(configuredDeviceName string) (registry.MediaCarrierDeviceName, error) {
-	for _, deviceName := range registry.MediaCarrierDeviceList {
-		if string(deviceName) == configuredDeviceName {
-			return deviceName, nil
-		}
-	}
-	return "", fmt.Errorf("unknown MediaCarrierDevice: %q", configuredDeviceName)
-}
-
 func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarrierDeviceName]string) []string {
 	var dtboFiles []string
 
@@ -281,7 +238,7 @@ func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarr
 		}
 	}
 
-	// this is the general media carriar overlay that should be applyed if at least one device is configured
+	// if at least one device is configured we activate the overlay for the media carrier
 	if len(dtboFiles) > 0 {
 		dtboFiles = append(dtboFiles, filepath.Join(cfg.OverlaysDir().String(), "qrb2210-arduino-imola-carrier-media.dtbo"))
 	}
@@ -290,6 +247,10 @@ func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarr
 }
 
 func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []string) error {
+	if len(dtboFiles) <= 0 {
+		return nil
+	}
+
 	args := append([]string{"fdtoverlay", "-i", cfg.FactoryDTB().String(), "-o", cfg.ActualDTB().String()}, dtboFiles...)
 
 	proc, err := paths.NewProcess(nil, args...)

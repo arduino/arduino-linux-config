@@ -1,6 +1,8 @@
 package registry
 
 import (
+	"fmt"
+	"slices"
 	"time"
 
 	"github.com/arduino/go-paths-helper"
@@ -12,7 +14,6 @@ const DeviceOptionNone = "none"
 type MediaCarrierDeviceName string
 
 const (
-	Leds    MediaCarrierDeviceName = "leds"
 	Camera1 MediaCarrierDeviceName = "camera1"
 	Camera2 MediaCarrierDeviceName = "camera2"
 	Display MediaCarrierDeviceName = "display"
@@ -64,6 +65,53 @@ var MediaCarrierRegistry = MediaCarrier{
 			},
 		},
 	},
+}
+
+func GetMediaCarrierDeviceName(deviceName string) (MediaCarrierDeviceName, bool) {
+	device := MediaCarrierDeviceName(deviceName)
+
+	if slices.Contains(MediaCarrierDeviceList, device) {
+		return device, true
+	}
+
+	return "", false
+}
+
+// TODO Fix using a map in registry, see next func
+func IsOptionValid(deviceName MediaCarrierDeviceName, optionName string) bool {
+	for _, device := range MediaCarrierRegistry.Devices {
+		if device.Name != deviceName {
+			continue
+		}
+		for _, option := range device.Options {
+			if optionName == option.Name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// func IsOptionValid(deviceName MediaCarrierDeviceName, optionName string) bool {
+//     device, ok := MediaCarrierRegistry.Devices[deviceName]
+//     if !ok {
+//         return false
+//     }
+//     _, found := device.Options[optionName]
+//     return found
+// }
+
+func ValidateInput(rawDevice string, rawOption string) (MediaCarrierDeviceName, error) {
+	device, found := GetMediaCarrierDeviceName(rawDevice)
+	if !found {
+		return "", fmt.Errorf("unknown device: %q", rawDevice)
+	}
+
+	if !IsOptionValid(device, rawOption) {
+		return "", fmt.Errorf("device %q does not support option %q", device, rawOption)
+	}
+
+	return device, nil
 }
 
 type StatusFile struct {
