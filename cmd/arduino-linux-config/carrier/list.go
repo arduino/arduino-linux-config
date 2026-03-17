@@ -29,7 +29,6 @@ func listHandler(_ context.Context) {
 	})
 }
 
-// User result structures
 type carriersResult struct {
 	MediaCarrier CarrierResult `json:"media_carrier"`
 }

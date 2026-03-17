@@ -88,7 +88,6 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 // example input: "media-carrier", ["camera1=type1-2lane", "display1=8-dsi-touch-a"]
 // example output: {Camera1: "type1-2lane", Display1: "8-dsi-touch-a"}
 func parseAndValidateDeviceArgs(carrierName string, args []string) (map[registry.MediaCarrierDevice]string, error) {
-	// we support only media-carrier for now,builtin in the future
 	if carrierName != registry.MediaCarrierRegistry.Name {
 		return nil, fmt.Errorf("carrier %q not supported", carrierName)
 	}
@@ -135,8 +134,6 @@ func loadStateMarkers(cfg config.Configuration) ([]registry.OverlayFile, error) 
 
 	for _, entry := range entries {
 		name := entry.Base() // e.g. "camera1_20260313-150945.dtbo"
-
-		// Rimuovi estensione
 		nameNoExt := strings.TrimSuffix(name, filepath.Ext(name))
 
 		parts := strings.SplitN(nameNoExt, "_", 2)
@@ -144,7 +141,6 @@ func loadStateMarkers(cfg config.Configuration) ([]registry.OverlayFile, error) 
 			continue
 		}
 
-		// Splitta device e option sul primo "-"
 		deviceParts := strings.SplitN(parts[0], "-", 2)
 		if len(deviceParts) != 2 {
 			continue
@@ -182,7 +178,7 @@ func cleanOldStates(deviceName string, files []registry.OverlayFile) error {
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)
 	}
-	// Filtra solo i file del device
+
 	var deviceFiles []registry.OverlayFile
 	for _, f := range files {
 		if f.Device == deviceName {
@@ -190,7 +186,6 @@ func cleanOldStates(deviceName string, files []registry.OverlayFile) error {
 		}
 	}
 
-	// Cancella i file post-boot (verranno rimpiazzati dal nuovo)
 	var surviving []registry.OverlayFile
 	for _, f := range deviceFiles {
 		if f.CreatedAt.After(bootTime) {
@@ -202,13 +197,10 @@ func cleanOldStates(deviceName string, files []registry.OverlayFile) error {
 		}
 	}
 
-	// Tra i file pre-boot, tieni solo il più recente (ne basta 1 pre-boot + 1 nuovo post-boot = 2 totali)
 	if len(surviving) > 1 {
-		// Ordina dal più recente al più vecchio
 		sort.Slice(surviving, func(i, j int) bool {
 			return surviving[i].CreatedAt.After(surviving[j].CreatedAt)
 		})
-		// Cancella tutti i pre-boot tranne il più recente
 		for _, f := range surviving[1:] {
 			if err := f.Path.Remove(); err != nil {
 				return fmt.Errorf("failed to remove old overlay file %s: %w", f.Path, err)
@@ -225,8 +217,6 @@ func getBootTime() (time.Time, error) {
 		return time.Time{}, fmt.Errorf("failed to read /proc/uptime: %w", err)
 	}
 
-	// /proc/uptime format: "12345.67 23456.78"
-	// il primo valore è i secondi di uptime
 	fields := strings.Fields(string(data))
 	if len(fields) == 0 {
 		return time.Time{}, fmt.Errorf("unexpected /proc/uptime format")
