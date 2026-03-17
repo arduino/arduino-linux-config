@@ -70,7 +70,7 @@ func CreateStatusFile(cfg config.Configuration, deviceName string) error {
 }
 
 // cleanOldStates removes all overlay files for the specified device that were created after the last boot time.
-func CleanOldStates(deviceName string, files []StatusFile) error {
+func CleanOldStatus(deviceName string, files []StatusFile) error {
 	bootTime, err := GetBootTime()
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)

@@ -23,13 +23,13 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 		Short: "Enable a carrier with the specified device options",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			enableHandler(cfg, cmd.Context(), args[0], args[1:])
+			enableHandler(cmd.Context(), cfg, args[0], args[1:])
 		},
 	}
 }
 
 // Since a board reboot can occur asynchronously with the carrier configuration,
-// we must track both the current and desired states.
+// we must track both the current and desired statuses.
 //
 // This is managed by creating a status file every time a device is congfigured.
 // The status file records the device name, the configured options, and a timestamp.
@@ -37,40 +37,23 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 // At show time we check the last boot time.
 // Files with a timestamp before boot represent the current configuration.
 // Files with a timestamp after boot represent the pending (next) configuration.
-func enableHandler(cfg config.Configuration, ctx context.Context, carrierName string, deviceArgs []string) {
+func enableHandler(ctx context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
 
 	wantedDevicesList, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	wantedDtboFiles := collectDtboFiles(cfg, wantedDevicesList)
+	overlayList := collectDtboFiles(cfg, wantedDevicesList)
 
 	// reset to default and apply the overlay
 	disableHandler(cfg, ctx, carrierName)
-	if err := applyOverlays(cfg, ctx, wantedDtboFiles); err != nil {
+	if err := applyOverlays(cfg, ctx, overlayList); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
-	// TODO Add feedback on configuration done
+	// TODO Add return feedback on configuration done and the configured values
 
-	// register the current status
-	fileStatusList, err := registry.LoadStatus(cfg)
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-
-	for device, optionValue := range wantedDevicesList {
-		statusFileName := fmt.Sprintf("%s-%s", device, optionValue)
-
-		if err := registry.CreateStatusFile(cfg, statusFileName); err != nil {
-			feedback.Fatal(err.Error(), feedback.ErrGeneric)
-		}
-
-		if err := registry.CleanOldStates(string(device), fileStatusList); err != nil {
-			feedback.Fatal(err.Error(), feedback.ErrGeneric)
-		}
-
-	}
+	statusUpdate(cfg, wantedDevicesList)
 
 }
 
@@ -152,4 +135,25 @@ func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []st
 		feedback.Print(string(stdout))
 	}
 	return nil
+}
+
+// TODO improve error messages
+func statusUpdate(cfg config.Configuration, wanted map[registry.MediaCarrierDeviceName]string) {
+
+	fileStatusList, err := registry.LoadStatus(cfg)
+	if err != nil {
+		feedback.Warnf(err.Error(), feedback.ErrGeneric)
+	}
+
+	for device, optionValue := range wanted {
+		statusFileName := fmt.Sprintf("%s-%s", device, optionValue)
+
+		if err := registry.CreateStatusFile(cfg, statusFileName); err != nil {
+			feedback.Warnf(err.Error(), feedback.ErrGeneric)
+		}
+
+		if err := registry.CleanOldStatus(string(device), fileStatusList); err != nil {
+			feedback.Warnf(err.Error(), feedback.ErrGeneric)
+		}
+	}
 }
