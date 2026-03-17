@@ -6,6 +6,8 @@ import (
 	"github.com/arduino/go-paths-helper"
 )
 
+const DeviceOptionNone = "none"
+
 // UnoQ specific media carrier
 type MediaCarrierDeviceName string
 
@@ -16,7 +18,7 @@ const (
 	Display MediaCarrierDeviceName = "display"
 )
 
-var MediaCarrierDeviceList = []MediaCarrierDeviceName{Leds, Camera1, Camera2, Display}
+var MediaCarrierDeviceList = []MediaCarrierDeviceName{Camera1, Camera2, Display}
 
 type MediaCarrier struct {
 	Name    string

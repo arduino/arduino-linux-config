@@ -27,7 +27,7 @@ func disableHandler(cfg config.Configuration, _ context.Context, carrierName str
 		feedback.Fatal("carrier "+carrierName+" not supported", feedback.ErrGeneric)
 	}
 
-	fileStatusList, err := loadStatus(cfg)
+	statuses, err := loadStatus(cfg)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
@@ -37,13 +37,21 @@ func disableHandler(cfg config.Configuration, _ context.Context, carrierName str
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	for _, f := range fileStatusList {
+	for _, f := range statuses {
 		if f.CreatedAt.After(bootTime) {
 			if err := f.Path.Remove(); err != nil {
 				feedback.Fatal(fmt.Sprintf("failed to remove marker: %v", err), feedback.ErrGeneric)
 			}
 		}
 	}
+
+	for _, deviceName := range registry.MediaCarrierDeviceList {
+		overlayFileName := fmt.Sprintf("%s-%s", deviceName, "none")
+		if err := createStateMarker(string(overlayFileName), cfg); err != nil {
+			feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		}
+	}
+
 	if err := restoreFactoryDTB(cfg); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}

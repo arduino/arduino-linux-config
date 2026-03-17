@@ -68,11 +68,11 @@ func enableHandler(cfg config.Configuration, ctx context.Context, carrierName st
 			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
 
-		if optionValue != "none" {
-			if err := createStateMarker(overlayFileName, cfg); err != nil {
-				feedback.Fatal(err.Error(), feedback.ErrGeneric)
-			}
+		//if optionValue != "none" {
+		if err := createStateMarker(overlayFileName, cfg); err != nil {
+			feedback.Fatal(err.Error(), feedback.ErrGeneric)
 		}
+		//}
 	}
 
 }
@@ -262,7 +262,7 @@ func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarr
 	var dtboFiles []string
 
 	for deviceName, optionName := range selection {
-		if optionName == deviceOptionNone || optionName == "" {
+		if optionName == registry.DeviceOptionNone || optionName == "" {
 			continue
 		}
 
