@@ -50,12 +50,17 @@ func (r showResult) String() string {
 
 	fmt.Fprintf(&sb, "%s\n", r.CarrierName)
 
-	// nextMap := make(map[string]string)
-	// for _, n := range r.NextDevices {
-	// 	if n.Device != "" {
-	// 		nextMap[n.Device] = n.Option
-	// 	}
-	// }
+	nextMap := make(map[registry.MediaCarrierDeviceName]string)
+
+	if len(r.NextDevices) > 0 {
+		for _, deviceName := range registry.MediaCarrierDeviceList {
+			if device, found := hasDevice(r.NextDevices, deviceName); found {
+				nextMap[deviceName] = device.Option
+			} else {
+				nextMap[deviceName] = "none"
+			}
+		}
+	}
 
 	processed := make(map[string]bool)
 	for _, c := range r.CurrentDevices {
@@ -68,7 +73,12 @@ func (r showResult) String() string {
 		// 	nextOpt = "none"
 		// }
 
-		fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, "nextOpt")
+		if len(r.NextDevices) > 0 {
+			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.MediaCarrierDeviceName(c.Device)])
+		} else {
+			fmt.Fprintf(w, "  %s:\t[current: %s]\t\n", c.Device, c.Option)
+		}
+
 		processed[c.Device] = true
 	}
 
@@ -78,4 +88,13 @@ func (r showResult) String() string {
 
 func (r showResult) Data() interface{} {
 	return r
+}
+
+func hasDevice(devices []registry.StatusDevice, deviceName registry.MediaCarrierDeviceName) (registry.StatusDevice, bool) {
+	for _, d := range devices {
+		if d.Device == string(deviceName) {
+			return d, true
+		}
+	}
+	return registry.StatusDevice{}, false
 }

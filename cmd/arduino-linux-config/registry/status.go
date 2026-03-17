@@ -93,7 +93,6 @@ func CleanOldStatus(deviceName string, files []StatusFile) error {
 	var surviving []StatusFile
 	for _, f := range deviceFiles {
 		if f.CreatedAt.After(bootTime) {
-			fmt.Printf("Removing %s-%s-%s boot %s\n", f.DeviceName, f.Option, f.CreatedAt, bootTime)
 			if err := f.Path.Remove(); err != nil {
 				return fmt.Errorf("failed to remove post-boot overlay file %s: %w", f.Path, err)
 			}
