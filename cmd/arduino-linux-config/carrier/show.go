@@ -28,7 +28,7 @@ func showHandler(_ context.Context, cfg config.Configuration, carrierName string
 		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
 	}
 
-	current, next := registry.GetStatuses(cfg)
+	current, next := registry.GetStatus(cfg)
 
 	feedback.PrintResult(showResult{
 		CarrierName:    carrierName,

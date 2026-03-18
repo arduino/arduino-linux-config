@@ -1,11 +1,9 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,10 +14,17 @@ import (
 )
 
 type StatusFile struct {
-	DeviceName string
-	Option     string
-	CreatedAt  time.Time
-	Path       *paths.Path
+	CurrentStatus StatusCarrier `json:"CurrentStatus"`
+	WantedStatus  StatusCarrier `json:"WantedStatus"`
+}
+
+type StatusCarrier struct {
+	Devices map[MediaCarrierDeviceName]StatusInfo `json:"Devices"`
+}
+
+type StatusInfo struct {
+	Option    string    `json:"Option"`
+	CreatedAt time.Time `json:"CreatedAt"`
 }
 
 type StatusDevice struct {
@@ -27,92 +32,53 @@ type StatusDevice struct {
 	Option string `json:"option"`
 }
 
-func loadStatus(cfg config.Configuration) ([]StatusFile, error) {
-	entries, err := cfg.StatusDir().ReadDir()
+func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceName]string) {
+	status, err := loadStatusFile(cfg.StatusFile())
 	if err != nil {
-		return nil, fmt.Errorf("failed to read overlays dir: %w", err)
+		feedback.Warnf(err.Error(), feedback.ErrGeneric)
 	}
 
-	const layout = "20060102-150405"
-	files := make([]StatusFile, 0, len(entries))
-
-	for _, entry := range entries {
-		name := entry.Base() // e.g. "camera1_20260313-150945.dtbo"
-		nameNoExt := strings.TrimSuffix(name, filepath.Ext(name))
-
-		parts := strings.SplitN(nameNoExt, "_", 2)
-		if len(parts) != 2 {
-			continue
+	for _, deviceName := range MediaCarrierDeviceList {
+		newInfo := StatusInfo{
+			Option:    getOrDefault(statusUpdate[deviceName]),
+			CreatedAt: time.Now().UTC(),
 		}
+		status.WantedStatus.Devices[deviceName] = newInfo
+	}
+	saveStatusFile(cfg.StatusFile(), *status)
+}
 
-		deviceParts := strings.SplitN(parts[0], "-", 2)
-		if len(deviceParts) != 2 {
-			continue
-		}
+func getOrDefault(option string) string {
+	if option == "" {
+		option = "none"
+	}
+	return option
+}
 
-		device := deviceParts[0] // "camera1"
-		option := deviceParts[1] // "type1-2lane"
-
-		createdAt, err := time.Parse(layout, parts[1])
-		if err != nil {
-			continue
-		}
-
-		files = append(files, StatusFile{
-			DeviceName: device,
-			Option:     option,
-			CreatedAt:  createdAt,
-			Path:       entry,
-		})
+func GetStatus(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
+	status, err := loadStatusFile(cfg.StatusFile())
+	if err != nil {
+		feedback.Warnf(err.Error(), feedback.ErrGeneric)
 	}
 
-	return files, nil
-}
-
-func createStatusFile(cfg config.Configuration, statusFileName string) error {
-	const layout = "20060102-150405"
-	timestamp := time.Now().UTC().Format(layout)
-	filename := fmt.Sprintf("%s_%s.dtbo", statusFileName, timestamp)
-	return cfg.StatusDir().Join(filename).WriteFile([]byte{})
-}
-
-// cleanOldStates removes all overlay files for the specified device that were created after the last boot time.
-func cleanOldStatus(deviceName string, files []StatusFile) error {
 	bootTime, err := getBootTime()
 	if err != nil {
-		return fmt.Errorf("failed to get boot time: %w", err)
+		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}
 
-	var deviceFiles []StatusFile
-	for _, f := range files {
-		if f.DeviceName == deviceName {
-			deviceFiles = append(deviceFiles, f)
+	current := []StatusDevice{}
+	next := []StatusDevice{}
+	for _, deviceName := range MediaCarrierDeviceList {
+
+		// parse next, if they happened before the boot, move in actual
+		if status.WantedStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
+			status.CurrentStatus.Devices[deviceName] = status.WantedStatus.Devices[deviceName]
+			status.WantedStatus.Devices[deviceName] = StatusInfo{}
 		}
+		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
+		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.WantedStatus.Devices[deviceName].Option)})
 	}
-
-	var surviving []StatusFile
-	for _, f := range deviceFiles {
-		if f.CreatedAt.After(bootTime) {
-			if err := f.Path.Remove(); err != nil {
-				return fmt.Errorf("failed to remove post-boot overlay file %s: %w", f.Path, err)
-			}
-		} else {
-			surviving = append(surviving, f)
-		}
-	}
-
-	if len(surviving) > 1 {
-		sort.Slice(surviving, func(i, j int) bool {
-			return surviving[i].CreatedAt.After(surviving[j].CreatedAt)
-		})
-		for _, f := range surviving[1:] {
-			if err := f.Path.Remove(); err != nil {
-				return fmt.Errorf("failed to remove old overlay file %s: %w", f.Path, err)
-			}
-		}
-	}
-
-	return nil
+	return current, next
 }
 
 func getBootTime() (time.Time, error) {
@@ -136,89 +102,39 @@ func getBootTime() (time.Time, error) {
 	return bootTime, nil
 }
 
-// TODO improve error messages
-func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceName]string) {
-	fileStatusList, err := loadStatus(cfg)
+func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
+	data, err := statusFile.ReadFile()
 	if err != nil {
-		feedback.Warnf(err.Error(), feedback.ErrGeneric)
+		newStatus := StatusFile{
+			CurrentStatus: StatusCarrier{
+				Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+			},
+			WantedStatus: StatusCarrier{
+				Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+			},
+		}
+		return &newStatus, nil
 	}
 
-	for device, optionValue := range statusUpdate {
-		statusFileName := fmt.Sprintf("%s-%s", device, optionValue)
-		if err := cleanOldStatus(string(device), fileStatusList); err != nil {
-			feedback.Warnf(err.Error(), feedback.ErrGeneric)
-		}
-
-		if err := createStatusFile(cfg, statusFileName); err != nil {
-			feedback.Warnf(err.Error(), feedback.ErrGeneric)
-		}
+	var status StatusFile
+	err = json.Unmarshal(data, &status)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse json: %w", err)
 	}
+
+	return &status, nil
 }
 
-func GetStatuses(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
-	cleanDuplicated(cfg)
-
-	bootTime, err := getBootTime()
+func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
+	data, err := json.MarshalIndent(status, "", "    ")
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+		return fmt.Errorf("marshal error: %w", err)
 	}
 
-	statusList, err := loadStatus(cfg)
+	err = os.WriteFile(statusFile.String(), data, 0644)
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
+		return fmt.Errorf("write error: %w", err)
 	}
 
-	current := []StatusDevice{}
-	next := []StatusDevice{}
-
-	for _, f := range statusList {
-		if f.CreatedAt.Before(bootTime) {
-			current = append(current, StatusDevice{Device: f.DeviceName, Option: f.Option})
-		} else {
-			next = append(next, StatusDevice{Device: f.DeviceName, Option: f.Option})
-		}
-	}
-	return current, next
-}
-
-func cleanDuplicated(cfg config.Configuration) error {
-	bootTime, err := getBootTime()
-	if err != nil {
-		return fmt.Errorf("failed to get boot time: %w", err)
-	}
-
-	statusList, err := loadStatus(cfg)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
-	}
-
-	// filter pre-boot file and group by device name
-	grouped := make(map[string][]StatusFile)
-	for _, f := range statusList {
-		if f.CreatedAt.Before(bootTime) {
-			grouped[f.DeviceName] = append(grouped[f.DeviceName], f)
-		}
-	}
-
-	// process by groups
-	for _, files := range grouped {
-		// newest first
-		slices.SortFunc(files, func(a, b StatusFile) int {
-			return b.CreatedAt.Compare(a.CreatedAt)
-		})
-
-		if len(files) > 1 {
-			deleteFiles(files[1:])
-		}
-	}
 	return nil
-}
-
-func deleteFiles(files []StatusFile) {
-	for _, f := range files {
-		err := os.Remove(f.Path.String())
-		if err != nil && !os.IsNotExist(err) {
-			fmt.Printf("Failed to delete %s: %v\n", f.Path.String(), err)
-		}
-	}
 }

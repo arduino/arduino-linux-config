@@ -22,20 +22,20 @@ import (
 )
 
 type Configuration struct {
-	statusDir   *paths.Path
+	statusFile  *paths.Path
 	factoryDTB  *paths.Path
 	actualDTB   *paths.Path
 	overlaysDir *paths.Path
 }
 
 func NewConfigFromEnv() (Configuration, error) {
-	statusDir := paths.New("/var/lib/arduino-linux-config/status")
+	statusFile := paths.New("/var/lib/arduino-linux-config/status/status.json")
 	baseDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola-factory.dtb")
 	actualDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb")
 	overlaysDir := paths.New("/boot/efi/dtb/qcom/")
 
 	c := Configuration{
-		statusDir:   statusDir,
+		statusFile:  statusFile,
 		factoryDTB:  baseDTB,
 		actualDTB:   actualDTB,
 		overlaysDir: overlaysDir,
@@ -55,14 +55,11 @@ func (c *Configuration) init() error {
 	if c.overlaysDir.NotExist() {
 		return fmt.Errorf("overlays directory not found: %s", c.overlaysDir)
 	}
-	if err := c.statusDir.MkdirAll(); err != nil {
-		return fmt.Errorf("failed to create status directory %s: %w", c.statusDir, err)
-	}
 	return nil
 }
 
-func (c *Configuration) StatusDir() *paths.Path {
-	return c.statusDir
+func (c *Configuration) StatusFile() *paths.Path {
+	return c.statusFile
 }
 
 func (c *Configuration) FactoryDTB() *paths.Path {
