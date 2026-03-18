@@ -145,12 +145,11 @@ func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceN
 
 	for device, optionValue := range statusUpdate {
 		statusFileName := fmt.Sprintf("%s-%s", device, optionValue)
-
-		if err := createStatusFile(cfg, statusFileName); err != nil {
+		if err := cleanOldStatus(string(device), fileStatusList); err != nil {
 			feedback.Warnf(err.Error(), feedback.ErrGeneric)
 		}
 
-		if err := cleanOldStatus(string(device), fileStatusList); err != nil {
+		if err := createStatusFile(cfg, statusFileName); err != nil {
 			feedback.Warnf(err.Error(), feedback.ErrGeneric)
 		}
 	}

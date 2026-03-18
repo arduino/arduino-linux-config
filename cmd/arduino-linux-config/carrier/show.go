@@ -64,10 +64,10 @@ func (r showResult) String() string {
 		}
 	}
 
-	processed := make(map[string]bool)
-	for _, c := range r.CurrentDevices {
-		if c.Device == "" || processed[c.Device] {
-			continue
+	for _, deviceName := range registry.MediaCarrierDeviceList {
+		c, found := hasDevice(r.CurrentDevices, deviceName)
+		if !found {
+			c = registry.StatusDevice{Device: string(deviceName), Option: "none"}
 		}
 
 		if len(r.NextDevices) > 0 {
@@ -76,7 +76,6 @@ func (r showResult) String() string {
 			fmt.Fprintf(w, "  %s:\t[current: %s]\t\n", c.Device, c.Option)
 		}
 
-		processed[c.Device] = true
 	}
 
 	w.Flush()
