@@ -27,15 +27,15 @@ func disableHandler(cfg config.Configuration, _ context.Context, carrierName str
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	selection := make(map[registry.MediaCarrierDeviceName]string)
-	for _, device := range registry.MediaCarrierDeviceList {
-		selection[device] = "none"
-	}
-
 	if err := restoreFactoryDTB(cfg); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 	// TODO add feedback to the user
+
+	selection := make(map[registry.MediaCarrierDeviceName]string)
+	for _, device := range registry.MediaCarrierDeviceList {
+		selection[device] = "none"
+	}
 
 	registry.StatusUpdate(cfg, selection)
 }

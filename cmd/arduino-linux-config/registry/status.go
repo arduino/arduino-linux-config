@@ -27,7 +27,7 @@ type StatusDevice struct {
 	Option string `json:"option"`
 }
 
-func LoadStatus(cfg config.Configuration) ([]StatusFile, error) {
+func loadStatus(cfg config.Configuration) ([]StatusFile, error) {
 	entries, err := cfg.StatusDir().ReadDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read overlays dir: %w", err)
@@ -69,15 +69,15 @@ func LoadStatus(cfg config.Configuration) ([]StatusFile, error) {
 	return files, nil
 }
 
-func CreateStatusFile(cfg config.Configuration, deviceName string) error {
+func createStatusFile(cfg config.Configuration, statusFileName string) error {
 	const layout = "20060102-150405"
 	timestamp := time.Now().UTC().Format(layout)
-	filename := fmt.Sprintf("%s_%s.dtbo", deviceName, timestamp)
+	filename := fmt.Sprintf("%s_%s.dtbo", statusFileName, timestamp)
 	return cfg.StatusDir().Join(filename).WriteFile([]byte{})
 }
 
 // cleanOldStates removes all overlay files for the specified device that were created after the last boot time.
-func CleanOldStatus(deviceName string, files []StatusFile) error {
+func cleanOldStatus(deviceName string, files []StatusFile) error {
 	bootTime, err := getBootTime()
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)
@@ -138,8 +138,7 @@ func getBootTime() (time.Time, error) {
 
 // TODO improve error messages
 func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceName]string) {
-
-	fileStatusList, err := LoadStatus(cfg)
+	fileStatusList, err := loadStatus(cfg)
 	if err != nil {
 		feedback.Warnf(err.Error(), feedback.ErrGeneric)
 	}
@@ -147,25 +146,25 @@ func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceN
 	for device, optionValue := range statusUpdate {
 		statusFileName := fmt.Sprintf("%s-%s", device, optionValue)
 
-		if err := CreateStatusFile(cfg, statusFileName); err != nil {
+		if err := createStatusFile(cfg, statusFileName); err != nil {
 			feedback.Warnf(err.Error(), feedback.ErrGeneric)
 		}
 
-		if err := CleanOldStatus(string(device), fileStatusList); err != nil {
+		if err := cleanOldStatus(string(device), fileStatusList); err != nil {
 			feedback.Warnf(err.Error(), feedback.ErrGeneric)
 		}
 	}
 }
 
 func GetStatuses(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
-	CleanDuplicated(cfg)
+	cleanDuplicated(cfg)
 
 	bootTime, err := getBootTime()
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}
 
-	statusList, err := LoadStatus(cfg)
+	statusList, err := loadStatus(cfg)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
 	}
@@ -183,13 +182,13 @@ func GetStatuses(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
 	return current, next
 }
 
-func CleanDuplicated(cfg config.Configuration) error {
+func cleanDuplicated(cfg config.Configuration) error {
 	bootTime, err := getBootTime()
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)
 	}
 
-	statusList, err := LoadStatus(cfg)
+	statusList, err := loadStatus(cfg)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to read carrier status: %v", err), feedback.ErrGeneric)
 	}

@@ -46,7 +46,6 @@ func enableHandler(ctx context.Context, cfg config.Configuration, carrierName st
 
 	overlayList := collectDtboFiles(cfg, wantedDevicesList)
 
-	// reset to default and apply the overlay
 	disableHandler(cfg, ctx, carrierName)
 	if err := applyOverlays(cfg, ctx, overlayList); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -54,7 +53,6 @@ func enableHandler(ctx context.Context, cfg config.Configuration, carrierName st
 	// TODO Add return feedback on configuration done and the configured values
 
 	registry.StatusUpdate(cfg, wantedDevicesList)
-
 }
 
 func parseArguments(carrierName string, args []string) (map[registry.MediaCarrierDeviceName]string, error) {
