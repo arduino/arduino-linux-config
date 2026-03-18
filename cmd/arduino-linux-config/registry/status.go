@@ -33,11 +33,14 @@ type StatusDevice struct {
 }
 
 func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceName]string) {
-	status, err := loadStatusFile(cfg.StatusFile())
-	if err != nil {
-		feedback.Warnf(err.Error(), feedback.ErrGeneric)
-	}
+	status, _ := loadStatusFile(cfg.StatusFile())
 
+	updateStatusStructure(status, statusUpdate)
+
+	saveStatusFile(cfg.StatusFile(), *status)
+}
+
+func updateStatusStructure(status *StatusFile, statusUpdate map[MediaCarrierDeviceName]string) {
 	for _, deviceName := range MediaCarrierDeviceList {
 		newInfo := StatusInfo{
 			Option:    getOrDefault(statusUpdate[deviceName]),
@@ -45,7 +48,6 @@ func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceN
 		}
 		status.WantedStatus.Devices[deviceName] = newInfo
 	}
-	saveStatusFile(cfg.StatusFile(), *status)
 }
 
 func getOrDefault(option string) string {
@@ -56,10 +58,7 @@ func getOrDefault(option string) string {
 }
 
 func GetStatus(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
-	status, err := loadStatusFile(cfg.StatusFile())
-	if err != nil {
-		feedback.Warnf(err.Error(), feedback.ErrGeneric)
-	}
+	status, _ := loadStatusFile(cfg.StatusFile())
 
 	bootTime, err := getBootTime()
 	if err != nil {
