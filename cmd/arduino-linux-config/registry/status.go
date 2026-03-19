@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -15,7 +16,7 @@ import (
 
 type StatusFile struct {
 	CurrentStatus StatusCarrier `json:"CurrentStatus"`
-	WantedStatus  StatusCarrier `json:"WantedStatus"`
+	NextStatus    StatusCarrier `json:"NextStatus"`
 }
 
 type StatusCarrier struct {
@@ -33,11 +34,43 @@ type StatusDevice struct {
 }
 
 func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceName]string) {
-	status, _ := loadStatusFile(cfg.StatusFile())
+	status, err := loadStatusFile(cfg.StatusFile())
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+	}
 
 	updateStatusStructure(status, statusUpdate)
-
 	saveStatusFile(cfg.StatusFile(), *status)
+}
+
+func GetStatus(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
+	status, err := loadStatusFile(cfg.StatusFile())
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+	}
+
+	bootTime, err := getBootTime()
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+	}
+
+	return getStatusStructure(status, bootTime)
+}
+
+func getStatusStructure(status *StatusFile, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
+	current := []StatusDevice{}
+	next := []StatusDevice{}
+	for _, deviceName := range MediaCarrierDeviceList {
+
+		// parse next, if they happened before the boot, move in actual
+		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
+			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
+			status.NextStatus.Devices[deviceName] = StatusInfo{}
+		}
+		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
+		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option)})
+	}
+	return current, next
 }
 
 func updateStatusStructure(status *StatusFile, statusUpdate map[MediaCarrierDeviceName]string) {
@@ -46,7 +79,7 @@ func updateStatusStructure(status *StatusFile, statusUpdate map[MediaCarrierDevi
 			Option:    getOrDefault(statusUpdate[deviceName]),
 			CreatedAt: time.Now().UTC(),
 		}
-		status.WantedStatus.Devices[deviceName] = newInfo
+		status.NextStatus.Devices[deviceName] = newInfo
 	}
 }
 
@@ -55,29 +88,6 @@ func getOrDefault(option string) string {
 		option = "none"
 	}
 	return option
-}
-
-func GetStatus(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
-	status, _ := loadStatusFile(cfg.StatusFile())
-
-	bootTime, err := getBootTime()
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
-	}
-
-	current := []StatusDevice{}
-	next := []StatusDevice{}
-	for _, deviceName := range MediaCarrierDeviceList {
-
-		// parse next, if they happened before the boot, move in actual
-		if status.WantedStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
-			status.CurrentStatus.Devices[deviceName] = status.WantedStatus.Devices[deviceName]
-			status.WantedStatus.Devices[deviceName] = StatusInfo{}
-		}
-		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
-		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.WantedStatus.Devices[deviceName].Option)})
-	}
-	return current, next
 }
 
 func getBootTime() (time.Time, error) {
@@ -104,15 +114,19 @@ func getBootTime() (time.Time, error) {
 func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
 	data, err := statusFile.ReadFile()
 	if err != nil {
-		newStatus := StatusFile{
-			CurrentStatus: StatusCarrier{
-				Devices: make(map[MediaCarrierDeviceName]StatusInfo),
-			},
-			WantedStatus: StatusCarrier{
-				Devices: make(map[MediaCarrierDeviceName]StatusInfo),
-			},
+		if errors.Is(err, os.ErrNotExist) {
+			newStatus := StatusFile{
+				CurrentStatus: StatusCarrier{
+					Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+				},
+				NextStatus: StatusCarrier{
+					Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+				},
+			}
+			return &newStatus, nil
+		} else {
+			return nil, err
 		}
-		return &newStatus, nil
 	}
 
 	var status StatusFile
