@@ -1,8 +1,12 @@
 package registry
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/arduino/go-paths-helper"
 )
 
 func TestUpdateStatusStructure(t *testing.T) {
@@ -147,6 +151,72 @@ func TestGetStatusStructure(t *testing.T) {
 			for i, want := range tt.expectedNext {
 				if next[i].Device != want.Device || next[i].Option != want.Option {
 					t.Errorf("%s [Next]: got %+v, want %+v", tt.name, next[i], want)
+				}
+			}
+		})
+	}
+}
+
+func TestLoadStatusFile(t *testing.T) {
+	tests := []struct {
+		name          string
+		fileContent   string // Empty string means file doesn't exist
+		shouldExist   bool
+		wantErr       bool
+		checkContents bool
+	}{
+		{
+			name:        "File does not exist - returns initialized struct",
+			shouldExist: false,
+			wantErr:     false,
+		},
+		{
+			name:          "Valid JSON file - returns parsed struct",
+			shouldExist:   true,
+			fileContent:   `{"CurrentStatus": {"Devices": {"Cam1": {"Option": "ON"}}}, "WantedStatus": {"Devices": {}}}`,
+			wantErr:       false,
+			checkContents: true,
+		},
+		{
+			name:        "Invalid JSON - returns error",
+			shouldExist: true,
+			fileContent: `{"CurrentStatus": { invalid ]}`,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			filePath := filepath.Join(tmpDir, "status.json")
+			p := paths.New(filePath)
+
+			if tt.shouldExist {
+				os.WriteFile(filePath, []byte(tt.fileContent), 0644)
+			}
+
+			status, err := loadStatusFile(p)
+
+			// 1. Check Error expectation
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("loadStatusFile() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr {
+				return
+			}
+
+			// 2. Verify Initialization (The "os.ErrNotExist" case)
+			if !tt.shouldExist {
+				if status.CurrentStatus.Devices == nil || status.NextStatus.Devices == nil {
+					t.Error("Maps should be initialized when file is missing")
+				}
+			}
+
+			// 3. Verify Data Parsing
+			if tt.checkContents {
+				if _, ok := status.CurrentStatus.Devices["Cam1"]; !ok {
+					t.Error("Expected device 'Cam1' to be parsed from JSON")
 				}
 			}
 		})
