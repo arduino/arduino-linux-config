@@ -44,7 +44,7 @@ type showResult struct {
 }
 
 func (r showResult) String() string {
-	if len(r.CurrentDevices) <= 0 && len(r.NextDevices) <= 0 {
+	if len(r.CurrentDevices) == 0 && len(r.NextDevices) == 0 {
 		return fmt.Sprintf("Media carrier %s not yet configured\n", r.CarrierName)
 	}
 

@@ -192,7 +192,9 @@ func TestLoadStatusFile(t *testing.T) {
 			p := paths.New(filePath)
 
 			if tt.shouldExist {
-				os.WriteFile(filePath, []byte(tt.fileContent), 0644)
+				if err := os.WriteFile(filePath, []byte(tt.fileContent), 0600); err != nil {
+					t.Fatalf("failed to write test file: %v", err)
+				}
 			}
 
 			status, err := loadStatusFile(p)

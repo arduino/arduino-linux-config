@@ -115,7 +115,7 @@ func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarr
 }
 
 func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []string) error {
-	if len(dtboFiles) <= 0 {
+	if len(dtboFiles) == 0 {
 		return nil
 	}
 

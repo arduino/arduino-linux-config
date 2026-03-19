@@ -40,7 +40,9 @@ func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceN
 	}
 
 	updateStatusStructure(status, statusUpdate)
-	saveStatusFile(cfg.StatusFile(), *status)
+	if err := saveStatusFile(cfg.StatusFile(), *status); err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to save status file: %v", err), feedback.ErrGeneric)
+	}
 }
 
 func GetStatus(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
@@ -144,7 +146,7 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 		return fmt.Errorf("marshal error: %w", err)
 	}
 
-	err = os.WriteFile(statusFile.String(), data, 0644)
+	err = os.WriteFile(statusFile.String(), data, 0600)
 	if err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}
