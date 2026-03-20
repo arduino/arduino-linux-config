@@ -1,32 +1,54 @@
 # Arduino Linux Config CLI
 
-`arduino-linux-config` is a command line tool designed for Arduino Linux-based boards. It provides a structured interface to configure, configure, and manage hardware devices and overlays directly from the terminal.
+`arduino-linux-config` is a command line tool for Arduino Linux-based boards. It provides a structured interface to configure and manage hardware devices and overlays directly from the terminal, without manually manipulating Device Tree files.
 
 ## Quickstart
 
-The project bridges the gap between high-level user requirements and low-level kernel infrastructure. Instead of manually manipulating Device Tree files, users can manage hardware connectivity through a standardized CLI.
+```sh
+# List available carriers and devices
+arduino-linux-config carrier list
 
-# 🛠 CLI Interface
+# Configure a carrier with specific devices
+arduino-linux-config carrier configure media-carrier camera1=type1-2lane display=8-dsi-touch-a
 
-arduino-linux-config allows you to manage media carrier devices.
+# Show current and pending configuration
+arduino-linux-config carrier show media-carrier
+
+# Reset a carrier to factory defaults
+arduino-linux-config carrier reset media-carrier
+```
+
+## Installation
+
+### On the board (via ADB)
+
+```sh
+task board:install
+```
+
+This will build the Debian package and install it on the connected board via ADB.
+
+### Build locally
+
+```sh
+task build
+```
+
+The binary will be available at `./build/arduino-linux-config`.
 
 ## Commands
 
 - **`list`**: Lists all available carriers and devices for the current hardware.
-- **`show`**: Displays current configuration values for a specific carrier name, along with the pending configuration.
-- **`configure`**: Enables a specified carrier. Devices can be optionally specified. Note: Factory defaults are applied before enabling the new configuration.
-- **`reset`**: Deactivates all media carrierd and restores the system to factory defaults.
+- **`show <carrier-name>`**: Displays the current and pending (next boot) configuration for a carrier.
+- **`configure <carrier-name> [device=option...]`**: Configures a carrier with the specified device options. Factory defaults are applied before the new configuration.
+- **`reset <carrier-name>`**: Resets all devices on a carrier to factory defaults.
 
 ## Global Flags
 
-- **`--help`**: Show usage and command syntax.
-- **`--verbose`**: Enable detailed process logging.
-- **`--debug`**: Display internal execution data for troubleshooting.
-- **`--json`**: Output results in JSON format.
+- **`--format`**: Output format (`text` or `json`). Default: `text`.
+- **`--log-level`**: Log verbosity (`debug`, `info`, `warn`, `error`). Default: `error`.
 
-## How to contribute
-
-Contributions are welcome!
+## Contributions are welcome!
 
 Please read the [Contributor Guide] document, which will show you how to build the source code, run the tests, and
 contribute your changes to the project.
