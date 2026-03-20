@@ -1,6 +1,6 @@
 # Arduino Linux Config CLI
 
-`arduino-linux-config` is a command line tool designed for Arduino Linux-based boards. It provides a structured interface to configure, enable, and manage hardware devices and overlays directly from the terminal.
+`arduino-linux-config` is a command line tool designed for Arduino Linux-based boards. It provides a structured interface to configure, configure, and manage hardware devices and overlays directly from the terminal.
 
 ## Quickstart
 
@@ -14,8 +14,8 @@ arduino-linux-config allows you to manage media carrier devices.
 
 - **`list`**: Lists all available carriers and devices for the current hardware.
 - **`show`**: Displays current configuration values for a specific carrier name, along with the pending configuration.
-- **`enable`**: Enables a specified carrier. Devices can be optionally specified. Note: Factory defaults are applied before enabling the new configuration.
-- **`disable`**: Deactivates all media carrierd and restores the system to factory defaults.
+- **`configure`**: Enables a specified carrier. Devices can be optionally specified. Note: Factory defaults are applied before enabling the new configuration.
+- **`reset`**: Deactivates all media carrierd and restores the system to factory defaults.
 
 ## Global Flags
 

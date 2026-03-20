@@ -87,7 +87,7 @@ func updateStatusStructure(status *StatusFile, statusUpdate map[MediaCarrierDevi
 
 func getOrDefault(option string) string {
 	if option == "" {
-		option = "none"
+		option = DeviceOptionNone
 	}
 	return option
 }

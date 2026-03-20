@@ -13,16 +13,17 @@ import (
 
 func newDisableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "disable <carrier-name>",
-		Short: "Disable a carrier and restore the base DTB",
+		Use:   "reset <carrier-name>",
+		Short: "Reset a carrier and restore the base DTB",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			disableHandler(cfg, cmd.Context(), args[0])
+			resetHandler(cfg, cmd.Context(), args[0])
+			feedback.PrintResult(resetResult{CarrierName: args[0]})
 		},
 	}
 }
 
-func disableHandler(cfg config.Configuration, _ context.Context, carrierName string) {
+func resetHandler(cfg config.Configuration, _ context.Context, carrierName string) {
 	if carrierName != registry.MediaCarrierRegistry.Name {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
@@ -30,11 +31,10 @@ func disableHandler(cfg config.Configuration, _ context.Context, carrierName str
 	if err := restoreFactoryDTB(cfg); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
-	// TODO add feedback to the user
 
 	selection := make(map[registry.MediaCarrierDeviceName]string)
 	for _, device := range registry.MediaCarrierDeviceList {
-		selection[device] = "none"
+		selection[device] = registry.DeviceOptionNone
 	}
 
 	registry.StatusUpdate(cfg, selection)
@@ -53,4 +53,16 @@ func restoreFactoryDTB(cfg config.Configuration) error {
 		return fmt.Errorf("failed to rename DTB: %w", err)
 	}
 	return nil
+}
+
+type resetResult struct {
+	CarrierName string `json:"carrier_name"`
+}
+
+func (r resetResult) String() string {
+	return fmt.Sprintf("Carrier %s reset (will take effect on next boot)\n", r.CarrierName)
+}
+
+func (r resetResult) Data() interface{} {
+	return r
 }

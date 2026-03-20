@@ -10,7 +10,7 @@ func NewCarrierCmd() *cobra.Command {
 	carrierCmd := &cobra.Command{
 		Use:   "carrier",
 		Short: "Manage Arduino Carriers",
-		Long:  "Manage Arduino Carriers, including listing, enabling, and disabling.",
+		Long:  "Manage Arduino Carriers, including listing, enabling, and reseting.",
 	}
 
 	cfg, err := config.NewConfigFromEnv()

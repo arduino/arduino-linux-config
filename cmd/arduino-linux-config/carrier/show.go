@@ -59,7 +59,7 @@ func (r showResult) String() string {
 			if device, found := hasDevice(r.NextDevices, deviceName); found {
 				nextMap[deviceName] = device.Option
 			} else {
-				nextMap[deviceName] = "none"
+				nextMap[deviceName] = registry.DeviceOptionNone
 			}
 		}
 	}
@@ -67,7 +67,7 @@ func (r showResult) String() string {
 	for _, deviceName := range registry.MediaCarrierDeviceList {
 		c, found := hasDevice(r.CurrentDevices, deviceName)
 		if !found {
-			c = registry.StatusDevice{Device: string(deviceName), Option: "none"}
+			c = registry.StatusDevice{Device: string(deviceName), Option: registry.DeviceOptionNone}
 		}
 
 		if len(r.NextDevices) > 0 {

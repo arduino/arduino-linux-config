@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
@@ -19,11 +20,11 @@ type CarrierStatus struct {
 
 func newEnableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "enable <carrier-name> [device=option...]",
+		Use:   "configure <carrier-name> [device=option...]",
 		Short: "Enable a carrier with the specified device options",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			enableHandler(cmd.Context(), cfg, args[0], args[1:])
+			configureHandler(cmd.Context(), cfg, args[0], args[1:])
 		},
 	}
 }
@@ -37,7 +38,7 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 // At show time we check the last boot time.
 // Files with a timestamp before boot represent the current configuration.
 // Files with a timestamp after boot represent the pending (next) configuration.
-func enableHandler(ctx context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
+func configureHandler(ctx context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
 
 	wantedDevicesList, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
@@ -46,13 +47,20 @@ func enableHandler(ctx context.Context, cfg config.Configuration, carrierName st
 
 	overlayList := collectDtboFiles(cfg, wantedDevicesList)
 
-	disableHandler(cfg, ctx, carrierName)
+	resetHandler(cfg, ctx, carrierName)
 	if err := applyOverlays(cfg, ctx, overlayList); err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		feedback.Fatal(
+			fmt.Sprintf("failed to apply overlays (carrier has been reset): %v", err),
+			feedback.ErrGeneric,
+		)
 	}
-	// TODO Add return feedback on configuration done and the configured values
 
 	registry.StatusUpdate(cfg, wantedDevicesList)
+
+	feedback.PrintResult(configureResult{
+		CarrierName: carrierName,
+		Applied:     wantedDevicesList,
+	})
 }
 
 func parseArguments(carrierName string, args []string) (map[registry.MediaCarrierDeviceName]string, error) {
@@ -133,4 +141,28 @@ func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []st
 		feedback.Print(string(stdout))
 	}
 	return nil
+}
+
+type configureResult struct {
+	CarrierName string                                     `json:"carrier_name"`
+	Applied     map[registry.MediaCarrierDeviceName]string `json:"applied"`
+}
+
+func (r configureResult) String() string {
+	var sb strings.Builder
+	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(&sb, "Carrier %s configured (will be applied on next boot):\n", r.CarrierName)
+	for _, deviceName := range registry.MediaCarrierDeviceList {
+		option, ok := r.Applied[deviceName]
+		if !ok {
+			option = registry.DeviceOptionNone
+		}
+		fmt.Fprintf(w, "  %s:\t%s\n", deviceName, option)
+	}
+	w.Flush()
+	return sb.String()
+}
+
+func (r configureResult) Data() interface{} {
+	return r
 }
