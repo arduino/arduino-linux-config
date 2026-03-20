@@ -18,10 +18,10 @@ type CarrierStatus struct {
 	Configuration map[registry.MediaCarrierDeviceName]string `json:"configuration,omitempty"`
 }
 
-func newEnableCmd(cfg config.Configuration) *cobra.Command {
+func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "configure <carrier-name> [device=option...]",
-		Short: "Enable a carrier with the specified device options",
+		Short: "Configure a carrier with the specified device options",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			configureHandler(cmd.Context(), cfg, args[0], args[1:])

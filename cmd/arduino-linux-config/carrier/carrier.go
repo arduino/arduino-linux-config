@@ -10,7 +10,7 @@ func NewCarrierCmd() *cobra.Command {
 	carrierCmd := &cobra.Command{
 		Use:   "carrier",
 		Short: "Manage Arduino Carriers",
-		Long:  "Manage Arduino Carriers, including listing, enabling, and reseting.",
+		Long:  "Manage Arduino Carriers, including listing, configuring, and resetting.",
 	}
 
 	cfg, err := config.NewConfigFromEnv()
@@ -19,8 +19,8 @@ func NewCarrierCmd() *cobra.Command {
 	}
 
 	carrierCmd.AddCommand(newListCmd())
-	carrierCmd.AddCommand(newEnableCmd(cfg))
-	carrierCmd.AddCommand(newDisableCmd(cfg))
+	carrierCmd.AddCommand(newConfigureCmd(cfg))
+	carrierCmd.AddCommand(newResetCmd(cfg))
 	carrierCmd.AddCommand(newShowCmd(cfg))
 
 	return carrierCmd

@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDisableCmd(cfg config.Configuration) *cobra.Command {
+func newResetCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "reset <carrier-name>",
 		Short: "Reset a carrier and restore the base DTB",
