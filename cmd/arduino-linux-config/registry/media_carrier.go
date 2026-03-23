@@ -34,7 +34,13 @@ type DeviceOption struct {
 	DtboFile string
 }
 
-// TODO Read from files
+// TODO
+// We should read the media-carrier from a configuration file
+// media-carrier.json
+// To collect all DTBOs files:
+// 1. For each option we have:DtboFiles, CompatibleDtbo, IncompatibleDtbo
+// 2. if CompatibleDtbo and IncompatibleDtbo intersectios is not null: ERROR, configuration now allowed
+// 3. Add to the DTBOs collection all add DtboFiles and CompatibleDtbo, then remove IncompatibleDtbo
 var MediaCarrierRegistry = MediaCarrier{
 	Name: "media-carrier",
 	Devices: []Device{
@@ -74,7 +80,6 @@ func GetMediaCarrierDeviceName(deviceName string) (MediaCarrierDeviceName, bool)
 	return "", false
 }
 
-// TODO We could use a MediaCarrierDeviceName in registry, see next func
 func IsOptionValid(deviceName MediaCarrierDeviceName, optionName string) bool {
 	for _, device := range MediaCarrierRegistry.Devices {
 		if device.Name != deviceName {
@@ -88,15 +93,6 @@ func IsOptionValid(deviceName MediaCarrierDeviceName, optionName string) bool {
 	}
 	return false
 }
-
-// func IsOptionValid(deviceName MediaCarrierDeviceName, optionName string) bool {
-//     device, ok := MediaCarrierRegistry.Devices[deviceName]
-//     if !ok {
-//         return false
-//     }
-//     _, found := device.Options[optionName]
-//     return found
-// }
 
 func ValidateInput(rawDevice string, rawOption string) (MediaCarrierDeviceName, error) {
 	device, found := GetMediaCarrierDeviceName(rawDevice)

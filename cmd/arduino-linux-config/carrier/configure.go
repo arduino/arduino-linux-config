@@ -115,6 +115,7 @@ func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarr
 	}
 
 	// if at least one device is configured we activate the overlay for the media carrier
+	// remove once implemented in the configuration file
 	if len(dtboFiles) > 0 {
 		dtboFiles = append(dtboFiles, filepath.Join(cfg.OverlaysDir().String(), "qrb2210-arduino-imola-carrier-media.dtbo"))
 	}
