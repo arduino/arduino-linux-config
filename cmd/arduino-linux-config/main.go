@@ -35,8 +35,7 @@ func run() error {
 			}
 			slog.SetLogLoggerLevel(logLevel)
 		},
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		//SilenceErrors: true,
 	}
 
 	rootCmd.PersistentFlags().StringVar(&format, "format", "text", "Output format (text, json)")
@@ -56,8 +55,6 @@ func run() error {
 }
 
 func main() {
-	// TODO: Should this run as root?
-
 	if err := run(); err != nil {
 		feedback.FatalError(err, 1)
 	}
