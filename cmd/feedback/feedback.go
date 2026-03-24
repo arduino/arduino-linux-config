@@ -62,7 +62,7 @@ func init() {
 	reset()
 }
 
-// reset resets the feedback package to its initial state, useful for unit testing
+// reset resets the feedback package to its initial status, useful for unit testing
 func reset() {
 	stdOut = os.Stdout
 	stdErr = os.Stderr

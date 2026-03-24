@@ -1,0 +1,11 @@
+#!bin/sh
+
+set -e
+
+mkdir -p /var/lib/arduino-linux-config/status > /dev/null 2>&1 || true
+
+# TODO
+# Save the DTB state used to restore defaults.
+# The base DTB provided in the package is incomplete (missing overlays)
+# DTB should be migrated to the linux-kernel package.
+# cp /boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb /boot/efi/dtb/qcom/qrb2210-arduino-imola-factory.dtb 
