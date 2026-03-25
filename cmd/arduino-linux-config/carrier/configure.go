@@ -8,7 +8,6 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
-	"github.com/arduino/go-paths-helper"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +46,6 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
 func configureHandler(ctx context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
-
 	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -64,8 +62,7 @@ func configureHandler(ctx context.Context, cfg config.Configuration, carrierName
 		)
 	}
 
-	// TODO Remove the carrier type or find a generic solution
-	registry.StatusUpdate(cfg, carrierName, nil) //nextDevicesConfiguration)
+	registry.StatusUpdate(cfg, carrierName, nextDevicesConfiguration)
 
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
 	current, next := registry.GetStatus(cfg, carrierName)
@@ -76,8 +73,9 @@ func configureHandler(ctx context.Context, cfg config.Configuration, carrierName
 	})
 }
 
-func parseArguments(carrierName string, args []string) (map[string]string, error) {
-	parsedUserSelection := make(map[string]string)
+// TODO This doesn't work: camera1=type1-4lane,display=8-dsi-touch-a
+func parseArguments(carrierName string, args []string) (map[registry.MediaCarrierDeviceName]string, error) {
+	parsedUserSelection := make(map[registry.MediaCarrierDeviceName]string)
 	for _, arg := range args {
 		arg = strings.TrimRight(arg, ",")
 
@@ -94,7 +92,7 @@ func parseArguments(carrierName string, args []string) (map[string]string, error
 			return nil, err
 		}
 
-		parsedUserSelection[deviceName] = optionName
+		parsedUserSelection[registry.MediaCarrierDeviceName(deviceName)] = optionName
 	}
 
 	return parsedUserSelection, nil
@@ -107,7 +105,7 @@ func parseArguments(carrierName string, args []string) (map[string]string, error
 // collect the "incompatibleDtbo" to a list
 // if the intersection between dtboFiles collection and incompatibleDtbo collection is not null the configuration can't be done
 // else remove the incompatibleDtbo list from the dtboFiles and create the final dtbo collection.
-func collectDtboFiles(cfg config.Configuration, selection map[string]string) []string {
+func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarrierDeviceName]string) []string {
 	var dtboFiles []string
 	fmt.Printf("%v %s", cfg, selection)
 
@@ -115,24 +113,26 @@ func collectDtboFiles(cfg config.Configuration, selection map[string]string) []s
 	return dtboFiles
 }
 
-func applyOverlays(ctx context.Context, cfg config.Configuration, dtboFiles []string) error {
+func applyOverlays(_ context.Context, _ config.Configuration, dtboFiles []string) error {
+	fmt.Printf("TODO Executing fdtoverlay\n")
+
 	if len(dtboFiles) == 0 {
 		return nil
 	}
 
-	args := append([]string{"fdtoverlay", "-i", cfg.SystemDTB().String(), "-o", cfg.SystemDTB().String()}, dtboFiles...)
+	// args := append([]string{"fdtoverlay", "-i", cfg.SystemDTB().String(), "-o", cfg.SystemDTB().String()}, dtboFiles...)
 
-	proc, err := paths.NewProcess(nil, args...)
-	if err != nil {
-		return fmt.Errorf("failed to create process: %w", err)
-	}
+	// proc, err := paths.NewProcess(nil, args...)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to create process: %w", err)
+	// }
 
-	stdout, stderr, err := proc.RunAndCaptureOutput(ctx)
-	if err != nil {
-		return fmt.Errorf("fdtoverlay failed: %w\n%s", err, stderr)
-	}
-	if len(stdout) > 0 {
-		feedback.Print(string(stdout))
-	}
+	// stdout, stderr, err := proc.RunAndCaptureOutput(ctx)
+	// if err != nil {
+	// 	return fmt.Errorf("fdtoverlay failed: %w\n%s", err, stderr)
+	// }
+	// if len(stdout) > 0 {
+	// 	feedback.Print(string(stdout))
+	// }
 	return nil
 }

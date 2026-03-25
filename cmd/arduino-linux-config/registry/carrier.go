@@ -29,8 +29,6 @@ import (
 	"go.bug.st/f"
 )
 
-const DeviceOptionNone = "none"
-
 var (
 	GetCarriers = sync.OnceValue(func() *Carriers {
 		cfg, _ := config.NewConfigFromEnv()
@@ -38,16 +36,14 @@ var (
 	})
 )
 
-// UnoQ specific media carrier
 type MediaCarrierDeviceName string
 
 const (
+	None    MediaCarrierDeviceName = "none"
 	Camera1 MediaCarrierDeviceName = "camera1"
 	Camera2 MediaCarrierDeviceName = "camera2"
 	Display MediaCarrierDeviceName = "display"
 )
-
-var MediaCarrierDeviceList = []MediaCarrierDeviceName{Camera1, Camera2, Display}
 
 type Carriers struct {
 	Carriers []Carrier
@@ -60,8 +56,8 @@ type Carrier struct {
 
 // Device represents a configurable hardware device on a carrier
 type Device struct {
-	Name    MediaCarrierDeviceName `json:"name"`
-	Options []DeviceOption         `json:"options"`
+	Name    string         `json:"name"`
+	Options []DeviceOption `json:"options"`
 }
 
 // DeviceOption represents a configuration option for a device

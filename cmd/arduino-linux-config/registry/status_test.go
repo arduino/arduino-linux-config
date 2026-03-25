@@ -51,27 +51,26 @@ func TestUpdateStatusStructure(t *testing.T) {
 
 			startTime := time.Now().UTC().Truncate(time.Second)
 
-			updateStatusStructure(status, tt.statusUpdate)
+			updateStatusStructure(status, "media-carrier", tt.statusUpdate)
+			carrierDeviceLenght := len(GetCarrierDevices("media-carrier"))
+			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
-			if len(status.NextStatus.Devices) != len(MediaCarrierDeviceList) {
-				t.Errorf("got %d devices, want %d", len(status.NextStatus.Devices), len(MediaCarrierDeviceList))
-			}
-
-			if len(status.CurrentStatus.Devices) != 0 {
-				t.Errorf("got %d devices, want %d", len(status.CurrentStatus.Devices), len(MediaCarrierDeviceList))
-			}
-
-			for _, name := range MediaCarrierDeviceList {
-				info, exists := status.NextStatus.Devices[name]
-				if !exists {
-					t.Fatalf("device %s missing from wanted status", name)
-				}
-				if info.Option != tt.wantResult[name] {
-					t.Errorf("device %s: got option %s, want %s", name, info.Option, tt.wantResult[name])
+				if len(status.CurrentStatus.Devices) != 0 {
+					t.Errorf("got %d devices, want %d", len(status.CurrentStatus.Devices), carrierDeviceLenght)
 				}
 
-				if info.CreatedAt.Before(startTime) {
-					t.Errorf("device %s: timestamp %v is too old", name, info.CreatedAt)
+				for _, name := range GetCarrierDevices("media-carrier") {
+					info, exists := status.NextStatus.Devices[MediaCarrierDeviceName(name)]
+					if !exists {
+						t.Fatalf("device %s missing from wanted status", name)
+					}
+					if info.Option != tt.wantResult[MediaCarrierDeviceName(name)] {
+						t.Errorf("device %s: got option %s, want %s", name, info.Option, tt.wantResult[MediaCarrierDeviceName(name)])
+					}
+
+					if info.CreatedAt.Before(startTime) {
+						t.Errorf("device %s: timestamp %v is too old", name, info.CreatedAt)
+					}
 				}
 			}
 		})
@@ -138,7 +137,7 @@ func TestGetStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			current, next := getStatusStructure(tt.initialStatus, bootTime)
+			current, next := getStatusStructure(tt.initialStatus, "media-carrier", bootTime)
 
 			// Validate Current Slice
 			for i, want := range tt.expectedCurrent {

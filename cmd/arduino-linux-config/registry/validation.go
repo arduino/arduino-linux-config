@@ -58,6 +58,19 @@ func GetDevices(carriers Carriers, carrierName string) ([]Device, bool) {
 	return nil, false
 }
 
+func GetCarrierDevices(carrierName string) []MediaCarrierDeviceName {
+	for _, c := range GetCarriers().Carriers {
+		if c.Name == carrierName {
+			result := make([]MediaCarrierDeviceName, 0, len(c.Devices))
+			for _, device := range c.Devices {
+				result = append(result, MediaCarrierDeviceName(device.Name))
+			}
+			return result
+		}
+	}
+	return []MediaCarrierDeviceName{}
+}
+
 func GetDevice(carriers Carriers, carrierName string, deviceName string) (*Device, bool) {
 	for _, c := range carriers.Carriers {
 		if c.Name == carrierName {

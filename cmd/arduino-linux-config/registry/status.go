@@ -40,7 +40,7 @@ func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map
 		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
 	}
 
-	updateStatusStructure(status, statusUpdate)
+	updateStatusStructure(status, carrierName, statusUpdate)
 	if err := saveStatusFile(getStatusFile(cfg, carrierName), *status); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to save status file: %v", err), feedback.ErrGeneric)
 	}
@@ -57,39 +57,39 @@ func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}
 
-	return getStatusStructure(status, bootTime)
+	return getStatusStructure(status, carrierName, bootTime)
 }
 
-func getStatusStructure(status *StatusFile, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
+func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
 	current := []StatusDevice{}
 	next := []StatusDevice{}
-	for _, deviceName := range MediaCarrierDeviceList {
+	for _, deviceName := range GetCarrierDevices(carrierName) {
 
 		// parse next, if they happened before the boot, move in actual
-		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
-			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
-			status.NextStatus.Devices[deviceName] = StatusInfo{}
+		if status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)].CreatedAt.Before(bootTime) {
+			status.CurrentStatus.Devices[MediaCarrierDeviceName(deviceName)] = status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)]
+			status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)] = StatusInfo{}
 		}
-		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
-		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option)})
+		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[MediaCarrierDeviceName(deviceName)].Option)})
+		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)].Option)})
 	}
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, statusUpdate map[MediaCarrierDeviceName]string) {
-	for _, deviceName := range MediaCarrierDeviceList {
+func updateStatusStructure(status *StatusFile, carrierName string, statusUpdate map[MediaCarrierDeviceName]string) {
+	for _, deviceName := range GetCarrierDevices(carrierName) {
 		newInfo := StatusInfo{
-			Option:    getOrDefault(statusUpdate[deviceName]),
+			Option:    getOrDefault(statusUpdate[MediaCarrierDeviceName(deviceName)]),
 			CreatedAt: time.Now().UTC(),
 		}
-		status.NextStatus.Devices[deviceName] = newInfo
+		status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)] = newInfo
 	}
 	fmt.Printf("statusUpdate %v+\n", statusUpdate)
 }
 
 func getOrDefault(option string) string {
 	if option == "" {
-		option = DeviceOptionNone
+		option = string(None)
 	}
 	return option
 }
