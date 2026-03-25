@@ -3,6 +3,7 @@ package carrier
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
@@ -51,7 +52,13 @@ func configureHandler(ctx context.Context, cfg config.Configuration, carrierName
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	overlayList := collectDtboFiles(cfg, nextDevicesConfiguration)
+	overlayList, err := collectDtboFiles(carrierName, nextDevicesConfiguration)
+	if err != nil {
+		feedback.Fatal(
+			fmt.Sprintf("incompatible configuration: %v", err),
+			feedback.ErrGeneric,
+		)
+	}
 
 	reset(cfg, carrierName)
 
@@ -77,7 +84,7 @@ func parseArguments(carrierName string, args []string) (map[registry.MediaCarrie
 	parsedUserSelection := make(map[registry.MediaCarrierDeviceName]string)
 
 	for _, arg := range args {
-		// 1. Split by comma first to handle "key=val,key2=val2"
+		// Handle "key=val,key2=val2"
 		pairs := strings.Split(arg, ",")
 
 		for _, pair := range pairs {
@@ -86,7 +93,7 @@ func parseArguments(carrierName string, args []string) (map[registry.MediaCarrie
 				continue
 			}
 
-			// 2. Now split the individual pair by "="
+			// Split the individual pair by "="
 			parts := strings.SplitN(pair, "=", 2)
 			if len(parts) != 2 {
 				return nil, fmt.Errorf("invalid argument %q: expected device=option format", pair)
@@ -107,23 +114,35 @@ func parseArguments(carrierName string, args []string) (map[registry.MediaCarrie
 	return parsedUserSelection, nil
 }
 
-// TODO: implement the dtbo collect logic
-// For each device:
-// start from the dtbo of the "none" configuration
-// collect the "dtboFiles" to a list
-// collect the "incompatibleDtbo" to a list
-// if the intersection between dtboFiles collection and incompatibleDtbo collection is not null the configuration can't be done
-// else remove the incompatibleDtbo list from the dtboFiles and create the final dtbo collection.
-func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarrierDeviceName]string) []string {
-	var dtboFiles []string
-	fmt.Printf("%v %s", cfg, selection)
+func collectDtboFiles(carrierName string, userSelection map[registry.MediaCarrierDeviceName]string) ([]string, error) {
+	baseFiles := make([]string, 0)
+	dtboFiles := make([]string, 0)
 
-	// TODO
-	return dtboFiles
+	for deviceName, optionName := range userSelection {
+		device, _ := registry.GetDevice(*registry.GetCarriers(), carrierName, string(deviceName))
+		for _, option := range device.Options {
+			if option.Name == string(registry.None) {
+				baseFiles = append(baseFiles, option.DtboFiles...)
+			}
+			if option.Name == optionName {
+				dtboFiles = append(dtboFiles, option.DtboFiles...)
+				for _, incompatible := range option.IncompatibleDtbo {
+					if slices.Contains(dtboFiles, incompatible) {
+						return []string{}, fmt.Errorf("incompatible configuration")
+					}
+				}
+				break
+			}
+		}
+	}
+
+	// add base and remove duplicated values
+	dtboFiles = append(dtboFiles, baseFiles...)
+	return uniqueStrings(dtboFiles), nil
 }
 
 func applyOverlays(_ context.Context, _ config.Configuration, dtboFiles []string) error {
-	fmt.Printf("TODO Executing fdtoverlay\n")
+	fmt.Printf("TODO Executing fdtoverlay %v\n", dtboFiles)
 
 	if len(dtboFiles) == 0 {
 		return nil
@@ -144,4 +163,17 @@ func applyOverlays(_ context.Context, _ config.Configuration, dtboFiles []string
 	// 	feedback.Print(string(stdout))
 	// }
 	return nil
+}
+
+func uniqueStrings(input []string) []string {
+	seen := make(map[string]struct{})
+	result := make([]string, 0, len(input))
+
+	for _, val := range input {
+		if _, ok := seen[val]; !ok {
+			seen[val] = struct{}{}
+			result = append(result, val)
+		}
+	}
+	return result
 }

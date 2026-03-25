@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// TODO cleanup, change name, refactor
 func ValidateInput(carrierName string, rawDevice string, rawOption string) (bool, error) {
 	devices, exists := GetDevices(*GetCarriers(), carrierName)
 	if !exists {

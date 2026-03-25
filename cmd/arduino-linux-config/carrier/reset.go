@@ -46,9 +46,23 @@ func resetHandler(cfg config.Configuration, _ context.Context, carrierName strin
 }
 
 func reset(cfg config.Configuration, carrierName string) {
-	// TODO for each device belonging to the carrier
-	// get the overlay list of "none" and call applyOverlay()
-	fmt.Printf("TODO Get overlay and apply for %s\n", carrierName)
+	baseFiles := make([]string, 0)
+
+	devices, _ := registry.GetDevices(*registry.GetCarriers(), carrierName)
+	for _, device := range devices {
+		for _, option := range device.Options {
+			if option.Name == string(registry.None) {
+				baseFiles = append(baseFiles, option.DtboFiles...)
+			}
+		}
+	}
+
+	if err := applyOverlays(context.Background(), cfg, uniqueStrings(baseFiles)); err != nil {
+		feedback.Fatal(
+			fmt.Sprintf("failed to apply overlays (carrier has been reset): %v", err),
+			feedback.ErrGeneric,
+		)
+	}
 
 	selection := make(map[registry.MediaCarrierDeviceName]string)
 	registry.StatusUpdate(cfg, carrierName, selection)
