@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
@@ -20,9 +19,20 @@ type CarrierStatus struct {
 
 func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "configure <carrier-name> [device=option...]",
+		Use:   "configure <carrier-name> <device=option...>",
 		Short: "Configure a carrier with the specified device options",
-		Args:  cobra.MinimumNArgs(1),
+
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 2 {
+				return fmt.Errorf("missing <carrier-name>\nUsage: arduino-linux-config carrier configure <carrier-name> <device=option...>")
+			}
+			if len(args) < 1 {
+				return fmt.Errorf("missing carrier configuration\nUsage: arduino-linux-config carrier configure <name>")
+			}
+			return nil
+		},
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			configureHandler(cmd.Context(), cfg, args[0], args[1:])
 		},
@@ -30,14 +40,13 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 }
 
 // Since a board reboot can occur asynchronously with the carrier configuration,
-// we must track both the current and desired statuses.
+// we must track both the current and next status.
 //
-// This is managed by creating a status file every time a device is congfigured.
-// The status file records the device name, the configured options, and a timestamp.
+// State management is handled via a status file updated on device configurations.
+// This file stores the device name, configuration options, and a metadata timestamp.
 //
-// At show time we check the last boot time.
-// Files with a timestamp before boot represent the current configuration.
-// Files with a timestamp after boot represent the pending (next) configuration.
+// Whenever a status request occurs, the system compares the last boot time against the configuration
+// timestamp to update the current and next states.
 func configureHandler(ctx context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
 
 	wantedDevicesList, err := parseArguments(carrierName, deviceArgs)
@@ -47,7 +56,8 @@ func configureHandler(ctx context.Context, cfg config.Configuration, carrierName
 
 	overlayList := collectDtboFiles(cfg, wantedDevicesList)
 
-	resetHandler(cfg, ctx, carrierName)
+	Reset(cfg)
+
 	if err := applyOverlays(cfg, ctx, overlayList); err != nil {
 		feedback.Fatal(
 			fmt.Sprintf("failed to apply overlays (carrier has been reset): %v", err),
@@ -57,9 +67,12 @@ func configureHandler(ctx context.Context, cfg config.Configuration, carrierName
 
 	registry.StatusUpdate(cfg, wantedDevicesList)
 
-	feedback.PrintResult(configureResult{
-		CarrierName: carrierName,
-		Applied:     wantedDevicesList,
+	feedback.PrintResult(cmdResult{CarrierName: carrierName})
+	current, next := registry.GetStatus(cfg)
+	feedback.PrintResult(showResult{
+		CarrierName:    carrierName,
+		CurrentDevices: current,
+		NextDevices:    next,
 	})
 }
 
@@ -142,28 +155,4 @@ func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []st
 		feedback.Print(string(stdout))
 	}
 	return nil
-}
-
-type configureResult struct {
-	CarrierName string                                     `json:"carrier_name"`
-	Applied     map[registry.MediaCarrierDeviceName]string `json:"applied"`
-}
-
-func (r configureResult) String() string {
-	var sb strings.Builder
-	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(&sb, "Carrier %s configured (will be applied on next boot):\n", r.CarrierName)
-	for _, deviceName := range registry.MediaCarrierDeviceList {
-		option, ok := r.Applied[deviceName]
-		if !ok {
-			option = registry.DeviceOptionNone
-		}
-		fmt.Fprintf(w, "  %s:\t%s\n", deviceName, option)
-	}
-	w.Flush()
-	return sb.String()
-}
-
-func (r configureResult) Data() interface{} {
-	return r
 }

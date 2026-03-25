@@ -15,10 +15,16 @@ func newResetCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "reset <carrier-name>",
 		Short: "Reset a carrier and restore the base DTB",
-		Args:  cobra.ExactArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier reset <carrier-name>")
+			}
+			return nil
+		},
+		SilenceUsage: true,
+
 		Run: func(cmd *cobra.Command, args []string) {
 			resetHandler(cfg, cmd.Context(), args[0])
-			feedback.PrintResult(resetResult{CarrierName: args[0]})
 		},
 	}
 }
@@ -28,15 +34,22 @@ func resetHandler(cfg config.Configuration, _ context.Context, carrierName strin
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
+	Reset(cfg)
+
+	feedback.PrintResult(cmdResult{CarrierName: carrierName})
+	current, next := registry.GetStatus(cfg)
+	feedback.PrintResult(showResult{
+		CarrierName:    carrierName,
+		CurrentDevices: current,
+		NextDevices:    next,
+	})
+}
+
+func Reset(cfg config.Configuration) {
 	if err := restoreFactoryDTB(cfg); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
-
 	selection := make(map[registry.MediaCarrierDeviceName]string)
-	for _, device := range registry.MediaCarrierDeviceList {
-		selection[device] = registry.DeviceOptionNone
-	}
-
 	registry.StatusUpdate(cfg, selection)
 }
 
@@ -55,14 +68,14 @@ func restoreFactoryDTB(cfg config.Configuration) error {
 	return nil
 }
 
-type resetResult struct {
+type cmdResult struct {
 	CarrierName string `json:"carrier_name"`
 }
 
-func (r resetResult) String() string {
+func (r cmdResult) String() string {
 	return fmt.Sprintf("Carrier %s reset (will take effect on next boot)\n", r.CarrierName)
 }
 
-func (r resetResult) Data() interface{} {
+func (r cmdResult) Data() interface{} {
 	return r
 }

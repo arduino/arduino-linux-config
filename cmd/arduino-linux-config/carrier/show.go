@@ -16,7 +16,14 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show <carrier-name>",
 		Short: "Show the current configuration for a carrier",
-		Args:  cobra.ExactArgs(1),
+
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier configure <name>")
+			}
+			return nil
+		},
+		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			showHandler(cmd.Context(), cfg, args[0])
 		},

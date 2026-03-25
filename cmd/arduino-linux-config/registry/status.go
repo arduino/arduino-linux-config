@@ -146,7 +146,8 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 		return fmt.Errorf("marshal error: %w", err)
 	}
 
-	err = os.WriteFile(statusFile.String(), data, 0600)
+	// nolint:gosec // G306: Status file must be readable
+	err = os.WriteFile(statusFile.String(), data, 0644)
 	if err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}
