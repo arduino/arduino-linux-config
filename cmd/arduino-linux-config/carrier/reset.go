@@ -3,7 +3,6 @@ package carrier
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
@@ -30,14 +29,15 @@ func newResetCmd(cfg config.Configuration) *cobra.Command {
 }
 
 func resetHandler(cfg config.Configuration, _ context.Context, carrierName string) {
-	if carrierName != registry.MediaCarrierRegistry.Name {
+	if !registry.CarrierExists(carrierName) {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	Reset(cfg)
+	reset(cfg, carrierName)
 
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next := registry.GetStatus(cfg)
+
+	current, next := registry.GetStatus(cfg, carrierName)
 	feedback.PrintResult(showResult{
 		CarrierName:    carrierName,
 		CurrentDevices: current,
@@ -45,27 +45,13 @@ func resetHandler(cfg config.Configuration, _ context.Context, carrierName strin
 	})
 }
 
-func Reset(cfg config.Configuration) {
-	if err := restoreFactoryDTB(cfg); err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-	selection := make(map[registry.MediaCarrierDeviceName]string)
-	registry.StatusUpdate(cfg, selection)
-}
+func reset(cfg config.Configuration, carrierName string) {
+	// TODO for each device belonging to the carrier
+	// get the overlay list of "none" and call applyOverlay()
+	fmt.Printf("TODO Get overlay and apply for %s\n", carrierName)
 
-func restoreFactoryDTB(cfg config.Configuration) error {
-	tmp := cfg.ActualDTB().String() + ".tmp"
-	data, err := os.ReadFile(cfg.FactoryDTB().String())
-	if err != nil {
-		return fmt.Errorf("failed to read base DTB: %w", err)
-	}
-	if err := os.WriteFile(tmp, data, 0600); err != nil {
-		return fmt.Errorf("failed to write DTB: %w", err)
-	}
-	if err := os.Rename(tmp, cfg.ActualDTB().String()); err != nil {
-		return fmt.Errorf("failed to rename DTB: %w", err)
-	}
-	return nil
+	selection := make(map[registry.MediaCarrierDeviceName]string)
+	registry.StatusUpdate(cfg, carrierName, selection)
 }
 
 type cmdResult struct {

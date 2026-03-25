@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -33,22 +34,22 @@ type StatusDevice struct {
 	Option string `json:"option"`
 }
 
-func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceName]string) {
-	status, err := loadStatusFile(cfg.StatusFile())
+func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map[MediaCarrierDeviceName]string) {
+	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
 	}
 
 	updateStatusStructure(status, statusUpdate)
-	if err := saveStatusFile(cfg.StatusFile(), *status); err != nil {
+	if err := saveStatusFile(getStatusFile(cfg, carrierName), *status); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to save status file: %v", err), feedback.ErrGeneric)
 	}
 }
 
-func GetStatus(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
-	status, err := loadStatusFile(cfg.StatusFile())
+func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []StatusDevice) {
+	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
 	}
 
 	bootTime, err := getBootTime()
@@ -83,6 +84,7 @@ func updateStatusStructure(status *StatusFile, statusUpdate map[MediaCarrierDevi
 		}
 		status.NextStatus.Devices[deviceName] = newInfo
 	}
+	fmt.Printf("statusUpdate %v+\n", statusUpdate)
 }
 
 func getOrDefault(option string) string {
@@ -111,6 +113,11 @@ func getBootTime() (time.Time, error) {
 	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
 
 	return bootTime, nil
+}
+
+func getStatusFile(cfg config.Configuration, carrierName string) *paths.Path {
+	filePath := filepath.Join(cfg.StatusDir().String(), carrierName+".json")
+	return paths.New(filePath)
 }
 
 func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {

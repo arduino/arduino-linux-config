@@ -3,7 +3,6 @@ package carrier
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
@@ -40,35 +39,36 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 }
 
 // Since a board reboot can occur asynchronously with the carrier configuration,
-// we must track both the current and next status.
+// we must track both the current and next states.
 //
 // State management is handled via a status file updated on device configurations.
 // This file stores the device name, configuration options, and a metadata timestamp.
 //
-// Whenever a status request occurs, the system compares the last boot time against the configuration
-// timestamp to update the current and next states.
+// When a status request occurs, the system compares the last boot time with
+// the configuration timestamp to update the current and next states.
 func configureHandler(ctx context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
 
-	wantedDevicesList, err := parseArguments(carrierName, deviceArgs)
+	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	overlayList := collectDtboFiles(cfg, wantedDevicesList)
+	overlayList := collectDtboFiles(cfg, nextDevicesConfiguration)
 
-	Reset(cfg)
+	reset(cfg, carrierName)
 
-	if err := applyOverlays(cfg, ctx, overlayList); err != nil {
+	if err := applyOverlays(ctx, cfg, overlayList); err != nil {
 		feedback.Fatal(
 			fmt.Sprintf("failed to apply overlays (carrier has been reset): %v", err),
 			feedback.ErrGeneric,
 		)
 	}
 
-	registry.StatusUpdate(cfg, wantedDevicesList)
+	// TODO Remove the carrier type or find a generic solution
+	registry.StatusUpdate(cfg, carrierName, nil) //nextDevicesConfiguration)
 
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next := registry.GetStatus(cfg)
+	current, next := registry.GetStatus(cfg, carrierName)
 	feedback.PrintResult(showResult{
 		CarrierName:    carrierName,
 		CurrentDevices: current,
@@ -76,12 +76,8 @@ func configureHandler(ctx context.Context, cfg config.Configuration, carrierName
 	})
 }
 
-func parseArguments(carrierName string, args []string) (map[registry.MediaCarrierDeviceName]string, error) {
-	if carrierName != registry.MediaCarrierRegistry.Name {
-		return nil, fmt.Errorf("carrier %q not supported", carrierName)
-	}
-
-	selection := make(map[registry.MediaCarrierDeviceName]string)
+func parseArguments(carrierName string, args []string) (map[string]string, error) {
+	parsedUserSelection := make(map[string]string)
 	for _, arg := range args {
 		arg = strings.TrimRight(arg, ",")
 
@@ -93,60 +89,44 @@ func parseArguments(carrierName string, args []string) (map[registry.MediaCarrie
 		deviceName := parts[0]
 		optionName := parts[1]
 
-		mediaDeviceName, err := registry.ValidateInput(deviceName, optionName)
-		if err != nil {
+		isValid, err := registry.ValidateInput(carrierName, deviceName, optionName)
+		if !isValid {
 			return nil, err
 		}
 
-		selection[mediaDeviceName] = optionName
+		parsedUserSelection[deviceName] = optionName
 	}
 
-	return selection, nil
+	return parsedUserSelection, nil
 }
 
-func collectDtboFiles(cfg config.Configuration, selection map[registry.MediaCarrierDeviceName]string) []string {
+// TODO: implement the dtbo collect logic
+// For each device:
+// start from the dtbo of the "none" configuration
+// collect the "dtboFiles" to a list
+// collect the "incompatibleDtbo" to a list
+// if the intersection between dtboFiles collection and incompatibleDtbo collection is not null the configuration can't be done
+// else remove the incompatibleDtbo list from the dtboFiles and create the final dtbo collection.
+func collectDtboFiles(cfg config.Configuration, selection map[string]string) []string {
 	var dtboFiles []string
+	fmt.Printf("%v %s", cfg, selection)
 
-	for deviceName, optionName := range selection {
-		if optionName == registry.DeviceOptionNone || optionName == "" {
-			continue
-		}
-
-		for _, device := range registry.MediaCarrierRegistry.Devices {
-			if device.Name != deviceName {
-				continue
-			}
-			for _, opt := range device.Options {
-				if opt.Name == optionName {
-					if opt.DtboFile != "" {
-						dtboFiles = append(dtboFiles, filepath.Join(cfg.OverlaysDir().String(), opt.DtboFile))
-					}
-					break
-				}
-			}
-		}
-	}
-
-	// if at least one device is configured we activate the overlay for the media carrier
-	// remove once implemented in the configuration file
-	if len(dtboFiles) > 0 {
-		dtboFiles = append(dtboFiles, filepath.Join(cfg.OverlaysDir().String(), "qrb2210-arduino-imola-carrier-media.dtbo"))
-	}
-
+	// TODO
 	return dtboFiles
 }
 
-func applyOverlays(cfg config.Configuration, ctx context.Context, dtboFiles []string) error {
+func applyOverlays(ctx context.Context, cfg config.Configuration, dtboFiles []string) error {
 	if len(dtboFiles) == 0 {
 		return nil
 	}
 
-	args := append([]string{"fdtoverlay", "-i", cfg.FactoryDTB().String(), "-o", cfg.ActualDTB().String()}, dtboFiles...)
+	args := append([]string{"fdtoverlay", "-i", cfg.SystemDTB().String(), "-o", cfg.SystemDTB().String()}, dtboFiles...)
 
 	proc, err := paths.NewProcess(nil, args...)
 	if err != nil {
 		return fmt.Errorf("failed to create process: %w", err)
 	}
+
 	stdout, stderr, err := proc.RunAndCaptureOutput(ctx)
 	if err != nil {
 		return fmt.Errorf("fdtoverlay failed: %w\n%s", err, stderr)

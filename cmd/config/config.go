@@ -22,23 +22,20 @@ import (
 )
 
 type Configuration struct {
-	statusFile  *paths.Path
-	factoryDTB  *paths.Path
-	actualDTB   *paths.Path
-	overlaysDir *paths.Path
+	statusDir      *paths.Path
+	carriersConfig *paths.Path
+	systemDTB      *paths.Path
 }
 
 func NewConfigFromEnv() (Configuration, error) {
-	statusFile := paths.New("/var/lib/arduino-linux-config/status/status.json")
-	baseDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola-factory.dtb")
-	actualDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb")
-	overlaysDir := paths.New("/boot/efi/dtb/qcom/")
+	statusFile := paths.New("/var/lib/arduino-linux-config/status")
+	carriersConfig := paths.New("/var/lib/arduino-linux-config/configs")
+	systemDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb")
 
 	c := Configuration{
-		statusFile:  statusFile,
-		factoryDTB:  baseDTB,
-		actualDTB:   actualDTB,
-		overlaysDir: overlaysDir,
+		statusDir:      statusFile,
+		carriersConfig: carriersConfig,
+		systemDTB:      systemDTB,
 	}
 
 	if err := c.init(); err != nil {
@@ -49,27 +46,20 @@ func NewConfigFromEnv() (Configuration, error) {
 }
 
 func (c *Configuration) init() error {
-	if c.factoryDTB.NotExist() {
-		return fmt.Errorf("base DTB not found: %s", c.factoryDTB)
-	}
-	if c.overlaysDir.NotExist() {
-		return fmt.Errorf("overlays directory not found: %s", c.overlaysDir)
+	if c.carriersConfig.NotExist() {
+		return fmt.Errorf("carriers configuration directory not found: %s", c.carriersConfig)
 	}
 	return nil
 }
 
-func (c *Configuration) StatusFile() *paths.Path {
-	return c.statusFile
+func (c *Configuration) StatusDir() *paths.Path {
+	return c.statusDir
 }
 
-func (c *Configuration) FactoryDTB() *paths.Path {
-	return c.factoryDTB
+func (c *Configuration) CarriersConfig() *paths.Path {
+	return c.carriersConfig
 }
 
-func (c *Configuration) ActualDTB() *paths.Path {
-	return c.actualDTB
-}
-
-func (c *Configuration) OverlaysDir() *paths.Path {
-	return c.overlaysDir
+func (c *Configuration) SystemDTB() *paths.Path {
+	return c.systemDTB
 }

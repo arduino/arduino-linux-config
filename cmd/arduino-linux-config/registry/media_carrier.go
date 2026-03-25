@@ -1,11 +1,42 @@
+// This file is part of arduino-linux-config.
+//
+// Copyright 2025 ARDUINO SA (http://www.arduino.cc/)
+//
+// This software is released under the GNU General Public License version 3,
+// which covers the main part of arduino-linux-config.
+// The terms of this license can be found at:
+// https://www.gnu.org/licenses/gpl-3.0.en.html
+//
+// You can be released from the requirements of the above licenses by purchasing
+// a commercial license. Buying such a license is mandatory if you want to
+// modify or otherwise use the software for commercial activities involving the
+// Arduino software without disclosing the source code of your own applications.
+// To purchase a commercial license, send an email to license@arduino.cc.
+
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
-	"slices"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
+	"github.com/arduino/arduino-linux-config/cmd/config"
+	"github.com/arduino/go-paths-helper"
+	"go.bug.st/f"
 )
 
 const DeviceOptionNone = "none"
+
+var (
+	GetCarriers = sync.OnceValue(func() *Carriers {
+		cfg, _ := config.NewConfigFromEnv()
+		return f.Must(LoadConfigs(cfg.CarriersConfig()))
+	})
+)
 
 // UnoQ specific media carrier
 type MediaCarrierDeviceName string
@@ -18,91 +49,84 @@ const (
 
 var MediaCarrierDeviceList = []MediaCarrierDeviceName{Camera1, Camera2, Display}
 
-type MediaCarrier struct {
-	Name    string
-	Devices []Device
+type Carriers struct {
+	Carriers []Carrier
 }
 
-// Device represents a configurable hardware device on a carrier.
+type Carrier struct {
+	Name    string   `json:"name"`
+	Devices []Device `json:"devices"`
+}
+
+// Device represents a configurable hardware device on a carrier
 type Device struct {
-	Name    MediaCarrierDeviceName
-	Options []DeviceOption
+	Name    MediaCarrierDeviceName `json:"name"`
+	Options []DeviceOption         `json:"options"`
 }
 
+// DeviceOption represents a configuration option for a device
 type DeviceOption struct {
-	Name     string
-	DtboFile string
+	Name             string   `json:"name"`
+	DtboFiles        []string `json:"dtboFiles"`
+	IncompatibleDtbo []string `json:"incompatibleDtbo,omitempty"`
 }
 
-// TODO
-// We should read the media-carrier from a configuration file
-// media-carrier.json
-// To collect all DTBOs files:
-// 1. For each option we have:DtboFiles, CompatibleDtbo, IncompatibleDtbo
-// 2. if CompatibleDtbo and IncompatibleDtbo intersectios is not null: ERROR, configuration now allowed
-// 3. Add to the DTBOs collection all add DtboFiles and CompatibleDtbo, then remove IncompatibleDtbo
-var MediaCarrierRegistry = MediaCarrier{
-	Name: "media-carrier",
-	Devices: []Device{
-		{
-			Name: Camera1,
-			Options: []DeviceOption{
-				{Name: "none", DtboFile: ""},
-				{Name: "type1-2lane", DtboFile: "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo"},
-				{Name: "type1-4lane", DtboFile: "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo"},
-			},
-		},
-		{
-			Name: Camera2,
-			Options: []DeviceOption{
-				{Name: "none", DtboFile: ""},
-				{Name: "type1-2lane", DtboFile: "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo"},
-				{Name: "type1-4lane", DtboFile: "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo"},
-			},
-		},
-		{
-			Name: Display,
-			Options: []DeviceOption{
-				{Name: "none", DtboFile: ""},
-				{Name: "8-dsi-touch-a", DtboFile: "qrb2210-arduino-imola-carrier-media-panel-8in-touch-a-dsi.dtbo"},
-			},
-		},
-	},
+// used to read the json
+type deviceWrapper struct {
+	Devices []Device `json:"devices"`
 }
 
-func GetMediaCarrierDeviceName(deviceName string) (MediaCarrierDeviceName, bool) {
-	device := MediaCarrierDeviceName(deviceName)
-
-	if slices.Contains(MediaCarrierDeviceList, device) {
-		return device, true
+// TODO Rename filename to carrier generic
+// LoadConfigs scans the config directory and populates the Carriers struct
+func LoadConfigs(configPath *paths.Path) (*Carriers, error) {
+	carriers := &Carriers{
+		Carriers: make([]Carrier, 0),
 	}
 
-	return "", false
-}
+	entries, err := os.ReadDir(configPath.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config dir: %w", err)
+	}
 
-func IsOptionValid(deviceName MediaCarrierDeviceName, optionName string) bool {
-	for _, device := range MediaCarrierRegistry.Devices {
-		if device.Name != deviceName {
+	for _, entry := range entries {
+		// skip non-JSON
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
-		for _, option := range device.Options {
-			if optionName == option.Name {
-				return true
-			}
+
+		fullPath := filepath.Join(configPath.String(), entry.Name())
+
+		devices, err := ReadCarrierConfig(fullPath)
+
+		if err != nil {
+			slog.Warn("Warning: skipping invalid config", slog.String("filename", entry.Name()))
+			continue
 		}
+
+		carrier := Carrier{
+			Name:    strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())),
+			Devices: devices,
+		}
+		carriers.Carriers = append(carriers.Carriers, carrier)
 	}
-	return false
+
+	slog.Info("Loaded configuration files", slog.Int("carriers", len(carriers.Carriers)))
+	return carriers, nil
 }
 
-func ValidateInput(rawDevice string, rawOption string) (MediaCarrierDeviceName, error) {
-	device, found := GetMediaCarrierDeviceName(rawDevice)
-	if !found {
-		return "", fmt.Errorf("unknown device: %q", rawDevice)
+func ReadCarrierConfig(filePath string) ([]Device, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("read file error: %w", err)
 	}
 
-	if !IsOptionValid(device, rawOption) {
-		return "", fmt.Errorf("device %q does not support option %q", device, rawOption)
+	var wrapper deviceWrapper
+	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return nil, fmt.Errorf("unmarshal error: %w", err)
 	}
 
-	return device, nil
+	if wrapper.Devices == nil {
+		return nil, fmt.Errorf("no 'devices' key found in JSON or tag mismatch")
+	}
+	return wrapper.Devices, nil
 }

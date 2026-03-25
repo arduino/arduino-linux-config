@@ -35,7 +35,6 @@ func run() error {
 			}
 			slog.SetLogLoggerLevel(logLevel)
 		},
-		//SilenceErrors: true,
 	}
 
 	rootCmd.PersistentFlags().StringVar(&format, "format", "text", "Output format (text, json)")

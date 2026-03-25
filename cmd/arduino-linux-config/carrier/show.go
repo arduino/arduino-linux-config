@@ -30,12 +30,13 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 	}
 }
 
+// TODO fix Contexts, for all the project
 func showHandler(_ context.Context, cfg config.Configuration, carrierName string) {
-	if carrierName != registry.MediaCarrierRegistry.Name {
-		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
+	if !registry.CarrierExists(carrierName) {
+		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	current, next := registry.GetStatus(cfg)
+	current, next := registry.GetStatus(cfg, carrierName)
 
 	feedback.PrintResult(showResult{
 		CarrierName:    carrierName,
@@ -65,17 +66,12 @@ func (r showResult) String() string {
 		for _, deviceName := range registry.MediaCarrierDeviceList {
 			if device, found := hasDevice(r.NextDevices, deviceName); found {
 				nextMap[deviceName] = device.Option
-			} else {
-				nextMap[deviceName] = registry.DeviceOptionNone
 			}
 		}
 	}
 
 	for _, deviceName := range registry.MediaCarrierDeviceList {
-		c, found := hasDevice(r.CurrentDevices, deviceName)
-		if !found {
-			c = registry.StatusDevice{Device: string(deviceName), Option: registry.DeviceOptionNone}
-		}
+		c, _ := hasDevice(r.CurrentDevices, deviceName)
 
 		if len(r.NextDevices) > 0 {
 			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.MediaCarrierDeviceName(c.Device)])

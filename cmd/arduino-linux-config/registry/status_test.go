@@ -186,9 +186,10 @@ func TestLoadStatusFile(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		carrierName := "media-carrier"
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
-			filePath := filepath.Join(tmpDir, "status.json")
+			filePath := filepath.Join(tmpDir, carrierName+".json")
 			p := paths.New(filePath)
 
 			if tt.shouldExist {
