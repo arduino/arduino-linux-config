@@ -84,7 +84,6 @@ func updateStatusStructure(status *StatusFile, carrierName string, statusUpdate 
 		}
 		status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)] = newInfo
 	}
-	fmt.Printf("statusUpdate %v+\n", statusUpdate)
 }
 
 func getOrDefault(option string) string {

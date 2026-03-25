@@ -73,26 +73,35 @@ func configureHandler(ctx context.Context, cfg config.Configuration, carrierName
 	})
 }
 
-// TODO This doesn't work: camera1=type1-4lane,display=8-dsi-touch-a
 func parseArguments(carrierName string, args []string) (map[registry.MediaCarrierDeviceName]string, error) {
 	parsedUserSelection := make(map[registry.MediaCarrierDeviceName]string)
+
 	for _, arg := range args {
-		arg = strings.TrimRight(arg, ",")
+		// 1. Split by comma first to handle "key=val,key2=val2"
+		pairs := strings.Split(arg, ",")
 
-		parts := strings.SplitN(arg, "=", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid argument %q: expected device=option format", arg)
+		for _, pair := range pairs {
+			pair = strings.TrimSpace(pair)
+			if pair == "" {
+				continue
+			}
+
+			// 2. Now split the individual pair by "="
+			parts := strings.SplitN(pair, "=", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("invalid argument %q: expected device=option format", pair)
+			}
+
+			deviceName := parts[0]
+			optionName := parts[1]
+
+			isValid, err := registry.ValidateInput(carrierName, deviceName, optionName)
+			if !isValid {
+				return nil, err
+			}
+
+			parsedUserSelection[registry.MediaCarrierDeviceName(deviceName)] = optionName
 		}
-
-		deviceName := parts[0]
-		optionName := parts[1]
-
-		isValid, err := registry.ValidateInput(carrierName, deviceName, optionName)
-		if !isValid {
-			return nil, err
-		}
-
-		parsedUserSelection[registry.MediaCarrierDeviceName(deviceName)] = optionName
 	}
 
 	return parsedUserSelection, nil

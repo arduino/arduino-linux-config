@@ -72,7 +72,6 @@ type deviceWrapper struct {
 	Devices []Device `json:"devices"`
 }
 
-// TODO Rename filename to carrier generic
 // LoadConfigs scans the config directory and populates the Carriers struct
 func LoadConfigs(configPath *paths.Path) (*Carriers, error) {
 	carriers := &Carriers{
