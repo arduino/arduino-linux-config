@@ -50,11 +50,6 @@ type showResult struct {
 }
 
 func (r showResult) String() string {
-	// TODO Check if this is still valid
-	if len(r.CurrentDevices) == 0 && len(r.NextDevices) == 0 {
-		return fmt.Sprintf("Media carrier %s not yet configured\n", r.CarrierName)
-	}
-
 	var sb strings.Builder
 	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(&sb, "%s\n", r.CarrierName)
