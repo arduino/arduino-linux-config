@@ -1,7 +1,6 @@
 package carrier
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -33,7 +32,7 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			configureHandler(cmd.Context(), cfg, args[0], args[1:])
+			configureHandler(cfg, args[0], args[1:])
 		},
 	}
 }
@@ -46,7 +45,7 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func configureHandler(_ context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
+func configureHandler(cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)

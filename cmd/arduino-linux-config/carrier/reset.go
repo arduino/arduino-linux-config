@@ -1,7 +1,6 @@
 package carrier
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
@@ -23,12 +22,12 @@ func newResetCmd(cfg config.Configuration) *cobra.Command {
 		SilenceUsage: true,
 
 		Run: func(cmd *cobra.Command, args []string) {
-			resetHandler(cfg, cmd.Context(), args[0])
+			resetHandler(cfg, args[0])
 		},
 	}
 }
 
-func resetHandler(cfg config.Configuration, _ context.Context, carrierName string) {
+func resetHandler(cfg config.Configuration, carrierName string) {
 	if !registry.CarrierExists(carrierName) {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}

@@ -1,7 +1,6 @@
 package carrier
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"text/tabwriter"
@@ -16,12 +15,12 @@ func newListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "Lists the available carriers and devices for the current hardware",
 		Run: func(cmd *cobra.Command, args []string) {
-			listHandler(cmd.Context())
+			listHandler()
 		},
 	}
 }
 
-func listHandler(_ context.Context) {
+func listHandler() {
 	carriersResult := extractCarriersResult(*registry.GetCarriers())
 	feedback.PrintResult(carriersResult)
 }

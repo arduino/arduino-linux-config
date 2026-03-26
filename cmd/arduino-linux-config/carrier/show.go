@@ -1,7 +1,6 @@
 package carrier
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"text/tabwriter"
@@ -25,13 +24,12 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 		},
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			showHandler(cmd.Context(), cfg, args[0])
+			showHandler(cfg, args[0])
 		},
 	}
 }
 
-// TODO fix Contexts, for all the project
-func showHandler(_ context.Context, cfg config.Configuration, carrierName string) {
+func showHandler(cfg config.Configuration, carrierName string) {
 	if !registry.CarrierExists(carrierName) {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
