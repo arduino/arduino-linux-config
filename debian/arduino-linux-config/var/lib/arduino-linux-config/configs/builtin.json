@@ -1,7 +1,7 @@
 {
   "devices": [
     {
-      "name": "camera1",
+      "name": "camera0",
       "options": [
         {
           "name": "none",
@@ -32,7 +32,7 @@
       ]
     },
     {
-      "name": "camera2",
+      "name": "camera1",
       "options": [
         {
           "name": "none",
@@ -60,7 +60,7 @@
       ]
     },
     {
-      "name": "camera3",
+      "name": "camera2",
       "options": [
         {
           "name": "none",

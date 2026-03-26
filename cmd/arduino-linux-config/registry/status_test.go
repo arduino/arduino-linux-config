@@ -18,13 +18,13 @@ func TestUpdateStatusStructure(t *testing.T) {
 		{
 			name: "update all devices",
 			statusUpdate: map[MediaCarrierDeviceName]string{
-				Camera1: "cam1",
-				Camera2: "none",
+				Camera0: "cam1",
+				Camera1: "none",
 				Display: "display",
 			},
 			wantResult: map[MediaCarrierDeviceName]string{
-				Camera1: "cam1",
-				Camera2: "none",
+				Camera0: "cam1",
+				Camera1: "none",
 				Display: "display",
 			},
 		},
@@ -34,8 +34,8 @@ func TestUpdateStatusStructure(t *testing.T) {
 				Display: "display",
 			},
 			wantResult: map[MediaCarrierDeviceName]string{
+				Camera0: "none",
 				Camera1: "none",
-				Camera2: "none",
 				Display: "display",
 			},
 		},
@@ -95,19 +95,19 @@ func TestGetStatusStructure(t *testing.T) {
 				CurrentStatus: StatusCarrier{Devices: make(map[MediaCarrierDeviceName]StatusInfo)},
 				NextStatus: StatusCarrier{
 					Devices: map[MediaCarrierDeviceName]StatusInfo{
-						Camera1: {Option: "cam1", CreatedAt: beforeBoot},
+						Camera0: {Option: "cam1", CreatedAt: beforeBoot},
 						Display: {Option: "display", CreatedAt: afterBoot},
 					},
 				},
 			},
 			expectedCurrent: []StatusDevice{
-				{Device: string(Camera1), Option: "cam1"},
-				{Device: string(Camera2), Option: "none"},
+				{Device: string(Camera0), Option: "cam1"},
+				{Device: string(Camera1), Option: "none"},
 				{Device: string(Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
+				{Device: string(Camera0), Option: "none"},
 				{Device: string(Camera1), Option: "none"},
-				{Device: string(Camera2), Option: "none"},
 				{Device: string(Display), Option: "display"},
 			},
 		},
@@ -117,19 +117,19 @@ func TestGetStatusStructure(t *testing.T) {
 				CurrentStatus: StatusCarrier{Devices: make(map[MediaCarrierDeviceName]StatusInfo)},
 				NextStatus: StatusCarrier{
 					Devices: map[MediaCarrierDeviceName]StatusInfo{
-						Camera1: {Option: "cam1", CreatedAt: afterBoot},    // fresh
+						Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
 						Display: {Option: "display", CreatedAt: afterBoot}, // fresh
 					},
 				},
 			},
 			expectedCurrent: []StatusDevice{
+				{Device: string(Camera0), Option: "none"},
 				{Device: string(Camera1), Option: "none"},
-				{Device: string(Camera2), Option: "none"},
 				{Device: string(Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
-				{Device: string(Camera1), Option: "cam1"},
-				{Device: string(Camera2), Option: "none"},
+				{Device: string(Camera0), Option: "cam1"},
+				{Device: string(Camera1), Option: "none"},
 				{Device: string(Display), Option: "display"},
 			},
 		},
@@ -172,7 +172,7 @@ func TestLoadStatusFile(t *testing.T) {
 		{
 			name:          "Valid JSON file - returns parsed struct",
 			shouldExist:   true,
-			fileContent:   `{"CurrentStatus": {"Devices": {"Cam1": {"Option": "ON"}}}, "WantedStatus": {"Devices": {}}}`,
+			fileContent:   `{"CurrentStatus": {"Devices": {"Cam0": {"Option": "ON"}}}, "WantedStatus": {"Devices": {}}}`,
 			wantErr:       false,
 			checkContents: true,
 		},
@@ -217,8 +217,8 @@ func TestLoadStatusFile(t *testing.T) {
 
 			// 3. Verify Data Parsing
 			if tt.checkContents {
-				if _, ok := status.CurrentStatus.Devices["Cam1"]; !ok {
-					t.Error("Expected device 'Cam1' to be parsed from JSON")
+				if _, ok := status.CurrentStatus.Devices["Cam0"]; !ok {
+					t.Error("Expected device 'Cam0' to be parsed from JSON")
 				}
 			}
 		})

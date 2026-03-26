@@ -40,8 +40,8 @@ type MediaCarrierDeviceName string
 
 const (
 	None    MediaCarrierDeviceName = "none"
+	Camera0 MediaCarrierDeviceName = "camera0"
 	Camera1 MediaCarrierDeviceName = "camera1"
-	Camera2 MediaCarrierDeviceName = "camera2"
 	Display MediaCarrierDeviceName = "display"
 )
 
