@@ -95,8 +95,7 @@ func parseArguments(carrierName string, args []string) (map[registry.MediaCarrie
 			deviceName := parts[0]
 			optionName := parts[1]
 
-			isValid, err := registry.ValidateInput(carrierName, deviceName, optionName)
-			if !isValid {
+			if err := registry.ValidateDeviceOption(carrierName, deviceName, optionName); err != nil {
 				return nil, err
 			}
 

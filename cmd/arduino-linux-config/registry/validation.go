@@ -4,23 +4,22 @@ import (
 	"fmt"
 )
 
-// TODO cleanup, change name, refactor
-func ValidateInput(carrierName string, rawDevice string, rawOption string) (bool, error) {
+func ValidateDeviceOption(carrierName string, rawDevice string, rawOption string) error {
 	devices, exists := GetDevices(*GetCarriers(), carrierName)
 	if !exists {
-		return false, fmt.Errorf("carrier %q not supported", carrierName)
+		return fmt.Errorf("carrier %q not supported", carrierName)
 	}
 
 	device, exists := deviceExists(rawDevice, devices)
 	if !exists {
-		return false, fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
+		return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
 	}
 
 	if !isOptionValid(rawOption, device) {
-		return false, fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
+		return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
 	}
 
-	return true, nil
+	return nil
 }
 
 func CarrierExists(carrierName string) bool {
