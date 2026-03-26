@@ -66,12 +66,12 @@ func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Ti
 	for _, deviceName := range GetCarrierDevices(carrierName) {
 
 		// parse next, if they happened before the boot, move in actual
-		if status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)].CreatedAt.Before(bootTime) {
-			status.CurrentStatus.Devices[MediaCarrierDeviceName(deviceName)] = status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)]
-			status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)] = StatusInfo{}
+		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
+			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
+			status.NextStatus.Devices[deviceName] = StatusInfo{}
 		}
-		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[MediaCarrierDeviceName(deviceName)].Option)})
-		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)].Option)})
+		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
+		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option)})
 	}
 	return current, next
 }
@@ -79,10 +79,10 @@ func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Ti
 func updateStatusStructure(status *StatusFile, carrierName string, statusUpdate map[MediaCarrierDeviceName]string) {
 	for _, deviceName := range GetCarrierDevices(carrierName) {
 		newInfo := StatusInfo{
-			Option:    getOrDefault(statusUpdate[MediaCarrierDeviceName(deviceName)]),
+			Option:    getOrDefault(statusUpdate[deviceName]),
 			CreatedAt: time.Now().UTC(),
 		}
-		status.NextStatus.Devices[MediaCarrierDeviceName(deviceName)] = newInfo
+		status.NextStatus.Devices[deviceName] = newInfo
 	}
 }
 
@@ -152,6 +152,7 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 		return fmt.Errorf("marshal error: %w", err)
 	}
 
+	// nolint:gosec // G306: Status file must be readable
 	err = os.WriteFile(statusFile.String(), data, 0644)
 	if err != nil {
 		return fmt.Errorf("write error: %w", err)

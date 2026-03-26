@@ -46,7 +46,7 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func configureHandler(ctx context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
+func configureHandler(_ context.Context, cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -61,13 +61,7 @@ func configureHandler(ctx context.Context, cfg config.Configuration, carrierName
 	}
 
 	reset(cfg, carrierName)
-
-	if err := applyOverlays(ctx, cfg, overlayList); err != nil {
-		feedback.Fatal(
-			fmt.Sprintf("failed to apply overlays (carrier has been reset): %v", err),
-			feedback.ErrGeneric,
-		)
-	}
+	applyOverlays(overlayList)
 
 	registry.StatusUpdate(cfg, carrierName, nextDevicesConfiguration)
 
@@ -141,11 +135,9 @@ func collectDtboFiles(carrierName string, userSelection map[registry.MediaCarrie
 	return uniqueStrings(dtboFiles), nil
 }
 
-func applyOverlays(_ context.Context, _ config.Configuration, dtboFiles []string) error {
-	fmt.Printf("TODO Executing fdtoverlay %v\n", dtboFiles)
-
+func applyOverlays(dtboFiles []string) {
 	if len(dtboFiles) == 0 {
-		return nil
+		return
 	}
 
 	// args := append([]string{"fdtoverlay", "-i", cfg.SystemDTB().String(), "-o", cfg.SystemDTB().String()}, dtboFiles...)
@@ -162,7 +154,6 @@ func applyOverlays(_ context.Context, _ config.Configuration, dtboFiles []string
 	// if len(stdout) > 0 {
 	// 	feedback.Print(string(stdout))
 	// }
-	return nil
 }
 
 func uniqueStrings(input []string) []string {

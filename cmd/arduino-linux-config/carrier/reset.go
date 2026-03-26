@@ -57,12 +57,7 @@ func reset(cfg config.Configuration, carrierName string) {
 		}
 	}
 
-	if err := applyOverlays(context.Background(), cfg, uniqueStrings(baseFiles)); err != nil {
-		feedback.Fatal(
-			fmt.Sprintf("failed to apply overlays (carrier has been reset): %v", err),
-			feedback.ErrGeneric,
-		)
-	}
+	applyOverlays(uniqueStrings(baseFiles))
 
 	selection := make(map[registry.MediaCarrierDeviceName]string)
 	registry.StatusUpdate(cfg, carrierName, selection)

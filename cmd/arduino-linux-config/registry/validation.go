@@ -23,9 +23,9 @@ func ValidateInput(carrierName string, rawDevice string, rawOption string) (bool
 	return true, nil
 }
 
-func CarrierExists(CarrierName string) bool {
+func CarrierExists(carrierName string) bool {
 	for _, carrier := range GetCarriers().Carriers {
-		if string(carrier.Name) == CarrierName {
+		if carrier.Name == carrierName {
 			return true
 		}
 	}
@@ -34,7 +34,7 @@ func CarrierExists(CarrierName string) bool {
 
 func deviceExists(deviceName string, devices []Device) (Device, bool) {
 	for _, device := range devices {
-		if string(device.Name) == deviceName {
+		if device.Name == deviceName {
 			return device, true
 		}
 	}
@@ -76,7 +76,7 @@ func GetDevice(carriers Carriers, carrierName string, deviceName string) (*Devic
 	for _, c := range carriers.Carriers {
 		if c.Name == carrierName {
 			for i := range c.Devices {
-				if string(c.Devices[i].Name) == deviceName {
+				if c.Devices[i].Name == deviceName {
 					return &c.Devices[i], true
 				}
 			}

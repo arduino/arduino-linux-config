@@ -60,12 +60,12 @@ func TestUpdateStatusStructure(t *testing.T) {
 				}
 
 				for _, name := range GetCarrierDevices("media-carrier") {
-					info, exists := status.NextStatus.Devices[MediaCarrierDeviceName(name)]
+					info, exists := status.NextStatus.Devices[name]
 					if !exists {
 						t.Fatalf("device %s missing from wanted status", name)
 					}
-					if info.Option != tt.wantResult[MediaCarrierDeviceName(name)] {
-						t.Errorf("device %s: got option %s, want %s", name, info.Option, tt.wantResult[MediaCarrierDeviceName(name)])
+					if info.Option != tt.wantResult[name] {
+						t.Errorf("device %s: got option %s, want %s", name, info.Option, tt.wantResult[name])
 					}
 
 					if info.CreatedAt.Before(startTime) {

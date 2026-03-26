@@ -61,7 +61,7 @@ func extractDeviceResult(devices []registry.Device) []DeviceResult {
 	for i, d := range devices {
 		options := extractOptions(d.Options)
 		devicesList[i] = DeviceResult{
-			Name:             string(d.Name),
+			Name:             d.Name,
 			AvailableDevices: options,
 		}
 	}
