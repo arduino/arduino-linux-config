@@ -95,7 +95,7 @@ func parseArguments(carrierName string, args []string) (map[registry.CarrierDevi
 			deviceName := parts[0]
 			optionName := parts[1]
 
-			if err := registry.ValidateDeviceOption(carrierName, deviceName, optionName); err != nil {
+			if err := validateDeviceOption(carrierName, deviceName, optionName); err != nil {
 				return nil, err
 			}
 
@@ -165,4 +165,40 @@ func uniqueStrings(input []string) []string {
 		}
 	}
 	return result
+}
+
+func validateDeviceOption(carrierName string, rawDevice string, rawOption string) error {
+	devices, exists := registry.GetDevices(*registry.GetCarriers(), carrierName)
+	if !exists {
+		return fmt.Errorf("carrier %q not supported", carrierName)
+	}
+
+	device, exists := deviceExists(rawDevice, devices)
+	if !exists {
+		return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
+	}
+
+	if !isOptionValid(rawOption, device) {
+		return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
+	}
+
+	return nil
+}
+
+func deviceExists(deviceName string, devices []registry.Device) (registry.Device, bool) {
+	for _, device := range devices {
+		if device.Name == deviceName {
+			return device, true
+		}
+	}
+	return registry.Device{}, false
+}
+
+func isOptionValid(optionName string, device registry.Device) bool {
+	for _, option := range device.Options {
+		if optionName == option.Name {
+			return true
+		}
+	}
+	return false
 }

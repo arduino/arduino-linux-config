@@ -1,53 +1,6 @@
 package registry
 
-import (
-	"fmt"
-)
-
-func ValidateDeviceOption(carrierName string, rawDevice string, rawOption string) error {
-	devices, exists := GetDevices(*GetCarriers(), carrierName)
-	if !exists {
-		return fmt.Errorf("carrier %q not supported", carrierName)
-	}
-
-	device, exists := deviceExists(rawDevice, devices)
-	if !exists {
-		return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
-	}
-
-	if !isOptionValid(rawOption, device) {
-		return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
-	}
-
-	return nil
-}
-
-func CarrierExists(carrierName string) bool {
-	for _, carrier := range GetCarriers().Carriers {
-		if carrier.Name == carrierName {
-			return true
-		}
-	}
-	return false
-}
-
-func deviceExists(deviceName string, devices []Device) (Device, bool) {
-	for _, device := range devices {
-		if device.Name == deviceName {
-			return device, true
-		}
-	}
-	return Device{}, false
-}
-
-func isOptionValid(optionName string, device Device) bool {
-	for _, option := range device.Options {
-		if optionName == option.Name {
-			return true
-		}
-	}
-	return false
-}
+import ()
 
 func GetDevices(carriers Carriers, carrierName string) ([]Device, bool) {
 	for _, c := range carriers.Carriers {
@@ -91,4 +44,13 @@ func GetOptions(device Device, optionName string) []string {
 		}
 	}
 	return nil
+}
+
+func CarrierExists(carrierName string) bool {
+	for _, carrier := range GetCarriers().Carriers {
+		if carrier.Name == carrierName {
+			return true
+		}
+	}
+	return false
 }
