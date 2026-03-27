@@ -111,7 +111,7 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 	dtboFiles := make([]string, 0)
 
 	for deviceName, optionName := range userSelection {
-		device, _ := registry.GetDevice(*registry.GetCarriers(), carrierName, string(deviceName))
+		device, _ := registry.GetDevice(carrierName, string(deviceName))
 		for _, option := range device.Options {
 			if option.Name == string(registry.None) {
 				baseFiles = append(baseFiles, option.DtboFiles...)
@@ -168,7 +168,7 @@ func uniqueStrings(input []string) []string {
 }
 
 func validateDeviceOption(carrierName string, rawDevice string, rawOption string) error {
-	devices, exists := registry.GetDevices(*registry.GetCarriers(), carrierName)
+	devices, exists := registry.GetDevices(carrierName)
 	if !exists {
 		return fmt.Errorf("carrier %q not supported", carrierName)
 	}

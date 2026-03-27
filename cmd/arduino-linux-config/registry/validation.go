@@ -2,8 +2,8 @@ package registry
 
 import ()
 
-func GetDevices(carriers Carriers, carrierName string) ([]Device, bool) {
-	for _, c := range carriers.Carriers {
+func GetDevices(carrierName string) ([]Device, bool) {
+	for _, c := range GetCarriers().Carriers {
 		if c.Name == carrierName {
 			return c.Devices, true
 		}
@@ -24,8 +24,8 @@ func GetCarrierDevices(carrierName string) []CarrierDeviceName {
 	return []CarrierDeviceName{}
 }
 
-func GetDevice(carriers Carriers, carrierName string, deviceName string) (*Device, bool) {
-	for _, c := range carriers.Carriers {
+func GetDevice(carrierName string, deviceName string) (*Device, bool) {
+	for _, c := range GetCarriers().Carriers {
 		if c.Name == carrierName {
 			for i := range c.Devices {
 				if c.Devices[i].Name == deviceName {

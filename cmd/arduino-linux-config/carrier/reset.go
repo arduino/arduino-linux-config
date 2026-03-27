@@ -47,7 +47,7 @@ func resetHandler(cfg config.Configuration, carrierName string) {
 func reset(cfg config.Configuration, carrierName string) {
 	baseFiles := make([]string, 0)
 
-	devices, _ := registry.GetDevices(*registry.GetCarriers(), carrierName)
+	devices, _ := registry.GetDevices(carrierName)
 	for _, device := range devices {
 		for _, option := range device.Options {
 			if option.Name == string(registry.None) {
