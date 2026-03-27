@@ -57,14 +57,14 @@ func (r showResult) String() string {
 	nextMap := make(map[registry.CarrierDeviceName]string)
 
 	if len(r.NextDevices) > 0 {
-		for _, deviceName := range registry.GetCarrierDevices(r.CarrierName) {
+		for _, deviceName := range registry.GetDevicesNames(r.CarrierName) {
 			if device, found := hasDevice(r.NextDevices, deviceName); found {
 				nextMap[deviceName] = device.Option
 			}
 		}
 	}
 
-	for _, deviceName := range registry.GetCarrierDevices(r.CarrierName) {
+	for _, deviceName := range registry.GetDevicesNames(r.CarrierName) {
 		c, _ := hasDevice(r.CurrentDevices, deviceName)
 
 		if len(r.NextDevices) > 0 {

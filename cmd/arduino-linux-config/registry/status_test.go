@@ -52,14 +52,14 @@ func TestUpdateStatusStructure(t *testing.T) {
 			startTime := time.Now().UTC().Truncate(time.Second)
 
 			updateStatusStructure(status, "media-carrier", tt.statusUpdate)
-			carrierDeviceLenght := len(GetCarrierDevices("media-carrier"))
+			carrierDeviceLenght := len(GetDevicesNames("media-carrier"))
 			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
 				if len(status.CurrentStatus.Devices) != 0 {
 					t.Errorf("got %d devices, want %d", len(status.CurrentStatus.Devices), carrierDeviceLenght)
 				}
 
-				for _, name := range GetCarrierDevices("media-carrier") {
+				for _, name := range GetDevicesNames("media-carrier") {
 					info, exists := status.NextStatus.Devices[name]
 					if !exists {
 						t.Fatalf("device %s missing from wanted status", name)

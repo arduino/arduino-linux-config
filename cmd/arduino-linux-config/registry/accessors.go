@@ -1,7 +1,5 @@
 package registry
 
-import ()
-
 func GetDevices(carrierName string) ([]Device, bool) {
 	for _, c := range GetCarriers().Carriers {
 		if c.Name == carrierName {
@@ -11,7 +9,7 @@ func GetDevices(carrierName string) ([]Device, bool) {
 	return nil, false
 }
 
-func GetCarrierDevices(carrierName string) []CarrierDeviceName {
+func GetDevicesNames(carrierName string) []CarrierDeviceName {
 	for _, c := range GetCarriers().Carriers {
 		if c.Name == carrierName {
 			result := make([]CarrierDeviceName, 0, len(c.Devices))
@@ -24,11 +22,11 @@ func GetCarrierDevices(carrierName string) []CarrierDeviceName {
 	return []CarrierDeviceName{}
 }
 
-func GetDevice(carrierName string, deviceName string) (*Device, bool) {
+func FindDevice(carrierName string, deviceName CarrierDeviceName) (*Device, bool) {
 	for _, c := range GetCarriers().Carriers {
 		if c.Name == carrierName {
 			for i := range c.Devices {
-				if c.Devices[i].Name == deviceName {
+				if c.Devices[i].Name == string(deviceName) {
 					return &c.Devices[i], true
 				}
 			}
@@ -37,7 +35,7 @@ func GetDevice(carrierName string, deviceName string) (*Device, bool) {
 	return nil, false
 }
 
-func GetOptions(device Device, optionName string) []string {
+func GetDeviceOptions(device Device, optionName string) []string {
 	for _, opt := range device.Options {
 		if opt.Name == optionName {
 			return opt.DtboFiles
