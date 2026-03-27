@@ -21,7 +21,7 @@ type StatusFile struct {
 }
 
 type StatusCarrier struct {
-	Devices map[MediaCarrierDeviceName]StatusInfo `json:"Devices"`
+	Devices map[CarrierDeviceName]StatusInfo `json:"Devices"`
 }
 
 type StatusInfo struct {
@@ -34,7 +34,7 @@ type StatusDevice struct {
 	Option string `json:"option"`
 }
 
-func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map[MediaCarrierDeviceName]string) {
+func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map[CarrierDeviceName]string) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
@@ -76,7 +76,7 @@ func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Ti
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, carrierName string, statusUpdate map[MediaCarrierDeviceName]string) {
+func updateStatusStructure(status *StatusFile, carrierName string, statusUpdate map[CarrierDeviceName]string) {
 	for _, deviceName := range GetCarrierDevices(carrierName) {
 		newInfo := StatusInfo{
 			Option:    getOrDefault(statusUpdate[deviceName]),
@@ -125,10 +125,10 @@ func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			newStatus := StatusFile{
 				CurrentStatus: StatusCarrier{
-					Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+					Devices: make(map[CarrierDeviceName]StatusInfo),
 				},
 				NextStatus: StatusCarrier{
-					Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+					Devices: make(map[CarrierDeviceName]StatusInfo),
 				},
 			}
 			return &newStatus, nil

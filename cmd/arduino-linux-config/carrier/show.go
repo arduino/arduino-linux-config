@@ -54,7 +54,7 @@ func (r showResult) String() string {
 	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(&sb, "%s\n", r.CarrierName)
 
-	nextMap := make(map[registry.MediaCarrierDeviceName]string)
+	nextMap := make(map[registry.CarrierDeviceName]string)
 
 	if len(r.NextDevices) > 0 {
 		for _, deviceName := range registry.GetCarrierDevices(r.CarrierName) {
@@ -68,7 +68,7 @@ func (r showResult) String() string {
 		c, _ := hasDevice(r.CurrentDevices, deviceName)
 
 		if len(r.NextDevices) > 0 {
-			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.MediaCarrierDeviceName(c.Device)])
+			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.CarrierDeviceName(c.Device)])
 		} else {
 			fmt.Fprintf(w, "  %s:\t[current: %s]\t\n", c.Device, c.Option)
 		}
@@ -83,7 +83,7 @@ func (r showResult) Data() interface{} {
 	return r
 }
 
-func hasDevice(devices []registry.StatusDevice, deviceName registry.MediaCarrierDeviceName) (registry.StatusDevice, bool) {
+func hasDevice(devices []registry.StatusDevice, deviceName registry.CarrierDeviceName) (registry.StatusDevice, bool) {
 	for _, d := range devices {
 		if d.Device == string(deviceName) {
 			return d, true

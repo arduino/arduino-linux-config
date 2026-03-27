@@ -12,7 +12,7 @@ import (
 )
 
 type CarrierStatus struct {
-	Configuration map[registry.MediaCarrierDeviceName]string `json:"configuration,omitempty"`
+	Configuration map[registry.CarrierDeviceName]string `json:"configuration,omitempty"`
 }
 
 func newConfigureCmd(cfg config.Configuration) *cobra.Command {
@@ -73,8 +73,8 @@ func configureHandler(cfg config.Configuration, carrierName string, deviceArgs [
 	})
 }
 
-func parseArguments(carrierName string, args []string) (map[registry.MediaCarrierDeviceName]string, error) {
-	parsedUserSelection := make(map[registry.MediaCarrierDeviceName]string)
+func parseArguments(carrierName string, args []string) (map[registry.CarrierDeviceName]string, error) {
+	parsedUserSelection := make(map[registry.CarrierDeviceName]string)
 
 	for _, arg := range args {
 		// Handle "key=val,key2=val2"
@@ -99,14 +99,14 @@ func parseArguments(carrierName string, args []string) (map[registry.MediaCarrie
 				return nil, err
 			}
 
-			parsedUserSelection[registry.MediaCarrierDeviceName(deviceName)] = optionName
+			parsedUserSelection[registry.CarrierDeviceName(deviceName)] = optionName
 		}
 	}
 
 	return parsedUserSelection, nil
 }
 
-func collectDtboFiles(carrierName string, userSelection map[registry.MediaCarrierDeviceName]string) ([]string, error) {
+func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) ([]string, error) {
 	baseFiles := make([]string, 0)
 	dtboFiles := make([]string, 0)
 

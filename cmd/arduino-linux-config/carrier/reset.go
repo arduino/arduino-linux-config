@@ -58,7 +58,7 @@ func reset(cfg config.Configuration, carrierName string) {
 
 	applyOverlays(uniqueStrings(baseFiles))
 
-	selection := make(map[registry.MediaCarrierDeviceName]string)
+	selection := make(map[registry.CarrierDeviceName]string)
 	registry.StatusUpdate(cfg, carrierName, selection)
 }
 

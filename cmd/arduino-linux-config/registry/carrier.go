@@ -36,13 +36,13 @@ var (
 	})
 )
 
-type MediaCarrierDeviceName string
+type CarrierDeviceName string
 
 const (
-	None    MediaCarrierDeviceName = "none"
-	Camera0 MediaCarrierDeviceName = "camera0"
-	Camera1 MediaCarrierDeviceName = "camera1"
-	Display MediaCarrierDeviceName = "display"
+	None    CarrierDeviceName = "none"
+	Camera0 CarrierDeviceName = "camera0"
+	Camera1 CarrierDeviceName = "camera1"
+	Display CarrierDeviceName = "display"
 )
 
 type Carriers struct {

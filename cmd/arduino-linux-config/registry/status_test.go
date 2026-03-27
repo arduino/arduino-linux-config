@@ -12,17 +12,17 @@ import (
 func TestUpdateStatusStructure(t *testing.T) {
 	tests := []struct {
 		name         string
-		statusUpdate map[MediaCarrierDeviceName]string
-		wantResult   map[MediaCarrierDeviceName]string
+		statusUpdate map[CarrierDeviceName]string
+		wantResult   map[CarrierDeviceName]string
 	}{
 		{
 			name: "update all devices",
-			statusUpdate: map[MediaCarrierDeviceName]string{
+			statusUpdate: map[CarrierDeviceName]string{
 				Camera0: "cam1",
 				Camera1: "none",
 				Display: "display",
 			},
-			wantResult: map[MediaCarrierDeviceName]string{
+			wantResult: map[CarrierDeviceName]string{
 				Camera0: "cam1",
 				Camera1: "none",
 				Display: "display",
@@ -30,10 +30,10 @@ func TestUpdateStatusStructure(t *testing.T) {
 		},
 		{
 			name: "fill empty devices",
-			statusUpdate: map[MediaCarrierDeviceName]string{
+			statusUpdate: map[CarrierDeviceName]string{
 				Display: "display",
 			},
-			wantResult: map[MediaCarrierDeviceName]string{
+			wantResult: map[CarrierDeviceName]string{
 				Camera0: "none",
 				Camera1: "none",
 				Display: "display",
@@ -45,7 +45,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			status := &StatusFile{
 				NextStatus: StatusCarrier{
-					Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+					Devices: make(map[CarrierDeviceName]StatusInfo),
 				},
 			}
 
@@ -92,9 +92,9 @@ func TestGetStatusStructure(t *testing.T) {
 		{
 			name: "Move outdated device to current",
 			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{Devices: make(map[MediaCarrierDeviceName]StatusInfo)},
+				CurrentStatus: StatusCarrier{Devices: make(map[CarrierDeviceName]StatusInfo)},
 				NextStatus: StatusCarrier{
-					Devices: map[MediaCarrierDeviceName]StatusInfo{
+					Devices: map[CarrierDeviceName]StatusInfo{
 						Camera0: {Option: "cam1", CreatedAt: beforeBoot},
 						Display: {Option: "display", CreatedAt: afterBoot},
 					},
@@ -114,9 +114,9 @@ func TestGetStatusStructure(t *testing.T) {
 		{
 			name: "Both devices after boot stay in next",
 			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{Devices: make(map[MediaCarrierDeviceName]StatusInfo)},
+				CurrentStatus: StatusCarrier{Devices: make(map[CarrierDeviceName]StatusInfo)},
 				NextStatus: StatusCarrier{
-					Devices: map[MediaCarrierDeviceName]StatusInfo{
+					Devices: map[CarrierDeviceName]StatusInfo{
 						Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
 						Display: {Option: "display", CreatedAt: afterBoot}, // fresh
 					},
