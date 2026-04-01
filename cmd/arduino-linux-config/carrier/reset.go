@@ -44,7 +44,7 @@ func resetHandler(cfg config.Configuration, carrierName string) {
 	})
 }
 
-func reset(cfg config.Configuration, carrierName string) {
+func reset(cfg config.Configuration, carrierName string) error {
 	baseFiles := make([]string, 0)
 
 	devices, _ := registry.GetDevices(carrierName)
@@ -56,10 +56,17 @@ func reset(cfg config.Configuration, carrierName string) {
 		}
 	}
 
-	applyOverlays(uniqueStrings(baseFiles))
+	err := mergeOverlays(cfg, uniqueStrings(baseFiles))
+	if err != nil {
+		feedback.Fatal(
+			fmt.Sprintf("Error merging overlays: %v", err),
+			feedback.ErrGeneric,
+		)
+	}
 
 	selection := make(map[registry.CarrierDeviceName]string)
 	registry.StatusUpdate(cfg, carrierName, selection)
+	return nil
 }
 
 type cmdResult struct {

@@ -1,13 +1,17 @@
 package carrier
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/go-paths-helper"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +49,7 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func configureHandler(cfg config.Configuration, carrierName string, deviceArgs []string) {
+func configureHandler(cfg config.Configuration, carrierName string, deviceArgs []string) error {
 	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -60,7 +64,13 @@ func configureHandler(cfg config.Configuration, carrierName string, deviceArgs [
 	}
 
 	reset(cfg, carrierName)
-	applyOverlays(overlayList)
+	err = mergeOverlays(cfg, overlayList)
+	if err != nil {
+		feedback.Fatal(
+			fmt.Sprintf("Error merging overlays: %v", err),
+			feedback.ErrGeneric,
+		)
+	}
 
 	registry.StatusUpdate(cfg, carrierName, nextDevicesConfiguration)
 
@@ -71,6 +81,7 @@ func configureHandler(cfg config.Configuration, carrierName string, deviceArgs [
 		CurrentDevices: current,
 		NextDevices:    next,
 	})
+	return nil
 }
 
 func parseArguments(carrierName string, args []string) (map[registry.CarrierDeviceName]string, error) {
@@ -122,7 +133,7 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 				dtboFiles = append(dtboFiles, option.DtboFiles...)
 				for _, incompatible := range option.IncompatibleDtbo {
 					if slices.Contains(dtboFiles, incompatible) {
-						return []string{}, fmt.Errorf("incompatible configuration")
+						return []string{}, fmt.Errorf("incompatible %s", optionName)
 					}
 				}
 				break
@@ -135,25 +146,37 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 	return uniqueStrings(dtboFiles), nil
 }
 
-func applyOverlays(dtboFiles []string) {
-	if len(dtboFiles) == 0 {
-		return
+func mergeOverlays(cfg config.Configuration, overlays []string) error {
+	if len(overlays) == 0 {
+		return nil
+	}
+	systemDtb := cfg.SystemDTB()
+	overlaysPath := filepath.Dir(systemDtb.String())
+	temporaryDtb := filepath.Join(overlaysPath, "qrb2210-arduino-imola.dtb.next")
+
+	for i := range overlays {
+		overlays[i] = filepath.Join(overlaysPath, overlays[i])
 	}
 
-	// args := append([]string{"fdtoverlay", "-i", cfg.SystemDTB().String(), "-o", cfg.SystemDTB().String()}, dtboFiles...)
+	args := append([]string{"/usr/bin/fdtoverlay", "-i", systemDtb.String(), "-o", temporaryDtb}, overlays...)
+	cmd, err := paths.NewProcess(nil, args...)
+	if err != nil {
+		return fmt.Errorf("failed to create process: %w", err)
+	}
 
-	// proc, err := paths.NewProcess(nil, args...)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to create process: %w", err)
-	// }
+	fmt.Printf("\n%v %v", []string{"fdtoverlay", "-i", systemDtb.String(), "-o", temporaryDtb}, overlays)
+	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
+	if err != nil {
+		os.Remove(temporaryDtb)
+		return fmt.Errorf("fdtoverlay failed: %w\n%s", err, stderr)
+	}
 
-	// stdout, stderr, err := proc.RunAndCaptureOutput(ctx)
-	// if err != nil {
-	// 	return fmt.Errorf("fdtoverlay failed: %w\n%s", err, stderr)
-	// }
-	// if len(stdout) > 0 {
-	// 	feedback.Print(string(stdout))
-	// }
+	if err := os.Rename(temporaryDtb, systemDtb.String()); err != nil {
+		os.Remove(temporaryDtb)
+		return fmt.Errorf("failed to move output file: %w", err)
+	}
+
+	return nil
 }
 
 func uniqueStrings(input []string) []string {

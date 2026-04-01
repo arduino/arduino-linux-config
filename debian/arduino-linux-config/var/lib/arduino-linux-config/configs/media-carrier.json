@@ -6,8 +6,7 @@
         {
           "name": "none",
           "dtboFiles": [
-            "qrb2210-arduino-imola-base.dtb",
-            "qrb2210-arduino-imola-video_sound-usbc.dtbo"
+            "qrb2210-arduino-imola-base.dtb"
           ]
         },
         {
@@ -32,8 +31,7 @@
         {
           "name": "none",
           "dtboFiles": [
-            "qrb2210-arduino-imola-base.dtb",
-            "qrb2210-arduino-imola-video_sound-usbc.dtbo"
+            "qrb2210-arduino-imola-base.dtb"
           ]
         },
         {
@@ -58,8 +56,7 @@
         {
           "name": "none",
           "dtboFiles": [
-            "qrb2210-arduino-imola-base.dtb",
-            "qrb2210-arduino-imola-video_sound-usbc.dtbo"
+            "qrb2210-arduino-imola-base.dtb"
           ]
         },
         {
@@ -67,9 +64,6 @@
           "dtboFiles": [
             "qrb2210-arduino-imola-carrier-media.dtbo",
             "qrb2210-arduino-imola-carrier-media-panel-8in-touch-a-dsi.dtbo"
-          ],
-          "incompatibleDtbo": [
-            "qrb2210-arduino-imola-video_sound-usbc.dtbo"
           ]
         }
       ]
