@@ -33,7 +33,6 @@ func resetHandler(cfg config.Configuration, carrierName string) {
 	}
 
 	reset(cfg, carrierName)
-
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
 
 	current, next := registry.GetStatus(cfg, carrierName)
@@ -44,7 +43,7 @@ func resetHandler(cfg config.Configuration, carrierName string) {
 	})
 }
 
-func reset(cfg config.Configuration, carrierName string) error {
+func reset(cfg config.Configuration, carrierName string) {
 	baseFiles := make([]string, 0)
 
 	devices, _ := registry.GetDevices(carrierName)
@@ -66,7 +65,6 @@ func reset(cfg config.Configuration, carrierName string) error {
 
 	selection := make(map[registry.CarrierDeviceName]string)
 	registry.StatusUpdate(cfg, carrierName, selection)
-	return nil
 }
 
 type cmdResult struct {

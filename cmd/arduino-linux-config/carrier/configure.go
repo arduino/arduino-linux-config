@@ -49,7 +49,7 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func configHandler(cfg config.Configuration, carrierName string, deviceArgs []string) error {
+func configHandler(cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -81,7 +81,6 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 		CurrentDevices: current,
 		NextDevices:    next,
 	})
-	return nil
 }
 
 func parseArguments(carrierName string, args []string) (map[registry.CarrierDeviceName]string, error) {
