@@ -21,22 +21,22 @@ type CarrierStatus struct {
 
 func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "configure <carrier-name> <device=option...>",
+		Use:   "config <carrier-name> <device=option...>",
 		Short: "Configure a carrier with the specified device options",
 
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 2 {
-				return fmt.Errorf("missing <carrier-name>\nUsage: arduino-linux-config carrier configure <carrier-name> <device=option...>")
+				return fmt.Errorf("missing <carrier-name>\nUsage: arduino-linux-config carrier config <carrier-name> <device=option...>")
 			}
 			if len(args) < 1 {
-				return fmt.Errorf("missing carrier configuration\nUsage: arduino-linux-config carrier configure <name>")
+				return fmt.Errorf("missing carrier configuration\nUsage: arduino-linux-config carrier config <carrier-name>")
 			}
 			return nil
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			configureHandler(cfg, args[0], args[1:])
+			configHandler(cfg, args[0], args[1:])
 		},
 	}
 }
@@ -49,7 +49,7 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func configureHandler(cfg config.Configuration, carrierName string, deviceArgs []string) error {
+func configHandler(cfg config.Configuration, carrierName string, deviceArgs []string) error {
 	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -146,6 +146,8 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 	return uniqueStrings(dtboFiles), nil
 }
 
+var overlayCommand = "/usr/bin/fdtoverlay"
+
 func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	if len(overlays) == 0 {
 		return nil
@@ -158,17 +160,17 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		overlays[i] = filepath.Join(overlaysPath, overlays[i])
 	}
 
-	args := append([]string{"/usr/bin/fdtoverlay", "-i", systemDtb.String(), "-o", temporaryDtb}, overlays...)
+	args := append([]string{overlayCommand, "-i", systemDtb.String(), "-o", temporaryDtb}, overlays...)
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
 		return fmt.Errorf("failed to create process: %w", err)
 	}
 
-	fmt.Printf("\n%v %v", []string{"fdtoverlay", "-i", systemDtb.String(), "-o", temporaryDtb}, overlays)
+	// fmt.Println(strings.Join(append([]string{overlayCommand, "-i", systemDtb.String(), "-o", temporaryDtb}, overlays...), " "))
 	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
 	if err != nil {
 		os.Remove(temporaryDtb)
-		return fmt.Errorf("fdtoverlay failed: %w\n%s", err, stderr)
+		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
 	}
 
 	if err := os.Rename(temporaryDtb, systemDtb.String()); err != nil {

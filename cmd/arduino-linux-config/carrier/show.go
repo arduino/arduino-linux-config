@@ -18,7 +18,7 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier configure <name>")
+				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier config <carrier-name>")
 			}
 			return nil
 		},
