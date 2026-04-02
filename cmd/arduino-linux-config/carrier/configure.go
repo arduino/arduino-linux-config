@@ -159,13 +159,13 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		overlays[i] = filepath.Join(overlaysPath, overlays[i])
 	}
 
-	args := append([]string{overlayCommand, "-i", systemDtb.String(), "-o", temporaryDtb}, overlays...)
+	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...)
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
 		return fmt.Errorf("failed to create process: %w", err)
 	}
 
-	// fmt.Println(strings.Join(append([]string{overlayCommand, "-i", systemDtb.String(), "-o", temporaryDtb}, overlays...), " "))
+	//fmt.Println(strings.Join(append([]string{overlayCommand, "-i", systemDtb.String(), "-o", temporaryDtb}, overlays...), " "))
 	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
 	if err != nil {
 		os.Remove(temporaryDtb)

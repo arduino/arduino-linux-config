@@ -6,7 +6,6 @@
         {
           "name": "none",
           "dtboFiles": [
-            "qrb2210-arduino-imola-base.dtb",
             "qrb2210-arduino-imola-video_sound-usbc.dtbo"
           ]
         },
@@ -32,7 +31,6 @@
         {
           "name": "none",
           "dtboFiles": [
-            "qrb2210-arduino-imola-base.dtb",
             "qrb2210-arduino-imola-video_sound-usbc.dtbo"
           ]
         },
@@ -58,7 +56,6 @@
         {
           "name": "none",
           "dtboFiles": [
-            "qrb2210-arduino-imola-base.dtb",
             "qrb2210-arduino-imola-video_sound-usbc.dtbo"
           ]
         },

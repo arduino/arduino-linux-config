@@ -25,17 +25,20 @@ type Configuration struct {
 	statusDir      *paths.Path
 	carriersConfig *paths.Path
 	systemDTB      *paths.Path
+	baseDTB        *paths.Path
 }
 
 func NewConfigFromEnv() (Configuration, error) {
 	statusFile := paths.New("/var/lib/arduino-linux-config/status")
 	carriersConfig := paths.New("/var/lib/arduino-linux-config/configs")
 	systemDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb")
+	baseDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb")
 
 	c := Configuration{
 		statusDir:      statusFile,
 		carriersConfig: carriersConfig,
 		systemDTB:      systemDTB,
+		baseDTB:        baseDTB,
 	}
 
 	if err := c.init(); err != nil {
@@ -62,4 +65,8 @@ func (c *Configuration) CarriersConfig() *paths.Path {
 
 func (c *Configuration) SystemDTB() *paths.Path {
 	return c.systemDTB
+}
+
+func (c *Configuration) BaseDTB() *paths.Path {
+	return c.baseDTB
 }
