@@ -165,7 +165,7 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		return fmt.Errorf("failed to create process: %w", err)
 	}
 
-	//fmt.Println(strings.Join(append([]string{overlayCommand, "-i", systemDtb.String(), "-o", temporaryDtb}, overlays...), " "))
+	fmt.Println(strings.Join(append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...), " "))
 	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
 	if err != nil {
 		os.Remove(temporaryDtb)
