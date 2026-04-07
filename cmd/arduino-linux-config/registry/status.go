@@ -77,7 +77,6 @@ func getFixedStatusStructure(status *StatusFile, carrierName string, bootTime ti
 		// parse next structure, if they happened before the boot, move in actual
 		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
 			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
-			status.NextStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
 		}
 		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
 		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option)})
