@@ -51,7 +51,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 
 			startTime := time.Now().UTC().Truncate(time.Second)
 
-			updateStatusStructure(status, "media-carrier", tt.statusUpdate)
+			updateStatusStructure(status, "media-carrier", []StatusDevice{}, tt.statusUpdate)
 			carrierDeviceLenght := len(GetDevicesNames("media-carrier"))
 			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
