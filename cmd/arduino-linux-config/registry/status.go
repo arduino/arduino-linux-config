@@ -41,11 +41,14 @@ func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map
 	}
 
 	updateStatusStructure(status, carrierName, statusUpdate)
+
 	if err := saveStatusFile(getStatusFile(cfg, carrierName), *status); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to save status file: %v", err), feedback.ErrGeneric)
 	}
 }
 
+// Load the status structure and apply status fixes before returning
+// Do not update the physical status file because show is running as non-root user
 func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []StatusDevice) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
@@ -57,18 +60,18 @@ func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}
 
-	return getStatusStructure(status, carrierName, bootTime)
+	return getFixedStatusStructure(status, carrierName, bootTime)
 }
 
-func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
+func getFixedStatusStructure(status *StatusFile, carrierName string, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
 	current := []StatusDevice{}
 	next := []StatusDevice{}
 	for _, deviceName := range GetDevicesNames(carrierName) {
 
-		// parse next, if they happened before the boot, move in actual
+		// parse next structure, if they happened before the boot, move in actual
 		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
 			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
-			status.NextStatus.Devices[deviceName] = StatusInfo{}
+			status.NextStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
 		}
 		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
 		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option)})
