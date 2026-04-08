@@ -144,7 +144,6 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 			return slices.Contains(incompatibleFiles, overlay)
 		})
 		feedback.Warnf("Incompatible ovelays, removing %v", incompatibleOverlays)
-
 	}
 
 	return append(dtboFiles, baseFiles...), nil
@@ -174,6 +173,7 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	systemDtb := cfg.SystemDTB()
 	overlaysPath := filepath.Dir(systemDtb.String())
 	temporaryDtb := filepath.Join(overlaysPath, "qrb2210-arduino-imola.dtb.next")
+	defer func() { _ = os.Remove(temporaryDtb) }()
 
 	for i := range overlays {
 		overlays[i] = filepath.Join(overlaysPath, overlays[i])
@@ -188,12 +188,10 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	fmt.Println(strings.Join(append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...), " "))
 	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
 	if err != nil {
-		os.Remove(temporaryDtb)
 		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
 	}
 
 	if err := os.Rename(temporaryDtb, systemDtb.String()); err != nil {
-		os.Remove(temporaryDtb)
 		return fmt.Errorf("failed to move output file: %w", err)
 	}
 
