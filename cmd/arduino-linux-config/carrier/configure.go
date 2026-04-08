@@ -117,9 +117,7 @@ func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error)
 }
 
 func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) ([]string, error) {
-	baseFiles := make([]string, 0)
-	dtboFiles := make([]string, 0)
-	incompatibleFiles := make([]string, 0)
+	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for deviceName, optionName := range userSelection {
 		device, _ := registry.FindDevice(carrierName, deviceName)
@@ -130,7 +128,6 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 			}
 			// get the user selected option and collect incompatibilities
 			if option.Name == optionName {
-				fmt.Printf("MARTA FOUND MATCH %v %v\n", deviceName, optionName)
 				dtboFiles = append(dtboFiles, option.DtboFiles...)
 				incompatibleFiles = append(incompatibleFiles, option.IncompatibleDtbo...)
 				break
@@ -182,8 +179,6 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		overlays[i] = filepath.Join(overlaysPath, overlays[i])
 	}
 
-	// TODO MARTA DELME
-	fmt.Println(strings.Join(append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...), " "))
 	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...)
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
