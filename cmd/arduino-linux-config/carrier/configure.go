@@ -50,7 +50,12 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
 func configHandler(cfg config.Configuration, carrierName string, deviceArgs []string) {
-	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
+	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+
+	err = validateUserConfiguration(carrierName, nextDevicesConfiguration)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
@@ -83,7 +88,7 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 	})
 }
 
-func parseArguments(carrierName string, args []string) (map[registry.CarrierDeviceName]string, error) {
+func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error) {
 	parsedUserSelection := make(map[registry.CarrierDeviceName]string)
 
 	for _, arg := range args {
@@ -96,20 +101,15 @@ func parseArguments(carrierName string, args []string) (map[registry.CarrierDevi
 				continue
 			}
 
-			// Split the individual pair by "="
-			parts := strings.SplitN(pair, "=", 2)
+			parts := strings.Split(pair, "=")
 			if len(parts) != 2 {
 				return nil, fmt.Errorf("invalid argument %q: expected device=option format", pair)
 			}
 
-			deviceName := parts[0]
-			optionName := parts[1]
-
-			if err := validateDeviceOption(carrierName, deviceName, optionName); err != nil {
-				return nil, err
-			}
-
+			deviceName := strings.TrimSpace(parts[0])
+			optionName := strings.TrimSpace(parts[1])
 			parsedUserSelection[registry.CarrierDeviceName(deviceName)] = optionName
+
 		}
 	}
 
@@ -200,21 +200,21 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	return nil
 }
 
-func validateDeviceOption(carrierName string, rawDevice string, rawOption string) error {
+func validateUserConfiguration(carrierName string, nextDevicesConfiguration map[registry.CarrierDeviceName]string) error {
 	devices, exists := registry.GetDevices(carrierName)
 	if !exists {
 		return fmt.Errorf("carrier %q not supported", carrierName)
 	}
 
-	device, exists := deviceExists(rawDevice, devices)
-	if !exists {
-		return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
+	for rawDevice, rawOption := range nextDevicesConfiguration {
+		device, exists := deviceExists(string(rawDevice), devices)
+		if !exists {
+			return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
+		}
+		if !isOptionValid(rawOption, device) {
+			return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
+		}
 	}
-
-	if !isOptionValid(rawOption, device) {
-		return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
-	}
-
 	return nil
 }
 
