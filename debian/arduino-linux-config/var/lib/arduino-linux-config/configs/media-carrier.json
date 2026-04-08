@@ -64,6 +64,9 @@
           "dtboFiles": [
             "qrb2210-arduino-imola-carrier-media.dtbo",
             "qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo"
+          ],
+          "incompatibleDtboFiles": [
+            "qrb2210-arduino-imola-video_sound-usbc.dtbo"
           ]
         }
       ]
