@@ -55,7 +55,7 @@ func reset(cfg config.Configuration, carrierName string) {
 		}
 	}
 
-	err := mergeOverlays(cfg, uniqueStrings(baseFiles))
+	err := mergeOverlays(cfg, baseFiles)
 	if err != nil {
 		feedback.Fatal(
 			fmt.Sprintf("Error merging overlays: %v", err),

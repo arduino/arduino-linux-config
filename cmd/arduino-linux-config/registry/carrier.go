@@ -62,9 +62,8 @@ type Device struct {
 
 // DeviceOption represents a configuration option for a device
 type DeviceOption struct {
-	Name             string   `json:"name"`
-	DtboFiles        []string `json:"dtboFiles"`
-	IncompatibleDtbo []string `json:"incompatibleDtbo,omitempty"`
+	Name      string   `json:"name"`
+	DtboFiles []string `json:"dtboFiles"`
 }
 
 // used to read the json

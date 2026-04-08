@@ -127,22 +127,36 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 			if option.Name == string(registry.None) {
 				baseFiles = append(baseFiles, option.DtboFiles...)
 			}
-			// get the user selected option
+			// get the user selected option and collect incompatibilities
 			if option.Name == optionName {
 				dtboFiles = append(dtboFiles, option.DtboFiles...)
-				for _, incompatible := range option.IncompatibleDtbo {
-					if slices.Contains(dtboFiles, incompatible) {
-						return []string{}, fmt.Errorf("incompatible %s", optionName)
-					}
-				}
 				break
 			}
 		}
 	}
 
-	// add base and remove duplicated values
-	dtboFiles = append(dtboFiles, baseFiles...)
-	return uniqueStrings(dtboFiles), nil
+	// check for incompatible overlays in the basic configuration
+	// the basic overlay here can be removed in favor of the device overlays
+	incompatibleOverlays := getIntersection(dtboFiles, baseFiles)
+	if len(incompatibleOverlays) > 0 {
+		dtboFiles = slices.DeleteFunc(dtboFiles, func(overlay string) bool {
+			return slices.Contains(dtboFiles, overlay)
+		})
+		feedback.Warnf("Incompatible ovelays, removing %v", incompatibleOverlays)
+	}
+
+	return dtboFiles, nil
+}
+
+func getIntersection(a, b []string) []string {
+	var result []string
+	for _, v := range a {
+		if slices.Contains(b, v) {
+			result = append(result, v)
+		}
+	}
+	slices.Sort(result)
+	return slices.Compact(result)
 }
 
 var overlayCommand = "/usr/bin/fdtoverlay"
@@ -151,6 +165,10 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	if len(overlays) == 0 {
 		return nil
 	}
+
+	slices.Sort(overlays)
+	overlays = slices.Compact(overlays)
+
 	systemDtb := cfg.SystemDTB()
 	overlaysPath := filepath.Dir(systemDtb.String())
 	temporaryDtb := filepath.Join(overlaysPath, "qrb2210-arduino-imola.dtb.next")
@@ -159,6 +177,8 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		overlays[i] = filepath.Join(overlaysPath, overlays[i])
 	}
 
+	// TODO MARTA DELME
+	fmt.Println(strings.Join(append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...), " "))
 	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...)
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
@@ -178,19 +198,6 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	}
 
 	return nil
-}
-
-func uniqueStrings(input []string) []string {
-	seen := make(map[string]struct{})
-	result := make([]string, 0, len(input))
-
-	for _, val := range input {
-		if _, ok := seen[val]; !ok {
-			seen[val] = struct{}{}
-			result = append(result, val)
-		}
-	}
-	return result
 }
 
 func validateDeviceOption(carrierName string, rawDevice string, rawOption string) error {
