@@ -36,7 +36,6 @@ var (
 	})
 )
 
-// rename with devicename TODO
 type CarrierDeviceName string
 
 const (
