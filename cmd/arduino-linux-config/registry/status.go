@@ -61,9 +61,12 @@ func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []
 }
 
 func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
-	current := []StatusDevice{}
-	next := []StatusDevice{}
-	for _, deviceName := range GetDevicesNames(carrierName) {
+	deviceNames := GetDevicesNames(carrierName)
+
+	current := make([]StatusDevice, 0, len(deviceNames))
+	next := make([]StatusDevice, 0, len(deviceNames))
+
+	for _, deviceName := range deviceNames {
 
 		// parse next, if they happened before the boot, move in actual
 		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {

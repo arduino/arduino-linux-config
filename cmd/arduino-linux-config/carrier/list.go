@@ -80,7 +80,7 @@ func (r CarriersResult) String() string {
 
 	for _, carrier := range r.Carriers {
 		// 1. Print the "Header" for each carrier file
-		b.WriteString(fmt.Sprintf("%s\n", carrier.Name))
+		fmt.Fprintf(&b, "%s\n", carrier.Name)
 
 		// 2. Initialize a tabwriter for the indented section
 		// We use a new writer per carrier to keep column widths consistent within that group

@@ -60,13 +60,7 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	overlayList, err := collectDtboFiles(carrierName, nextDevicesConfiguration)
-	if err != nil {
-		feedback.Fatal(
-			fmt.Sprintf("incompatible configuration: %v", err),
-			feedback.ErrGeneric,
-		)
-	}
+	overlayList := collectDtboFiles(carrierName, nextDevicesConfiguration)
 
 	reset(cfg, carrierName)
 	err = mergeOverlays(cfg, overlayList)
@@ -115,7 +109,7 @@ func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error)
 	return parsedUserSelection, nil
 }
 
-func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) ([]string, error) {
+func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) []string {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for deviceName, optionName := range userSelection {
@@ -146,7 +140,7 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 		feedback.Warnf("Incompatible ovelays, removing %v", incompatibleOverlays)
 	}
 
-	return append(dtboFiles, baseFiles...), nil
+	return append(dtboFiles, baseFiles...)
 }
 
 func getIntersection(a, b []string) []string {
@@ -185,7 +179,6 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		return fmt.Errorf("failed to create process: %w", err)
 	}
 
-	fmt.Println(strings.Join(append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...), " "))
 	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
 	if err != nil {
 		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
