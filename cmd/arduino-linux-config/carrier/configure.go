@@ -179,6 +179,8 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		overlays[i] = filepath.Join(overlaysPath, overlays[i])
 	}
 
+	// TODO MARTA DELME
+	fmt.Println(strings.Join(append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...), " "))
 	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...)
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
@@ -205,7 +207,7 @@ func validateUserConfiguration(carrierName string, nextDevicesConfiguration map[
 	}
 
 	for rawDevice, rawOption := range nextDevicesConfiguration {
-		device, exists := deviceExists(string(rawDevice), devices)
+		device, exists := getDevice(string(rawDevice), devices)
 		if !exists {
 			return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
 		}
@@ -216,7 +218,7 @@ func validateUserConfiguration(carrierName string, nextDevicesConfiguration map[
 	return nil
 }
 
-func deviceExists(deviceName string, devices []registry.Device) (registry.Device, bool) {
+func getDevice(deviceName string, devices []registry.Device) (registry.Device, bool) {
 	for _, device := range devices {
 		if device.Name == deviceName {
 			return device, true

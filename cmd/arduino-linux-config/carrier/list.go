@@ -39,7 +39,7 @@ type DeviceResult struct {
 	AvailableDevices []string `json:"available_devices"`
 }
 
-func extractCarriersResult(carriers registry.Carriers) CarriersResult {
+func extractCarriersResult(carriers registry.CarriersRegistry) CarriersResult {
 	carriersList := carriers.Carriers
 	carriersResult := CarriersResult{
 		Carriers: make([]CarrierResult, len(carriersList)),

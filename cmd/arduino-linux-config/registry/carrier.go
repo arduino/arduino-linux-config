@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	GetCarriers = sync.OnceValue(func() *Carriers {
+	GetCarriers = sync.OnceValue(func() *CarriersRegistry {
 		cfg, _ := config.NewConfigFromEnv()
 		return f.Must(LoadConfigs(cfg.CarriersConfig()))
 	})
@@ -45,7 +45,7 @@ const (
 	Display CarrierDeviceName = "display"
 )
 
-type Carriers struct {
+type CarriersRegistry struct {
 	Carriers []Carrier
 }
 
@@ -73,8 +73,8 @@ type deviceWrapper struct {
 }
 
 // LoadConfigs scans the config directory and populates the Carriers struct
-func LoadConfigs(configPath *paths.Path) (*Carriers, error) {
-	carriers := &Carriers{
+func LoadConfigs(configPath *paths.Path) (*CarriersRegistry, error) {
+	carriers := &CarriersRegistry{
 		Carriers: make([]Carrier, 0),
 	}
 
