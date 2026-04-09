@@ -41,12 +41,12 @@ type DeviceResult struct {
 
 func extractCarriersResult() CarriersResult {
 	carriersResult := CarriersResult{
-		Carriers: make([]CarrierResult, len(registry.Registry.Carriers)),
+		Carriers: make([]CarrierResult, 0, len(registry.Registry.Carriers)),
 	}
 
-	for _, c := range registry.Registry.Carriers {
+	for k, c := range registry.Registry.Carriers {
 		carriersResult.Carriers = append(carriersResult.Carriers, CarrierResult{
-			Name:    string(c.Name),
+			Name:    string(k),
 			Devices: extractDeviceResult(c.Devices),
 		})
 	}

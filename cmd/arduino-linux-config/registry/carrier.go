@@ -38,12 +38,10 @@ type CarrierName string
 
 const (
 	MediaCarrier CarrierName = "media-carrier"
-	//BuiltinCarrier CarrierName = "builtin"
 )
 
 type Carrier struct {
-	Name    CarrierName `json:"name"`
-	Devices []Device    `json:"devices"`
+	Devices []Device `json:"devices"`
 }
 
 // Device represents a configurable hardware device on a carrier
@@ -60,7 +58,6 @@ type DeviceOption struct {
 }
 
 var MediaCarrierDefinition = Carrier{
-	Name: MediaCarrier,
 	Devices: []Device{
 		{
 			Name: "camera0",

@@ -16,16 +16,13 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/arduino/go-paths-helper"
 )
 
 type Configuration struct {
-	statusDir      *paths.Path
-	carriersConfig *paths.Path
-	systemDTB      *paths.Path
-	baseDTB        *paths.Path
+	statusDir *paths.Path
+	systemDTB *paths.Path
+	baseDTB   *paths.Path
 }
 
 func NewConfigFromEnv() (Configuration, error) {
@@ -39,26 +36,11 @@ func NewConfigFromEnv() (Configuration, error) {
 		baseDTB:   baseDTB,
 	}
 
-	if err := c.init(); err != nil {
-		return Configuration{}, err
-	}
-
 	return c, nil
-}
-
-func (c *Configuration) init() error {
-	if c.carriersConfig.NotExist() {
-		return fmt.Errorf("carriers configuration directory not found: %s", c.carriersConfig)
-	}
-	return nil
 }
 
 func (c *Configuration) StatusDir() *paths.Path {
 	return c.statusDir
-}
-
-func (c *Configuration) CarriersConfig() *paths.Path {
-	return c.carriersConfig
 }
 
 func (c *Configuration) SystemDTB() *paths.Path {

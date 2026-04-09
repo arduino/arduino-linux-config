@@ -106,8 +106,7 @@ func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error)
 				return nil, fmt.Errorf("invalid argument %q: expected device=option format", pair)
 			}
 
-			deviceName := strings.TrimSpace(parts[0])
-			optionName := strings.TrimSpace(parts[1])
+			deviceName, optionName := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 			parsedUserSelection[registry.CarrierDeviceName(deviceName)] = optionName
 
 		}
@@ -139,6 +138,7 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 	// in this case, the basic overlay can be removed in favor of the device overlays
 	incompatibleOverlays := getIntersection(baseFiles, incompatibleFiles)
 
+	// remove incompatible layer and proceed
 	if len(incompatibleOverlays) > 0 {
 		baseFiles = slices.DeleteFunc(baseFiles, func(overlay string) bool {
 			return slices.Contains(incompatibleFiles, overlay)
