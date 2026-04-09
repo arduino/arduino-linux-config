@@ -15,26 +15,15 @@
 
 package registry
 
-import (
-	"encoding/json"
-	"fmt"
-	"log/slog"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
+var Registry = CarrierRegistry{
+	Carriers: map[CarrierName]Carrier{
+		MediaCarrier: MediaCarrierDefinition,
+	},
+}
 
-	"github.com/arduino/arduino-linux-config/cmd/config"
-	"github.com/arduino/go-paths-helper"
-	"go.bug.st/f"
-)
-
-var (
-	GetCarriers = sync.OnceValue(func() *CarriersRegistry {
-		cfg, _ := config.NewConfigFromEnv()
-		return f.Must(LoadConfigs(cfg.CarriersConfig()))
-	})
-)
+type CarrierRegistry struct {
+	Carriers map[CarrierName]Carrier
+}
 
 type CarrierDeviceName string
 
@@ -45,13 +34,16 @@ const (
 	Display CarrierDeviceName = "display"
 )
 
-type CarriersRegistry struct {
-	Carriers []Carrier
-}
+type CarrierName string
+
+const (
+	MediaCarrier CarrierName = "media-carrier"
+	//BuiltinCarrier CarrierName = "builtin"
+)
 
 type Carrier struct {
-	Name    string   `json:"name"`
-	Devices []Device `json:"devices"`
+	Name    CarrierName `json:"name"`
+	Devices []Device    `json:"devices"`
 }
 
 // Device represents a configurable hardware device on a carrier
@@ -67,61 +59,66 @@ type DeviceOption struct {
 	IncompatibleDtbo []string `json:"incompatibleDtboFiles,omitempty"`
 }
 
-// used to read the json
-type deviceWrapper struct {
-	Devices []Device `json:"devices"`
-}
-
-// LoadConfigs scans the config directory and populates the Carriers struct
-func LoadConfigs(configPath *paths.Path) (*CarriersRegistry, error) {
-	carriers := &CarriersRegistry{
-		Carriers: make([]Carrier, 0),
-	}
-
-	entries, err := os.ReadDir(configPath.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config dir: %w", err)
-	}
-
-	for _, entry := range entries {
-		// skip non-JSON
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-
-		fullPath := filepath.Join(configPath.String(), entry.Name())
-
-		devices, err := ReadCarrierConfig(fullPath)
-
-		if err != nil {
-			slog.Warn("Warning: skipping invalid config", slog.String("filename", entry.Name()))
-			continue
-		}
-
-		carrier := Carrier{
-			Name:    strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name())),
-			Devices: devices,
-		}
-		carriers.Carriers = append(carriers.Carriers, carrier)
-	}
-
-	slog.Info("Loaded configuration files", slog.Int("carriers", len(carriers.Carriers)))
-	return carriers, nil
-}
-
-func ReadCarrierConfig(filePath string) ([]Device, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("read file error: %w", err)
-	}
-
-	var wrapper deviceWrapper
-	if err := json.Unmarshal(data, &wrapper); err != nil {
-		return nil, fmt.Errorf("unmarshal error: %w", err)
-	}
-
-	if wrapper.Devices == nil {
-		return nil, fmt.Errorf("no 'devices' key found in JSON or tag mismatch")
-	}
-	return wrapper.Devices, nil
+var MediaCarrierDefinition = Carrier{
+	Name: MediaCarrier,
+	Devices: []Device{
+		{
+			Name: "camera0",
+			Options: []DeviceOption{
+				{
+					Name:      "none",
+					DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
+				},
+				{
+					Name: "type1-2lane",
+					DtboFiles: []string{
+						"qrb2210-arduino-imola-carrier-media.dtbo",
+						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
+					},
+				},
+				{
+					Name: "type1-4lane",
+					DtboFiles: []string{
+						"qrb2210-arduino-imola-carrier-media.dtbo",
+						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo",
+					},
+				},
+			},
+		},
+		{
+			Name: "camera1",
+			Options: []DeviceOption{
+				{
+					Name:      "none",
+					DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
+				},
+				{
+					Name: "type1-2lane",
+					DtboFiles: []string{
+						"qrb2210-arduino-imola-carrier-media.dtbo",
+						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
+					},
+				},
+			},
+		},
+		{
+			Name: "display",
+			Options: []DeviceOption{
+				{
+					Name:      "none",
+					DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
+				},
+				{
+					Name: "8-dsi-touch-a",
+					DtboFiles: []string{
+						"qrb2210-arduino-imola-carrier-media.dtbo",
+						"qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
+					},
+					IncompatibleDtbo: []string{
+						"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+					},
+				},
+			},
+		},
+	},
 }

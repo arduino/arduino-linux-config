@@ -226,10 +226,7 @@ func getDevice(deviceName string, devices []registry.Device) (registry.Device, b
 }
 
 func isOptionValid(optionName string, device registry.Device) bool {
-	for _, option := range device.Options {
-		if optionName == option.Name {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(device.Options, func(o registry.DeviceOption) bool {
+		return o.Name == optionName
+	})
 }

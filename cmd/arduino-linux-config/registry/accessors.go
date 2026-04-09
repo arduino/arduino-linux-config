@@ -1,8 +1,8 @@
 package registry
 
 func GetDevices(carrierName string) ([]Device, bool) {
-	for _, c := range GetCarriers().Carriers {
-		if c.Name == carrierName {
+	for _, c := range Registry.Carriers {
+		if string(c.Name) == carrierName {
 			return c.Devices, true
 		}
 	}
@@ -10,8 +10,8 @@ func GetDevices(carrierName string) ([]Device, bool) {
 }
 
 func GetDevicesNames(carrierName string) []CarrierDeviceName {
-	for _, c := range GetCarriers().Carriers {
-		if c.Name == carrierName {
+	for _, c := range Registry.Carriers {
+		if string(c.Name) == carrierName {
 			result := make([]CarrierDeviceName, 0, len(c.Devices))
 			for _, device := range c.Devices {
 				result = append(result, CarrierDeviceName(device.Name))
@@ -23,8 +23,8 @@ func GetDevicesNames(carrierName string) []CarrierDeviceName {
 }
 
 func FindDevice(carrierName string, deviceName CarrierDeviceName) (*Device, bool) {
-	for _, c := range GetCarriers().Carriers {
-		if c.Name == carrierName {
+	for _, c := range Registry.Carriers {
+		if string(c.Name) == carrierName {
 			for i := range c.Devices {
 				if c.Devices[i].Name == string(deviceName) {
 					return &c.Devices[i], true
@@ -45,8 +45,8 @@ func GetDeviceOptions(device Device, optionName string) []string {
 }
 
 func CarrierExists(carrierName string) bool {
-	for _, carrier := range GetCarriers().Carriers {
-		if carrier.Name == carrierName {
+	for _, c := range Registry.Carriers {
+		if string(c.Name) == carrierName {
 			return true
 		}
 	}

@@ -21,7 +21,7 @@ func newListCmd() *cobra.Command {
 }
 
 func listHandler() {
-	carriersResult := extractCarriersResult(*registry.GetCarriers())
+	carriersResult := extractCarriersResult()
 	feedback.PrintResult(carriersResult)
 }
 
@@ -39,17 +39,16 @@ type DeviceResult struct {
 	AvailableDevices []string `json:"available_devices"`
 }
 
-func extractCarriersResult(carriers registry.CarriersRegistry) CarriersResult {
-	carriersList := carriers.Carriers
+func extractCarriersResult() CarriersResult {
 	carriersResult := CarriersResult{
-		Carriers: make([]CarrierResult, len(carriersList)),
+		Carriers: make([]CarrierResult, len(registry.Registry.Carriers)),
 	}
 
-	for i, c := range carriersList {
-		carriersResult.Carriers[i] = CarrierResult{
-			Name:    c.Name,
+	for _, c := range registry.Registry.Carriers {
+		carriersResult.Carriers = append(carriersResult.Carriers, CarrierResult{
+			Name:    string(c.Name),
 			Devices: extractDeviceResult(c.Devices),
-		}
+		})
 	}
 	return carriersResult
 }
