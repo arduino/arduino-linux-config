@@ -179,8 +179,6 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		overlays[i] = filepath.Join(overlaysPath, overlays[i])
 	}
 
-	// TODO MARTA DELME
-	fmt.Println(strings.Join(append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...), " "))
 	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...)
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
