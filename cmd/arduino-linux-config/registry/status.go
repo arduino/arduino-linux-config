@@ -45,7 +45,7 @@ func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}
-	currentStatus, _ := getFixedStatusStructure(status, carrierName, bootTime)
+	currentStatus, _ := getStatusStructure(status, carrierName, bootTime)
 	updateStatusStructure(status, carrierName, currentStatus, statusUpdate)
 
 	if err := saveStatusFile(getStatusFile(cfg, carrierName), *status); err != nil {
@@ -66,13 +66,16 @@ func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}
 
-	return getFixedStatusStructure(status, carrierName, bootTime)
+	return getStatusStructure(status, carrierName, bootTime)
 }
 
-func getFixedStatusStructure(status *StatusFile, carrierName string, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
-	current := []StatusDevice{}
-	next := []StatusDevice{}
-	for _, deviceName := range GetDevicesNames(carrierName) {
+func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
+	deviceNames := GetDevicesNames(carrierName)
+
+	current := make([]StatusDevice, 0, len(deviceNames))
+	next := make([]StatusDevice, 0, len(deviceNames))
+
+	for _, deviceName := range deviceNames {
 
 		// parse next structure, if they happened before the boot, move in actual
 		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {

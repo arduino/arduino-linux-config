@@ -16,51 +16,31 @@
 package config
 
 import (
-	"fmt"
-
 	"github.com/arduino/go-paths-helper"
 )
 
 type Configuration struct {
-	statusDir      *paths.Path
-	carriersConfig *paths.Path
-	systemDTB      *paths.Path
-	baseDTB        *paths.Path
+	statusDir *paths.Path
+	systemDTB *paths.Path
+	baseDTB   *paths.Path
 }
 
 func NewConfigFromEnv() (Configuration, error) {
 	statusFile := paths.New("/var/lib/arduino-linux-config/status")
-	carriersConfig := paths.New("/var/lib/arduino-linux-config/configs")
 	systemDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb")
 	baseDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb")
 
 	c := Configuration{
-		statusDir:      statusFile,
-		carriersConfig: carriersConfig,
-		systemDTB:      systemDTB,
-		baseDTB:        baseDTB,
-	}
-
-	if err := c.init(); err != nil {
-		return Configuration{}, err
+		statusDir: statusFile,
+		systemDTB: systemDTB,
+		baseDTB:   baseDTB,
 	}
 
 	return c, nil
 }
 
-func (c *Configuration) init() error {
-	if c.carriersConfig.NotExist() {
-		return fmt.Errorf("carriers configuration directory not found: %s", c.carriersConfig)
-	}
-	return nil
-}
-
 func (c *Configuration) StatusDir() *paths.Path {
 	return c.statusDir
-}
-
-func (c *Configuration) CarriersConfig() *paths.Path {
-	return c.carriersConfig
 }
 
 func (c *Configuration) SystemDTB() *paths.Path {

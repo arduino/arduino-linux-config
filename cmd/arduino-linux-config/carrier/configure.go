@@ -50,18 +50,17 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
 func configHandler(cfg config.Configuration, carrierName string, deviceArgs []string) {
-	nextDevicesConfiguration, err := parseArguments(carrierName, deviceArgs)
+	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	overlayList, err := collectDtboFiles(carrierName, nextDevicesConfiguration)
+	err = validateUserConfiguration(carrierName, nextDevicesConfiguration)
 	if err != nil {
-		feedback.Fatal(
-			fmt.Sprintf("incompatible configuration: %v", err),
-			feedback.ErrGeneric,
-		)
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
+
+	overlayList := collectDtboFiles(carrierName, nextDevicesConfiguration)
 
 	reset(cfg, carrierName)
 	err = mergeOverlays(cfg, overlayList)
@@ -83,7 +82,7 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 	})
 }
 
-func parseArguments(carrierName string, args []string) (map[registry.CarrierDeviceName]string, error) {
+func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error) {
 	parsedUserSelection := make(map[registry.CarrierDeviceName]string)
 
 	for _, arg := range args {
@@ -96,29 +95,22 @@ func parseArguments(carrierName string, args []string) (map[registry.CarrierDevi
 				continue
 			}
 
-			// Split the individual pair by "="
-			parts := strings.SplitN(pair, "=", 2)
+			parts := strings.Split(pair, "=")
 			if len(parts) != 2 {
 				return nil, fmt.Errorf("invalid argument %q: expected device=option format", pair)
 			}
 
-			deviceName := parts[0]
-			optionName := parts[1]
-
-			if err := validateDeviceOption(carrierName, deviceName, optionName); err != nil {
-				return nil, err
-			}
-
+			deviceName, optionName := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 			parsedUserSelection[registry.CarrierDeviceName(deviceName)] = optionName
+
 		}
 	}
 
 	return parsedUserSelection, nil
 }
 
-func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) ([]string, error) {
-	baseFiles := make([]string, 0)
-	dtboFiles := make([]string, 0)
+func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) []string {
+	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for deviceName, optionName := range userSelection {
 		device, _ := registry.FindDevice(carrierName, deviceName)
@@ -127,22 +119,39 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 			if option.Name == string(registry.None) {
 				baseFiles = append(baseFiles, option.DtboFiles...)
 			}
-			// get the user selected option
+			// get the user selected option and collect incompatibilities
 			if option.Name == optionName {
 				dtboFiles = append(dtboFiles, option.DtboFiles...)
-				for _, incompatible := range option.IncompatibleDtbo {
-					if slices.Contains(dtboFiles, incompatible) {
-						return []string{}, fmt.Errorf("incompatible %s", optionName)
-					}
-				}
+				incompatibleFiles = append(incompatibleFiles, option.IncompatibleDtbo...)
 				break
 			}
 		}
 	}
 
-	// add base and remove duplicated values
-	dtboFiles = append(dtboFiles, baseFiles...)
-	return uniqueStrings(dtboFiles), nil
+	// check for incompatible overlays in the basic configuration
+	// in this case, the basic overlay can be removed in favor of the device overlays
+	incompatibleOverlays := getIntersection(baseFiles, incompatibleFiles)
+
+	// remove incompatible layer and proceed
+	if len(incompatibleOverlays) > 0 {
+		baseFiles = slices.DeleteFunc(baseFiles, func(overlay string) bool {
+			return slices.Contains(incompatibleFiles, overlay)
+		})
+		feedback.Warnf("Incompatible ovelays, removing %v", incompatibleOverlays)
+	}
+
+	return append(dtboFiles, baseFiles...)
+}
+
+func getIntersection(a, b []string) []string {
+	var result []string
+	for _, v := range a {
+		if slices.Contains(b, v) {
+			result = append(result, v)
+		}
+	}
+	slices.Sort(result)
+	return slices.Compact(result)
 }
 
 var overlayCommand = "/usr/bin/fdtoverlay"
@@ -151,9 +160,14 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	if len(overlays) == 0 {
 		return nil
 	}
+
+	slices.Sort(overlays)
+	overlays = slices.Compact(overlays)
+
 	systemDtb := cfg.SystemDTB()
 	overlaysPath := filepath.Dir(systemDtb.String())
 	temporaryDtb := filepath.Join(overlaysPath, "qrb2210-arduino-imola.dtb.next")
+	defer func() { _ = os.Remove(temporaryDtb) }()
 
 	for i := range overlays {
 		overlays[i] = filepath.Join(overlaysPath, overlays[i])
@@ -167,50 +181,35 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 
 	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
 	if err != nil {
-		os.Remove(temporaryDtb)
 		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
 	}
 
 	if err := os.Rename(temporaryDtb, systemDtb.String()); err != nil {
-		os.Remove(temporaryDtb)
 		return fmt.Errorf("failed to move output file: %w", err)
 	}
 
 	return nil
 }
 
-func uniqueStrings(input []string) []string {
-	seen := make(map[string]struct{})
-	result := make([]string, 0, len(input))
-
-	for _, val := range input {
-		if _, ok := seen[val]; !ok {
-			seen[val] = struct{}{}
-			result = append(result, val)
-		}
-	}
-	return result
-}
-
-func validateDeviceOption(carrierName string, rawDevice string, rawOption string) error {
+func validateUserConfiguration(carrierName string, nextDevicesConfiguration map[registry.CarrierDeviceName]string) error {
 	devices, exists := registry.GetDevices(carrierName)
 	if !exists {
 		return fmt.Errorf("carrier %q not supported", carrierName)
 	}
 
-	device, exists := deviceExists(rawDevice, devices)
-	if !exists {
-		return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
+	for rawDevice, rawOption := range nextDevicesConfiguration {
+		device, exists := getDevice(string(rawDevice), devices)
+		if !exists {
+			return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
+		}
+		if !isOptionValid(rawOption, device) {
+			return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
+		}
 	}
-
-	if !isOptionValid(rawOption, device) {
-		return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
-	}
-
 	return nil
 }
 
-func deviceExists(deviceName string, devices []registry.Device) (registry.Device, bool) {
+func getDevice(deviceName string, devices []registry.Device) (registry.Device, bool) {
 	for _, device := range devices {
 		if device.Name == deviceName {
 			return device, true
@@ -220,10 +219,7 @@ func deviceExists(deviceName string, devices []registry.Device) (registry.Device
 }
 
 func isOptionValid(optionName string, device registry.Device) bool {
-	for _, option := range device.Options {
-		if optionName == option.Name {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(device.Options, func(o registry.DeviceOption) bool {
+		return o.Name == optionName
+	})
 }

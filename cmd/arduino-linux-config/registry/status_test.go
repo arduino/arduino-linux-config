@@ -137,7 +137,7 @@ func TestGetStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			current, next := getFixedStatusStructure(tt.initialStatus, "media-carrier", bootTime)
+			current, next := getStatusStructure(tt.initialStatus, "media-carrier", bootTime)
 
 			// Validate Current Slice
 			for i, want := range tt.expectedCurrent {

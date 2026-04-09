@@ -21,7 +21,7 @@ func newListCmd() *cobra.Command {
 }
 
 func listHandler() {
-	carriersResult := extractCarriersResult(*registry.GetCarriers())
+	carriersResult := extractCarriersResult()
 	feedback.PrintResult(carriersResult)
 }
 
@@ -39,17 +39,16 @@ type DeviceResult struct {
 	AvailableDevices []string `json:"available_devices"`
 }
 
-func extractCarriersResult(carriers registry.Carriers) CarriersResult {
-	carriersList := carriers.Carriers
+func extractCarriersResult() CarriersResult {
 	carriersResult := CarriersResult{
-		Carriers: make([]CarrierResult, len(carriersList)),
+		Carriers: make([]CarrierResult, 0, len(registry.Registry.Carriers)),
 	}
 
-	for i, c := range carriersList {
-		carriersResult.Carriers[i] = CarrierResult{
-			Name:    c.Name,
+	for k, c := range registry.Registry.Carriers {
+		carriersResult.Carriers = append(carriersResult.Carriers, CarrierResult{
+			Name:    string(k),
 			Devices: extractDeviceResult(c.Devices),
-		}
+		})
 	}
 	return carriersResult
 }
@@ -81,7 +80,7 @@ func (r CarriersResult) String() string {
 
 	for _, carrier := range r.Carriers {
 		// 1. Print the "Header" for each carrier file
-		b.WriteString(fmt.Sprintf("%s\n", carrier.Name))
+		fmt.Fprintf(&b, "%s\n", carrier.Name)
 
 		// 2. Initialize a tabwriter for the indented section
 		// We use a new writer per carrier to keep column widths consistent within that group
