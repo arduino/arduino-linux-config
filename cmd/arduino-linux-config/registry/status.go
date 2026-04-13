@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -116,8 +115,7 @@ func getBootTime() (time.Time, error) {
 }
 
 func getStatusFile(cfg config.Configuration, carrierName string) *paths.Path {
-	filePath := filepath.Join(cfg.StatusDir().String(), carrierName+".json")
-	return paths.New(filePath)
+	return cfg.StatusDir().Join(carrierName + ".json")
 }
 
 func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
