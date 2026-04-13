@@ -15,10 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type CarrierStatus struct {
-	Configuration map[registry.CarrierDeviceName]string `json:"configuration,omitempty"`
-}
-
 func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "config <carrier-name> <device=option...>",

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,17 +17,17 @@ import (
 )
 
 type StatusFile struct {
-	CurrentStatus StatusCarrier `json:"CurrentStatus"`
-	NextStatus    StatusCarrier `json:"NextStatus"`
+	CurrentStatus StatusCarrier `json:"current_status"`
+	NextStatus    StatusCarrier `json:"next_status"`
 }
 
 type StatusCarrier struct {
-	Devices map[CarrierDeviceName]StatusInfo `json:"Devices"`
+	Devices map[CarrierDeviceName]StatusInfo `json:"devices"`
 }
 
 type StatusInfo struct {
-	Option    string    `json:"Option"`
-	CreatedAt time.Time `json:"CreatedAt"`
+	Option    string    `json:"option"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type StatusDevice struct {
@@ -90,10 +91,7 @@ func updateStatusStructure(status *StatusFile, carrierName string, statusUpdate 
 }
 
 func getOrDefault(option string) string {
-	if option == "" {
-		option = string(None)
-	}
-	return option
+	return cmp.Or(option, string(None))
 }
 
 func getBootTime() (time.Time, error) {
