@@ -41,20 +41,20 @@ const (
 )
 
 type Carrier struct {
-	Devices []Device `json:"devices"`
+	Devices []Device
 }
 
 // Device represents a configurable hardware device on a carrier
 type Device struct {
-	Name    string         `json:"name"`
-	Options []DeviceOption `json:"options"`
+	Name    string
+	Options []DeviceOption
 }
 
 // DeviceOption represents a configuration option for a device
 type DeviceOption struct {
-	Name             string   `json:"name"`
-	DtboFiles        []string `json:"dtboFiles"`
-	IncompatibleDtbo []string `json:"incompatibleDtboFiles,omitempty"`
+	Name             string
+	DtboFiles        []string
+	IncompatibleDtbo []string
 }
 
 var MediaCarrierDefinition = Carrier{
