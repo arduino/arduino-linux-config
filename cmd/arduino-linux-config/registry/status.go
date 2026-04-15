@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,17 +16,17 @@ import (
 )
 
 type StatusFile struct {
-	CurrentStatus StatusCarrier `json:"CurrentStatus"`
-	NextStatus    StatusCarrier `json:"NextStatus"`
+	CurrentStatus StatusCarrier `json:"current_status"`
+	NextStatus    StatusCarrier `json:"next_status"`
 }
 
 type StatusCarrier struct {
-	Devices map[MediaCarrierDeviceName]StatusInfo `json:"Devices"`
+	Devices map[CarrierDeviceName]StatusInfo `json:"devices"`
 }
 
 type StatusInfo struct {
-	Option    string    `json:"Option"`
-	CreatedAt time.Time `json:"CreatedAt"`
+	Option    string    `json:"option"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type StatusDevice struct {
@@ -33,22 +34,22 @@ type StatusDevice struct {
 	Option string `json:"option"`
 }
 
-func StatusUpdate(cfg config.Configuration, statusUpdate map[MediaCarrierDeviceName]string) {
-	status, err := loadStatusFile(cfg.StatusFile())
+func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map[CarrierDeviceName]string) {
+	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
 	}
 
-	updateStatusStructure(status, statusUpdate)
-	if err := saveStatusFile(cfg.StatusFile(), *status); err != nil {
+	updateStatusStructure(status, carrierName, statusUpdate)
+	if err := saveStatusFile(getStatusFile(cfg, carrierName), *status); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to save status file: %v", err), feedback.ErrGeneric)
 	}
 }
 
-func GetStatus(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
-	status, err := loadStatusFile(cfg.StatusFile())
+func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []StatusDevice) {
+	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
 	}
 
 	bootTime, err := getBootTime()
@@ -56,13 +57,16 @@ func GetStatus(cfg config.Configuration) ([]StatusDevice, []StatusDevice) {
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
 	}
 
-	return getStatusStructure(status, bootTime)
+	return getStatusStructure(status, carrierName, bootTime)
 }
 
-func getStatusStructure(status *StatusFile, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
-	current := []StatusDevice{}
-	next := []StatusDevice{}
-	for _, deviceName := range MediaCarrierDeviceList {
+func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
+	deviceNames := GetDevicesNames(carrierName)
+
+	current := make([]StatusDevice, 0, len(deviceNames))
+	next := make([]StatusDevice, 0, len(deviceNames))
+
+	for _, deviceName := range deviceNames {
 
 		// parse next, if they happened before the boot, move in actual
 		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
@@ -75,8 +79,8 @@ func getStatusStructure(status *StatusFile, bootTime time.Time) ([]StatusDevice,
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, statusUpdate map[MediaCarrierDeviceName]string) {
-	for _, deviceName := range MediaCarrierDeviceList {
+func updateStatusStructure(status *StatusFile, carrierName string, statusUpdate map[CarrierDeviceName]string) {
+	for _, deviceName := range GetDevicesNames(carrierName) {
 		newInfo := StatusInfo{
 			Option:    getOrDefault(statusUpdate[deviceName]),
 			CreatedAt: time.Now().UTC(),
@@ -86,10 +90,7 @@ func updateStatusStructure(status *StatusFile, statusUpdate map[MediaCarrierDevi
 }
 
 func getOrDefault(option string) string {
-	if option == "" {
-		option = DeviceOptionNone
-	}
-	return option
+	return cmp.Or(option, string(None))
 }
 
 func getBootTime() (time.Time, error) {
@@ -113,16 +114,20 @@ func getBootTime() (time.Time, error) {
 	return bootTime, nil
 }
 
+func getStatusFile(cfg config.Configuration, carrierName string) *paths.Path {
+	return cfg.StatusDir().Join(carrierName + ".json")
+}
+
 func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
 	data, err := statusFile.ReadFile()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			newStatus := StatusFile{
 				CurrentStatus: StatusCarrier{
-					Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+					Devices: make(map[CarrierDeviceName]StatusInfo),
 				},
 				NextStatus: StatusCarrier{
-					Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+					Devices: make(map[CarrierDeviceName]StatusInfo),
 				},
 			}
 			return &newStatus, nil

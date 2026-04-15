@@ -12,30 +12,30 @@ import (
 func TestUpdateStatusStructure(t *testing.T) {
 	tests := []struct {
 		name         string
-		statusUpdate map[MediaCarrierDeviceName]string
-		wantResult   map[MediaCarrierDeviceName]string
+		statusUpdate map[CarrierDeviceName]string
+		wantResult   map[CarrierDeviceName]string
 	}{
 		{
 			name: "update all devices",
-			statusUpdate: map[MediaCarrierDeviceName]string{
-				Camera1: "cam1",
-				Camera2: "none",
+			statusUpdate: map[CarrierDeviceName]string{
+				Camera0: "cam1",
+				Camera1: "none",
 				Display: "display",
 			},
-			wantResult: map[MediaCarrierDeviceName]string{
-				Camera1: "cam1",
-				Camera2: "none",
+			wantResult: map[CarrierDeviceName]string{
+				Camera0: "cam1",
+				Camera1: "none",
 				Display: "display",
 			},
 		},
 		{
 			name: "fill empty devices",
-			statusUpdate: map[MediaCarrierDeviceName]string{
+			statusUpdate: map[CarrierDeviceName]string{
 				Display: "display",
 			},
-			wantResult: map[MediaCarrierDeviceName]string{
+			wantResult: map[CarrierDeviceName]string{
+				Camera0: "none",
 				Camera1: "none",
-				Camera2: "none",
 				Display: "display",
 			},
 		},
@@ -45,33 +45,32 @@ func TestUpdateStatusStructure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			status := &StatusFile{
 				NextStatus: StatusCarrier{
-					Devices: make(map[MediaCarrierDeviceName]StatusInfo),
+					Devices: make(map[CarrierDeviceName]StatusInfo),
 				},
 			}
 
 			startTime := time.Now().UTC().Truncate(time.Second)
 
-			updateStatusStructure(status, tt.statusUpdate)
+			updateStatusStructure(status, "media-carrier", tt.statusUpdate)
+			carrierDeviceLenght := len(GetDevicesNames("media-carrier"))
+			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
-			if len(status.NextStatus.Devices) != len(MediaCarrierDeviceList) {
-				t.Errorf("got %d devices, want %d", len(status.NextStatus.Devices), len(MediaCarrierDeviceList))
-			}
-
-			if len(status.CurrentStatus.Devices) != 0 {
-				t.Errorf("got %d devices, want %d", len(status.CurrentStatus.Devices), len(MediaCarrierDeviceList))
-			}
-
-			for _, name := range MediaCarrierDeviceList {
-				info, exists := status.NextStatus.Devices[name]
-				if !exists {
-					t.Fatalf("device %s missing from wanted status", name)
-				}
-				if info.Option != tt.wantResult[name] {
-					t.Errorf("device %s: got option %s, want %s", name, info.Option, tt.wantResult[name])
+				if len(status.CurrentStatus.Devices) != 0 {
+					t.Errorf("got %d devices, want %d", len(status.CurrentStatus.Devices), carrierDeviceLenght)
 				}
 
-				if info.CreatedAt.Before(startTime) {
-					t.Errorf("device %s: timestamp %v is too old", name, info.CreatedAt)
+				for _, name := range GetDevicesNames("media-carrier") {
+					info, exists := status.NextStatus.Devices[name]
+					if !exists {
+						t.Fatalf("device %s missing from wanted status", name)
+					}
+					if info.Option != tt.wantResult[name] {
+						t.Errorf("device %s: got option %s, want %s", name, info.Option, tt.wantResult[name])
+					}
+
+					if info.CreatedAt.Before(startTime) {
+						t.Errorf("device %s: timestamp %v is too old", name, info.CreatedAt)
+					}
 				}
 			}
 		})
@@ -93,44 +92,44 @@ func TestGetStatusStructure(t *testing.T) {
 		{
 			name: "Move outdated device to current",
 			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{Devices: make(map[MediaCarrierDeviceName]StatusInfo)},
+				CurrentStatus: StatusCarrier{Devices: make(map[CarrierDeviceName]StatusInfo)},
 				NextStatus: StatusCarrier{
-					Devices: map[MediaCarrierDeviceName]StatusInfo{
-						Camera1: {Option: "cam1", CreatedAt: beforeBoot},
+					Devices: map[CarrierDeviceName]StatusInfo{
+						Camera0: {Option: "cam1", CreatedAt: beforeBoot},
 						Display: {Option: "display", CreatedAt: afterBoot},
 					},
 				},
 			},
 			expectedCurrent: []StatusDevice{
-				{Device: string(Camera1), Option: "cam1"},
-				{Device: string(Camera2), Option: "none"},
+				{Device: string(Camera0), Option: "cam1"},
+				{Device: string(Camera1), Option: "none"},
 				{Device: string(Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
+				{Device: string(Camera0), Option: "none"},
 				{Device: string(Camera1), Option: "none"},
-				{Device: string(Camera2), Option: "none"},
 				{Device: string(Display), Option: "display"},
 			},
 		},
 		{
 			name: "Both devices after boot stay in next",
 			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{Devices: make(map[MediaCarrierDeviceName]StatusInfo)},
+				CurrentStatus: StatusCarrier{Devices: make(map[CarrierDeviceName]StatusInfo)},
 				NextStatus: StatusCarrier{
-					Devices: map[MediaCarrierDeviceName]StatusInfo{
-						Camera1: {Option: "cam1", CreatedAt: afterBoot},    // fresh
+					Devices: map[CarrierDeviceName]StatusInfo{
+						Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
 						Display: {Option: "display", CreatedAt: afterBoot}, // fresh
 					},
 				},
 			},
 			expectedCurrent: []StatusDevice{
+				{Device: string(Camera0), Option: "none"},
 				{Device: string(Camera1), Option: "none"},
-				{Device: string(Camera2), Option: "none"},
 				{Device: string(Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
-				{Device: string(Camera1), Option: "cam1"},
-				{Device: string(Camera2), Option: "none"},
+				{Device: string(Camera0), Option: "cam1"},
+				{Device: string(Camera1), Option: "none"},
 				{Device: string(Display), Option: "display"},
 			},
 		},
@@ -138,7 +137,7 @@ func TestGetStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			current, next := getStatusStructure(tt.initialStatus, bootTime)
+			current, next := getStatusStructure(tt.initialStatus, "media-carrier", bootTime)
 
 			// Validate Current Slice
 			for i, want := range tt.expectedCurrent {
@@ -173,7 +172,7 @@ func TestLoadStatusFile(t *testing.T) {
 		{
 			name:          "Valid JSON file - returns parsed struct",
 			shouldExist:   true,
-			fileContent:   `{"CurrentStatus": {"Devices": {"Cam1": {"Option": "ON"}}}, "WantedStatus": {"Devices": {}}}`,
+			fileContent:   `{"CurrentStatus": {"Devices": {"Cam0": {"Option": "ON"}}}, "WantedStatus": {"Devices": {}}}`,
 			wantErr:       false,
 			checkContents: true,
 		},
@@ -186,9 +185,10 @@ func TestLoadStatusFile(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		carrierName := "media-carrier"
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := t.TempDir()
-			filePath := filepath.Join(tmpDir, "status.json")
+			filePath := filepath.Join(tmpDir, carrierName+".json")
 			p := paths.New(filePath)
 
 			if tt.shouldExist {
@@ -217,8 +217,8 @@ func TestLoadStatusFile(t *testing.T) {
 
 			// 3. Verify Data Parsing
 			if tt.checkContents {
-				if _, ok := status.CurrentStatus.Devices["Cam1"]; !ok {
-					t.Error("Expected device 'Cam1' to be parsed from JSON")
+				if _, ok := status.CurrentStatus.Devices["Cam0"]; !ok {
+					t.Error("Expected device 'Cam0' to be parsed from JSON")
 				}
 			}
 		})

@@ -1,7 +1,6 @@
 package carrier
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"text/tabwriter"
@@ -19,23 +18,23 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier configure <name>")
+				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier config <carrier-name>")
 			}
 			return nil
 		},
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			showHandler(cmd.Context(), cfg, args[0])
+			showHandler(cfg, args[0])
 		},
 	}
 }
 
-func showHandler(_ context.Context, cfg config.Configuration, carrierName string) {
-	if carrierName != registry.MediaCarrierRegistry.Name {
-		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
+func showHandler(cfg config.Configuration, carrierName string) {
+	if !registry.CarrierExists(carrierName) {
+		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	current, next := registry.GetStatus(cfg)
+	current, next := registry.GetStatus(cfg, carrierName)
 
 	feedback.PrintResult(showResult{
 		CarrierName:    carrierName,
@@ -51,34 +50,25 @@ type showResult struct {
 }
 
 func (r showResult) String() string {
-	if len(r.CurrentDevices) == 0 && len(r.NextDevices) == 0 {
-		return fmt.Sprintf("Media carrier %s not yet configured\n", r.CarrierName)
-	}
-
 	var sb strings.Builder
 	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(&sb, "%s\n", r.CarrierName)
 
-	nextMap := make(map[registry.MediaCarrierDeviceName]string)
+	nextMap := make(map[registry.CarrierDeviceName]string)
 
 	if len(r.NextDevices) > 0 {
-		for _, deviceName := range registry.MediaCarrierDeviceList {
+		for _, deviceName := range registry.GetDevicesNames(r.CarrierName) {
 			if device, found := hasDevice(r.NextDevices, deviceName); found {
 				nextMap[deviceName] = device.Option
-			} else {
-				nextMap[deviceName] = registry.DeviceOptionNone
 			}
 		}
 	}
 
-	for _, deviceName := range registry.MediaCarrierDeviceList {
-		c, found := hasDevice(r.CurrentDevices, deviceName)
-		if !found {
-			c = registry.StatusDevice{Device: string(deviceName), Option: registry.DeviceOptionNone}
-		}
+	for _, deviceName := range registry.GetDevicesNames(r.CarrierName) {
+		c, _ := hasDevice(r.CurrentDevices, deviceName)
 
 		if len(r.NextDevices) > 0 {
-			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.MediaCarrierDeviceName(c.Device)])
+			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.CarrierDeviceName(c.Device)])
 		} else {
 			fmt.Fprintf(w, "  %s:\t[current: %s]\t\n", c.Device, c.Option)
 		}
@@ -93,7 +83,7 @@ func (r showResult) Data() interface{} {
 	return r
 }
 
-func hasDevice(devices []registry.StatusDevice, deviceName registry.MediaCarrierDeviceName) (registry.StatusDevice, bool) {
+func hasDevice(devices []registry.StatusDevice, deviceName registry.CarrierDeviceName) (registry.StatusDevice, bool) {
 	for _, d := range devices {
 		if d.Device == string(deviceName) {
 			return d, true

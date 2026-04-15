@@ -1,6 +1,6 @@
 module github.com/arduino/arduino-linux-config
 
-go 1.25.8
+go 1.26.1
 
 require (
 	github.com/leonelquinteros/gotext v1.7.2
