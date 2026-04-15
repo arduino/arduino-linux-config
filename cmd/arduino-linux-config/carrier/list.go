@@ -36,6 +36,7 @@ type CarrierResult struct {
 
 type DeviceResult struct {
 	Name             string   `json:"name"`
+	DeviceType       string   `json:"device_type"`
 	AvailableDevices []string `json:"available_devices"`
 }
 
@@ -60,6 +61,7 @@ func extractDeviceResult(devices []registry.Device) []DeviceResult {
 		options := extractOptions(d.Options)
 		devicesList[i] = DeviceResult{
 			Name:             d.Name,
+			DeviceType:       string(d.DeviceType),
 			AvailableDevices: options,
 		}
 	}
