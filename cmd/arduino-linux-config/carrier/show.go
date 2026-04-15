@@ -33,20 +33,44 @@ func showHandler(cfg config.Configuration, carrierName string) {
 	if !registry.CarrierExists(carrierName) {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
-
 	current, next := registry.GetStatus(cfg, carrierName)
+	fmt.Println(current)
+	fmt.Println(next)
+	feedback.PrintResult(populateShowResult(carrierName, current, next))
+}
 
-	feedback.PrintResult(showResult{
+func populateShowResult(carrierName string, current []registry.StatusDevice, next []registry.StatusDevice) showResult {
+	currentResult := make([]StatusDeviceResult, 0, len(current))
+	for _, device := range current {
+		currentResult = append(currentResult, StatusDeviceResult{
+			Device: device.Device,
+			Option: device.Option,
+		})
+	}
+	nextResult := make([]StatusDeviceResult, 0, len(next))
+	for _, device := range next {
+		nextResult = append(nextResult, StatusDeviceResult{
+			Device: device.Device,
+			Option: device.Option,
+		})
+	}
+	return showResult{
 		CarrierName:    carrierName,
-		CurrentDevices: current,
-		NextDevices:    next,
-	})
+		CurrentDevices: currentResult,
+		NextDevices:    nextResult,
+	}
 }
 
 type showResult struct {
-	CarrierName    string                  `json:"carrier_name"`
-	CurrentDevices []registry.StatusDevice `json:"current"`
-	NextDevices    []registry.StatusDevice `json:"next"`
+	CarrierName    string               `json:"carrier_name"`
+	CurrentDevices []StatusDeviceResult `json:"current"`
+	NextDevices    []StatusDeviceResult `json:"next"`
+}
+
+type StatusDeviceResult struct {
+	Device     string `json:"device"`
+	Option     string `json:"option"`
+	DeviceType string `json:"device_type"`
 }
 
 func (r showResult) String() string {
@@ -83,11 +107,11 @@ func (r showResult) Data() interface{} {
 	return r
 }
 
-func hasDevice(devices []registry.StatusDevice, deviceName registry.CarrierDeviceName) (registry.StatusDevice, bool) {
+func hasDevice(devices []StatusDeviceResult, deviceName registry.CarrierDeviceName) (StatusDeviceResult, bool) {
 	for _, d := range devices {
 		if d.Device == string(deviceName) {
 			return d, true
 		}
 	}
-	return registry.StatusDevice{}, false
+	return StatusDeviceResult{}, false
 }

@@ -15,10 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type CarrierStatus struct {
-	Configuration map[registry.CarrierDeviceName]string `json:"configuration,omitempty"`
-}
-
 func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "config <carrier-name> <device=option...>",
@@ -75,11 +71,7 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
 	current, next := registry.GetStatus(cfg, carrierName)
-	feedback.PrintResult(showResult{
-		CarrierName:    carrierName,
-		CurrentDevices: current,
-		NextDevices:    next,
-	})
+	feedback.PrintResult(populateShowResult(carrierName, current, next))
 }
 
 func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error) {

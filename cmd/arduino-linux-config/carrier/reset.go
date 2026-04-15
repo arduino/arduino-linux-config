@@ -34,13 +34,9 @@ func resetHandler(cfg config.Configuration, carrierName string) {
 
 	reset(cfg, carrierName)
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-
 	current, next := registry.GetStatus(cfg, carrierName)
-	feedback.PrintResult(showResult{
-		CarrierName:    carrierName,
-		CurrentDevices: current,
-		NextDevices:    next,
-	})
+	feedback.PrintResult(populateShowResult(carrierName, current, next))
+
 }
 
 func reset(cfg config.Configuration, carrierName string) {

@@ -1,11 +1,11 @@
 package registry
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,17 +16,17 @@ import (
 )
 
 type StatusFile struct {
-	CurrentStatus StatusCarrier `json:"CurrentStatus"`
-	NextStatus    StatusCarrier `json:"NextStatus"`
+	CurrentStatus StatusCarrier `json:"current_status"`
+	NextStatus    StatusCarrier `json:"next_status"`
 }
 
 type StatusCarrier struct {
-	Devices map[CarrierDeviceName]StatusInfo `json:"Devices"`
+	Devices map[CarrierDeviceName]StatusInfo `json:"devices"`
 }
 
 type StatusInfo struct {
-	Option    string    `json:"Option"`
-	CreatedAt time.Time `json:"CreatedAt"`
+	Option    string    `json:"option"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type StatusDevice struct {
@@ -34,13 +34,14 @@ type StatusDevice struct {
 	Option string `json:"option"`
 }
 
+// Called by config and reset
 func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map[CarrierDeviceName]string) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
 	}
 
-	// get current state for saving
+	// save current state if reboot occurred
 	bootTime, err := getBootTime()
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
@@ -53,8 +54,8 @@ func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map
 	}
 }
 
-// Load the status structure and apply status fixes before returning
-// Do not update the physical status file because show is running as non-root user
+// Called by show, load the status structure and apply status fixes before returning
+// Do not update the status file on the disk because show is running as non-root user
 func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []StatusDevice) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
@@ -76,8 +77,7 @@ func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Ti
 	next := make([]StatusDevice, 0, len(deviceNames))
 
 	for _, deviceName := range deviceNames {
-
-		// parse next structure, if they happened before the boot, move in actual
+		// parse next structure, move in actual events happened before the boot
 		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
 			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
 		}
@@ -97,22 +97,18 @@ func updateStatusStructure(status *StatusFile, carrierName string, currentStatus
 		status.CurrentStatus.Devices[CarrierDeviceName(dev.Device)] = currInfo
 	}
 
-	// set next
+	// se next
 	for _, deviceName := range GetDevicesNames(carrierName) {
-		nextInfo := StatusInfo{
+		newInfo := StatusInfo{
 			Option:    getOrDefault(statusUpdate[deviceName]),
 			CreatedAt: time.Now().UTC(),
 		}
-		status.NextStatus.Devices[deviceName] = nextInfo
+		status.NextStatus.Devices[deviceName] = newInfo
 	}
-
 }
 
 func getOrDefault(option string) string {
-	if option == "" {
-		option = string(None)
-	}
-	return option
+	return cmp.Or(option, string(None))
 }
 
 func getBootTime() (time.Time, error) {
@@ -137,8 +133,7 @@ func getBootTime() (time.Time, error) {
 }
 
 func getStatusFile(cfg config.Configuration, carrierName string) *paths.Path {
-	filePath := filepath.Join(cfg.StatusDir().String(), carrierName+".json")
-	return paths.New(filePath)
+	return cfg.StatusDir().Join(carrierName + ".json")
 }
 
 func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
@@ -179,6 +174,5 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 	if err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}
-
 	return nil
 }
