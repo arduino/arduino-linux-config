@@ -15,6 +15,13 @@
 
 package registry
 
+type DeviceType string
+
+const (
+	DeviceTypeCamera  DeviceType = "camera"
+	DeviceTypeDisplay DeviceType = "display"
+)
+
 var Registry = CarrierRegistry{
 	Carriers: map[CarrierName]Carrier{
 		MediaCarrier: MediaCarrierDefinition,
@@ -46,8 +53,9 @@ type Carrier struct {
 
 // Device represents a configurable hardware device on a carrier
 type Device struct {
-	Name    string
-	Options []DeviceOption
+	Name       string         `json:"name"`
+	DeviceType DeviceType     `json:"device_type"`
+	Options    []DeviceOption `json:"options"`
 }
 
 // DeviceOption represents a configuration option for a device
@@ -60,7 +68,8 @@ type DeviceOption struct {
 var MediaCarrierDefinition = Carrier{
 	Devices: []Device{
 		{
-			Name: "camera0",
+			Name:       "camera0",
+			DeviceType: DeviceTypeCamera,
 			Options: []DeviceOption{
 				{
 					Name:      "none",
@@ -83,7 +92,8 @@ var MediaCarrierDefinition = Carrier{
 			},
 		},
 		{
-			Name: "camera1",
+			Name:       "camera1",
+			DeviceType: DeviceTypeCamera,
 			Options: []DeviceOption{
 				{
 					Name:      "none",
@@ -99,7 +109,8 @@ var MediaCarrierDefinition = Carrier{
 			},
 		},
 		{
-			Name: "display",
+			Name:       "display",
+			DeviceType: DeviceTypeDisplay,
 			Options: []DeviceOption{
 				{
 					Name:      "none",

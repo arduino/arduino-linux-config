@@ -30,8 +30,9 @@ type StatusInfo struct {
 }
 
 type StatusDevice struct {
-	Device string `json:"device"`
-	Option string `json:"option"`
+	Device     string `json:"device"`
+	Option     string `json:"option"`
+	DeviceType string `json:"device_type"`
 }
 
 func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map[CarrierDeviceName]string) {
@@ -73,8 +74,12 @@ func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Ti
 			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
 			status.NextStatus.Devices[deviceName] = StatusInfo{}
 		}
-		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
-		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option)})
+		deviceType := ""
+		if d, found := FindDevice(carrierName, deviceName); found {
+			deviceType = string(d.DeviceType)
+		}
+		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option), DeviceType: deviceType})
+		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option), DeviceType: deviceType})
 	}
 	return current, next
 }
