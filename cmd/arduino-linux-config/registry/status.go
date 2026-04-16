@@ -30,23 +30,32 @@ type StatusInfo struct {
 }
 
 type StatusDevice struct {
-	Device     string `json:"device"`
-	Option     string `json:"option"`
-	DeviceType string `json:"device_type"`
+	Device string `json:"device"`
+	Option string `json:"option"`
 }
 
+// Called by config and reset
 func StatusUpdate(cfg config.Configuration, carrierName string, statusUpdate map[CarrierDeviceName]string) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
 	}
 
-	updateStatusStructure(status, carrierName, statusUpdate)
+	// save current state if reboot occurred
+	bootTime, err := getBootTime()
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+	}
+	currentStatus, _ := getStatusStructure(status, carrierName, bootTime)
+	updateStatusStructure(status, carrierName, currentStatus, statusUpdate)
+
 	if err := saveStatusFile(getStatusFile(cfg, carrierName), *status); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to save status file: %v", err), feedback.ErrGeneric)
 	}
 }
 
+// Called by show, load the status structure and apply status fixes before returning
+// Do not update the status file on the disk because show is running as non-root user
 func GetStatus(cfg config.Configuration, carrierName string) ([]StatusDevice, []StatusDevice) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrierName))
 	if err != nil {
@@ -68,23 +77,27 @@ func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Ti
 	next := make([]StatusDevice, 0, len(deviceNames))
 
 	for _, deviceName := range deviceNames {
-
-		// parse next, if they happened before the boot, move in actual
+		// parse next structure, move in actual events happened before the boot
 		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
 			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
-			status.NextStatus.Devices[deviceName] = StatusInfo{}
 		}
-		deviceType := ""
-		if d, found := FindDevice(carrierName, deviceName); found {
-			deviceType = string(d.DeviceType)
-		}
-		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option), DeviceType: deviceType})
-		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option), DeviceType: deviceType})
+		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
+		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option)})
 	}
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, carrierName string, statusUpdate map[CarrierDeviceName]string) {
+func updateStatusStructure(status *StatusFile, carrierName string, currentStatus []StatusDevice, statusUpdate map[CarrierDeviceName]string) {
+	// set curr
+	for _, dev := range currentStatus {
+		currInfo := StatusInfo{
+			Option:    getOrDefault(dev.Option),
+			CreatedAt: time.Now().UTC(),
+		}
+		status.CurrentStatus.Devices[CarrierDeviceName(dev.Device)] = currInfo
+	}
+
+	// se next
 	for _, deviceName := range GetDevicesNames(carrierName) {
 		newInfo := StatusInfo{
 			Option:    getOrDefault(statusUpdate[deviceName]),
@@ -161,6 +174,5 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 	if err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}
-
 	return nil
 }

@@ -105,6 +105,12 @@ var MediaCarrierDefinition = Carrier{
 						"qrb2210-arduino-imola-carrier-media.dtbo",
 						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
 					},
+				}, {
+					Name: "type1-4lane",
+					DtboFiles: []string{
+						"qrb2210-arduino-imola-carrier-media.dtbo",
+						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo",
+					},
 				},
 			},
 		},

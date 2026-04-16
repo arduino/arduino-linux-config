@@ -71,11 +71,7 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
 	current, next := registry.GetStatus(cfg, carrierName)
-	feedback.PrintResult(showResult{
-		CarrierName:    carrierName,
-		CurrentDevices: current,
-		NextDevices:    next,
-	})
+	feedback.PrintResult(populateShowResult(carrierName, current, next))
 }
 
 func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error) {
