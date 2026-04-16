@@ -89,13 +89,12 @@ func TestGetStatusStructure(t *testing.T) {
 		expectedNext    []StatusDevice
 	}{
 		{
-			name: "Move outdated device to current",
+			name: "Move outdated device to current, retain current status on show command",
 			initialStatus: &StatusFile{
 				CurrentStatus: StatusCarrier{Devices: make(map[CarrierDeviceName]StatusInfo)},
 				NextStatus: StatusCarrier{
 					Devices: map[CarrierDeviceName]StatusInfo{
 						Camera0: {Option: "cam1", CreatedAt: beforeBoot},
-						Display: {Option: "display", CreatedAt: afterBoot},
 					},
 				},
 			},
@@ -105,9 +104,9 @@ func TestGetStatusStructure(t *testing.T) {
 				{Device: string(Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
-				{Device: string(Camera0), Option: "none"},
+				{Device: string(Camera0), Option: "cam1"},
 				{Device: string(Camera1), Option: "none"},
-				{Device: string(Display), Option: "display"},
+				{Device: string(Display), Option: "none"},
 			},
 		},
 		{
@@ -171,14 +170,14 @@ func TestLoadStatusFile(t *testing.T) {
 		{
 			name:          "Valid JSON file - returns parsed struct",
 			shouldExist:   true,
-			fileContent:   `{"CurrentStatus": {"Devices": {"Cam0": {"Option": "ON"}}}, "WantedStatus": {"Devices": {}}}`,
+			fileContent:   `{"current_status": {"devices": {"Cam0": {"option": "ON"}}}, "next_status": {"devices": {}}}`,
 			wantErr:       false,
 			checkContents: true,
 		},
 		{
 			name:        "Invalid JSON - returns error",
 			shouldExist: true,
-			fileContent: `{"CurrentStatus": { invalid ]}`,
+			fileContent: `{"current_status": { invalid ]}`,
 			wantErr:     true,
 		},
 	}
