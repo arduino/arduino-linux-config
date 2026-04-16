@@ -32,14 +32,19 @@ func resetHandler(cfg config.Configuration, carrierName string) {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	reset(cfg, carrierName)
+	err := reset(cfg, carrierName)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+	}
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next := registry.GetStatus(cfg, carrierName)
+	current, next, err := registry.GetStatus(cfg, carrierName)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+	}
 	feedback.PrintResult(populateShowResult(carrierName, current, next))
-
 }
 
-func reset(cfg config.Configuration, carrierName string) {
+func reset(cfg config.Configuration, carrierName string) error {
 	baseFiles := make([]string, 0)
 
 	devices, _ := registry.GetDevices(carrierName)
@@ -53,14 +58,15 @@ func reset(cfg config.Configuration, carrierName string) {
 
 	err := mergeOverlays(cfg, baseFiles)
 	if err != nil {
-		feedback.Fatal(
-			fmt.Sprintf("Error merging overlays: %v", err),
-			feedback.ErrGeneric,
-		)
+		return fmt.Errorf("cannot merge overlays: %w", err)
 	}
 
 	selection := make(map[registry.CarrierDeviceName]string)
-	registry.StatusUpdate(cfg, carrierName, selection)
+	err = registry.StatusUpdate(cfg, carrierName, selection)
+	if err != nil {
+		return fmt.Errorf("cannot update status: %w", err)
+	}
+	return nil
 }
 
 type cmdResult struct {

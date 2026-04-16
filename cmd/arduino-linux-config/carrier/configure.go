@@ -58,19 +58,25 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 
 	overlayList := collectDtboFiles(carrierName, nextDevicesConfiguration)
 
-	reset(cfg, carrierName)
+	err = reset(cfg, carrierName)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+	}
 	err = mergeOverlays(cfg, overlayList)
 	if err != nil {
-		feedback.Fatal(
-			fmt.Sprintf("Error merging overlays: %v", err),
-			feedback.ErrGeneric,
-		)
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	registry.StatusUpdate(cfg, carrierName, nextDevicesConfiguration)
+	err = registry.StatusUpdate(cfg, carrierName, nextDevicesConfiguration)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+	}
 
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next := registry.GetStatus(cfg, carrierName)
+	current, next, err := registry.GetStatus(cfg, carrierName)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+	}
 	feedback.PrintResult(populateShowResult(carrierName, current, next))
 }
 
