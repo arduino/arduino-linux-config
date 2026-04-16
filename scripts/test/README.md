@@ -1,4 +1,4 @@
-# Hardware Validation Tool 
+# Hardware Validation Tool
 
 A comprehensive Bash utility designed to validate audio interfaces and camera functionality on Linux-based systems. This tool is specifically optimized for hardware using ALSA mixers and GStreamer-compatible camera sensors.
 
@@ -14,7 +14,8 @@ A comprehensive Bash utility designed to validate audio interfaces and camera fu
 ## 📋 Prerequisites
 
 The following packages must be installed on your system:
-* `alsa-utils` (`amixer`, `aplay`, `arecord`)
-* `gstreamer1.0-tools`
-* `libcamera-tools`
-* `sudo`
+
+- `alsa-utils` (`amixer`, `aplay`, `arecord`)
+- `gstreamer1.0-tools`
+- `libcamera-tools`
+- `sudo`
