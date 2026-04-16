@@ -13,7 +13,7 @@ func NewCarrierCmd() *cobra.Command {
 		Long:  "Manage Arduino Carriers, including listing, configuring, and resetting.",
 	}
 
-	cfg, err := config.NewConfigFromEnv()
+	cfg, err := config.NewConfig()
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
