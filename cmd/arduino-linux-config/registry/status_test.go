@@ -99,11 +99,13 @@ func TestGetStatusStructure(t *testing.T) {
 				},
 			},
 			expectedCurrent: []StatusDevice{
+				{Device: string(CarrierLeds), Option: "disabled"},
 				{Device: string(Camera0), Option: "cam1"},
 				{Device: string(Camera1), Option: "none"},
 				{Device: string(Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
+				{Device: string(CarrierLeds), Option: "disabled"},
 				{Device: string(Camera0), Option: "cam1"},
 				{Device: string(Camera1), Option: "none"},
 				{Device: string(Display), Option: "none"},
@@ -121,11 +123,13 @@ func TestGetStatusStructure(t *testing.T) {
 				},
 			},
 			expectedCurrent: []StatusDevice{
+				{Device: string(CarrierLeds), Option: "disabled"},
 				{Device: string(Camera0), Option: "none"},
 				{Device: string(Camera1), Option: "none"},
 				{Device: string(Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
+				{Device: string(CarrierLeds), Option: "disabled"},
 				{Device: string(Camera0), Option: "cam1"},
 				{Device: string(Camera1), Option: "none"},
 				{Device: string(Display), Option: "display"},

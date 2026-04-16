@@ -56,15 +56,15 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	overlayList := collectDtboFiles(carrierName, nextDevicesConfiguration)
+	overlayList, err := collectDtboFiles(carrierName, nextDevicesConfiguration)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("Error: %v", err), feedback.ErrGeneric)
+	}
 
 	reset(cfg, carrierName)
 	err = mergeOverlays(cfg, overlayList)
 	if err != nil {
-		feedback.Fatal(
-			fmt.Sprintf("Error merging overlays: %v", err),
-			feedback.ErrGeneric,
-		)
+		feedback.Fatal(fmt.Sprintf("Error merging overlays: %v", err), feedback.ErrGeneric)
 	}
 
 	registry.StatusUpdate(cfg, carrierName, nextDevicesConfiguration)
@@ -101,8 +101,15 @@ func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error)
 	return parsedUserSelection, nil
 }
 
-func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) []string {
+func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) ([]string, error) {
 	var baseFiles, dtboFiles, incompatibleFiles []string
+
+	if isCarrierRequired(userSelection) {
+		if isMediaCarrierDisabled(userSelection) {
+			return nil, fmt.Errorf("the carrier should be enabled to use the connected devices")
+		}
+		userSelection[registry.CarrierLeds] = "enabled"
+	}
 
 	for deviceName, optionName := range userSelection {
 		device, _ := registry.FindDevice(carrierName, deviceName)
@@ -132,9 +139,28 @@ func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDevi
 		feedback.Warnf("Incompatible ovelays, removing %v", incompatibleOverlays)
 	}
 
-	return append(dtboFiles, baseFiles...)
+	dtboFiles = append(dtboFiles, baseFiles...)
+	slices.Sort(dtboFiles)
+	return slices.Compact(dtboFiles), nil
 }
 
+func isCarrierRequired(userSelection map[registry.CarrierDeviceName]string) bool {
+	for deviceName, optionName := range userSelection {
+		if deviceName != registry.CarrierLeds && optionName != registry.OptionNone {
+			return true
+		}
+	}
+	return false
+}
+
+func isMediaCarrierDisabled(userSelection map[registry.CarrierDeviceName]string) bool {
+	for deviceName, optionName := range userSelection {
+		if deviceName == registry.CarrierLeds && optionName == registry.OptionDisabled {
+			return true
+		}
+	}
+	return false
+}
 func getIntersection(a, b []string) []string {
 	var result []string
 	for _, v := range a {
@@ -152,9 +178,6 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	if len(overlays) == 0 {
 		return nil
 	}
-
-	slices.Sort(overlays)
-	overlays = slices.Compact(overlays)
 
 	systemDtb := cfg.SystemDTB()
 	overlaysPath := filepath.Dir(systemDtb.String())

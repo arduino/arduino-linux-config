@@ -81,8 +81,8 @@ func getStatusStructure(status *StatusFile, carrierName string, bootTime time.Ti
 		if status.NextStatus.Devices[deviceName].CreatedAt.Before(bootTime) {
 			status.CurrentStatus.Devices[deviceName] = status.NextStatus.Devices[deviceName]
 		}
-		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.CurrentStatus.Devices[deviceName].Option)})
-		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(status.NextStatus.Devices[deviceName].Option)})
+		current = append(current, StatusDevice{Device: string(deviceName), Option: getOrDefault(string(deviceName), status.CurrentStatus.Devices[deviceName].Option)})
+		next = append(next, StatusDevice{Device: string(deviceName), Option: getOrDefault(string(deviceName), status.NextStatus.Devices[deviceName].Option)})
 	}
 	return current, next
 }
@@ -91,24 +91,27 @@ func updateStatusStructure(status *StatusFile, carrierName string, currentStatus
 	// set curr
 	for _, dev := range currentStatus {
 		currInfo := StatusInfo{
-			Option:    getOrDefault(dev.Option),
+			Option:    getOrDefault(dev.Device, dev.Option),
 			CreatedAt: time.Now().UTC(),
 		}
 		status.CurrentStatus.Devices[CarrierDeviceName(dev.Device)] = currInfo
 	}
 
-	// se next
+	// set next
 	for _, deviceName := range GetDevicesNames(carrierName) {
 		newInfo := StatusInfo{
-			Option:    getOrDefault(statusUpdate[deviceName]),
+			Option:    getOrDefault(string(deviceName), statusUpdate[deviceName]),
 			CreatedAt: time.Now().UTC(),
 		}
 		status.NextStatus.Devices[deviceName] = newInfo
 	}
 }
 
-func getOrDefault(option string) string {
-	return cmp.Or(option, string(None))
+func getOrDefault(deviceName string, option string) string {
+	if deviceName == "carrier" {
+		return cmp.Or(option, OptionDisabled)
+	}
+	return cmp.Or(option, OptionNone)
 }
 
 func getBootTime() (time.Time, error) {

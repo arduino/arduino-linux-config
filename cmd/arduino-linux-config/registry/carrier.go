@@ -15,6 +15,12 @@
 
 package registry
 
+const (
+	OptionNone     string = "none"
+	OptionEnabled  string = "enabled"
+	OptionDisabled string = "disabled"
+)
+
 type DeviceType string
 
 const (
@@ -35,10 +41,11 @@ type CarrierRegistry struct {
 type CarrierDeviceName string
 
 const (
-	None    CarrierDeviceName = "none"
-	Camera0 CarrierDeviceName = "camera0"
-	Camera1 CarrierDeviceName = "camera1"
-	Display CarrierDeviceName = "display"
+	None        CarrierDeviceName = "none"
+	CarrierLeds CarrierDeviceName = "carrier"
+	Camera0     CarrierDeviceName = "camera0"
+	Camera1     CarrierDeviceName = "camera1"
+	Display     CarrierDeviceName = "display"
 )
 
 type CarrierName string
@@ -68,6 +75,20 @@ type DeviceOption struct {
 var MediaCarrierDefinition = Carrier{
 	Devices: []Device{
 		{
+			Name: "carrier",
+			Options: []DeviceOption{
+				{
+					Name:      "disabled",
+					DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
+				},
+				{
+					Name: "enabled",
+					DtboFiles: []string{
+						"qrb2210-arduino-imola-carrier-media.dtbo",
+					},
+				},
+			},
+		}, {
 			Name:       "camera0",
 			DeviceType: DeviceTypeCamera,
 			Options: []DeviceOption{
