@@ -22,14 +22,17 @@ const (
 	DeviceTypeDisplay DeviceType = "display"
 )
 
-var Registry = CarrierRegistry{
-	Carriers: map[CarrierName]Carrier{
-		MediaCarrier: MediaCarrierDefinition,
-	},
+type CarrierRegistry struct {
+	Carriers []Carrier
 }
 
-type CarrierRegistry struct {
-	Carriers map[CarrierName]Carrier
+func (r CarrierRegistry) FindByName(carrier string) *Carrier {
+	for _, c := range r.Carriers {
+		if string(c.Name) == carrier {
+			return &c
+		}
+	}
+	return nil
 }
 
 type CarrierDeviceName string
@@ -48,14 +51,33 @@ const (
 )
 
 type Carrier struct {
+	Name    CarrierName
 	Devices []Device
+}
+
+func (c Carrier) FindDeviceByName(deviceName CarrierDeviceName) *Device {
+	for _, d := range c.Devices {
+		if d.Name == deviceName {
+			return &d
+		}
+	}
+	return nil
 }
 
 // Device represents a configurable hardware device on a carrier
 type Device struct {
-	Name       string         `json:"name"`
-	DeviceType DeviceType     `json:"device_type"`
-	Options    []DeviceOption `json:"options"`
+	Name       CarrierDeviceName
+	DeviceType DeviceType
+	Options    []DeviceOption
+}
+
+func (d Device) FindOptionByName(optionName string) *DeviceOption {
+	for _, o := range d.Options {
+		if o.Name == optionName {
+			return &o
+		}
+	}
+	return nil
 }
 
 // DeviceOption represents a configuration option for a device
@@ -65,74 +87,77 @@ type DeviceOption struct {
 	IncompatibleDtbo []string
 }
 
-var MediaCarrierDefinition = Carrier{
-	Devices: []Device{
-		{
-			Name:       "camera0",
-			DeviceType: DeviceTypeCamera,
-			Options: []DeviceOption{
-				{
-					Name:      "none",
-					DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
-				},
-				{
-					Name: "type1-2lane",
-					DtboFiles: []string{
-						"qrb2210-arduino-imola-carrier-media.dtbo",
-						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
+var Registry = CarrierRegistry{
+	Carriers: []Carrier{{
+		Name: MediaCarrier,
+		Devices: []Device{
+			{
+				Name:       "camera0",
+				DeviceType: DeviceTypeCamera,
+				Options: []DeviceOption{
+					{
+						Name:      "none",
+						DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
+					},
+					{
+						Name: "type1-2lane",
+						DtboFiles: []string{
+							"qrb2210-arduino-imola-carrier-media.dtbo",
+							"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
+						},
+					},
+					{
+						Name: "type1-4lane",
+						DtboFiles: []string{
+							"qrb2210-arduino-imola-carrier-media.dtbo",
+							"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo",
+						},
 					},
 				},
-				{
-					Name: "type1-4lane",
-					DtboFiles: []string{
-						"qrb2210-arduino-imola-carrier-media.dtbo",
-						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo",
+			},
+			{
+				Name:       "camera1",
+				DeviceType: DeviceTypeCamera,
+				Options: []DeviceOption{
+					{
+						Name:      "none",
+						DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
+					},
+					{
+						Name: "type1-2lane",
+						DtboFiles: []string{
+							"qrb2210-arduino-imola-carrier-media.dtbo",
+							"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
+						},
+					}, {
+						Name: "type1-4lane",
+						DtboFiles: []string{
+							"qrb2210-arduino-imola-carrier-media.dtbo",
+							"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo",
+						},
+					},
+				},
+			},
+			{
+				Name:       "display",
+				DeviceType: DeviceTypeDisplay,
+				Options: []DeviceOption{
+					{
+						Name:      "none",
+						DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
+					},
+					{
+						Name: "8-dsi-touch-a",
+						DtboFiles: []string{
+							"qrb2210-arduino-imola-carrier-media.dtbo",
+							"qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
+						},
+						IncompatibleDtbo: []string{
+							"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+						},
 					},
 				},
 			},
 		},
-		{
-			Name:       "camera1",
-			DeviceType: DeviceTypeCamera,
-			Options: []DeviceOption{
-				{
-					Name:      "none",
-					DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
-				},
-				{
-					Name: "type1-2lane",
-					DtboFiles: []string{
-						"qrb2210-arduino-imola-carrier-media.dtbo",
-						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
-					},
-				}, {
-					Name: "type1-4lane",
-					DtboFiles: []string{
-						"qrb2210-arduino-imola-carrier-media.dtbo",
-						"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo",
-					},
-				},
-			},
-		},
-		{
-			Name:       "display",
-			DeviceType: DeviceTypeDisplay,
-			Options: []DeviceOption{
-				{
-					Name:      "none",
-					DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
-				},
-				{
-					Name: "8-dsi-touch-a",
-					DtboFiles: []string{
-						"qrb2210-arduino-imola-carrier-media.dtbo",
-						"qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
-					},
-					IncompatibleDtbo: []string{
-						"qrb2210-arduino-imola-video_sound-usbc.dtbo",
-					},
-				},
-			},
-		},
-	},
+	}},
 }
