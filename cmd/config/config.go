@@ -25,13 +25,13 @@ type Configuration struct {
 	baseDTB   *paths.Path
 }
 
-func NewConfigFromEnv() (Configuration, error) {
-	statusFile := paths.New("/var/lib/arduino-linux-config/status")
+func NewConfig() (Configuration, error) {
+	statusDir := paths.New("/var/lib/arduino-linux-config/status")
 	systemDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb")
 	baseDTB := paths.New("/boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb")
 
 	c := Configuration{
-		statusDir: statusFile,
+		statusDir: statusDir,
 		systemDTB: systemDTB,
 		baseDTB:   baseDTB,
 	}
