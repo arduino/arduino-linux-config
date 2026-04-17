@@ -115,10 +115,6 @@ func collectDtboFiles(carrier registry.Carrier, userSelection map[registry.Carri
 			continue
 		}
 		for _, option := range device.Options {
-			// always add the basic device configuration
-			if option.Name == string(registry.None) {
-				baseFiles = append(baseFiles, option.DtboFiles...)
-			}
 			// get the user selected option and collect incompatibilities
 			if option.Name == optionName {
 				dtboFiles = append(dtboFiles, option.DtboFiles...)
