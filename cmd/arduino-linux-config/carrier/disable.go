@@ -57,7 +57,7 @@ func disable(cfg config.Configuration, carrier registry.Carrier) error {
 	}
 
 	// Add disable dtbs to restore original board configuration.
-	baseFiles = append(baseFiles, carrier.DisabledDtbo...)
+	baseFiles = append(baseFiles, carrier.DisabledDtbos...)
 
 	err := mergeOverlays(cfg, baseFiles)
 	if err != nil {

@@ -134,7 +134,7 @@ func collectDtboFiles(carrier registry.Carrier, userSelection []registry.StatusD
 	}
 
 	// collect base dtbo files for the media carrier.
-	baseFiles = append(baseFiles, carrier.EnabledDtbo...)
+	baseFiles = append(baseFiles, carrier.EnabledDtbos...)
 
 	// check for incompatible overlays in the basic configuration
 	// in this case, the basic overlay can be removed in favor of the device overlays
