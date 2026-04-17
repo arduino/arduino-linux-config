@@ -28,27 +28,27 @@ func newResetCmd(cfg config.Configuration) *cobra.Command {
 }
 
 func resetHandler(cfg config.Configuration, carrierName string) {
-	if !registry.CarrierExists(carrierName) {
+	carrier, exist := registry.Registry.FindByName(carrierName)
+	if !exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	err := reset(cfg, carrierName)
+	err := reset(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next, err := registry.GetStatus(cfg, carrierName)
+	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
-	feedback.PrintResult(populateShowResult(carrierName, current, next))
+	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func reset(cfg config.Configuration, carrierName string) error {
+func reset(cfg config.Configuration, carrier registry.Carrier) error {
 	baseFiles := make([]string, 0)
 
-	devices, _ := registry.GetDevices(carrierName)
-	for _, device := range devices {
+	for _, device := range carrier.Devices {
 		for _, option := range device.Options {
 			if option.Name == string(registry.None) {
 				baseFiles = append(baseFiles, option.DtboFiles...)
@@ -62,7 +62,7 @@ func reset(cfg config.Configuration, carrierName string) error {
 	}
 
 	selection := make(map[registry.CarrierDeviceName]string)
-	err = registry.StatusUpdate(cfg, carrierName, selection)
+	err = registry.StatusUpdate(cfg, carrier, selection)
 	if err != nil {
 		return fmt.Errorf("cannot update status: %w", err)
 	}
@@ -77,6 +77,6 @@ func (r cmdResult) String() string {
 	return fmt.Sprintf("Carrier %s reset (will take effect on next boot)\n", r.CarrierName)
 }
 
-func (r cmdResult) Data() interface{} {
+func (r cmdResult) Data() any {
 	return r
 }

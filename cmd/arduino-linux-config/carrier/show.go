@@ -30,18 +30,19 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 }
 
 func showHandler(cfg config.Configuration, carrierName string) {
-	if !registry.CarrierExists(carrierName) {
+	carrier, exist := registry.Registry.FindByName(carrierName)
+	if exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
-	current, next, err := registry.GetStatus(cfg, carrierName)
+	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
-	feedback.PrintResult(populateShowResult(carrierName, current, next))
+	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func populateShowResult(carrierName string, current []registry.StatusDevice, next []registry.StatusDevice) showResult {
+func populateShowResult(carrier registry.Carrier, current []registry.StatusDevice, next []registry.StatusDevice) showResult {
 	currentResult := make([]StatusDeviceResult, 0, len(current))
 	for _, device := range current {
 		currentResult = append(currentResult, StatusDeviceResult{
@@ -57,9 +58,10 @@ func populateShowResult(carrierName string, current []registry.StatusDevice, nex
 		})
 	}
 	return showResult{
-		CarrierName:    carrierName,
+		CarrierName:    string(carrier.Name),
 		CurrentDevices: currentResult,
 		NextDevices:    nextResult,
+		carrier:        carrier,
 	}
 }
 
@@ -67,6 +69,8 @@ type showResult struct {
 	CarrierName    string               `json:"carrier_name"`
 	CurrentDevices []StatusDeviceResult `json:"current"`
 	NextDevices    []StatusDeviceResult `json:"next"`
+
+	carrier registry.Carrier `json:"-"`
 }
 
 type StatusDeviceResult struct {
@@ -83,15 +87,15 @@ func (r showResult) String() string {
 	nextMap := make(map[registry.CarrierDeviceName]string)
 
 	if len(r.NextDevices) > 0 {
-		for _, deviceName := range registry.GetDevicesNames(r.CarrierName) {
-			if device, found := hasDevice(r.NextDevices, deviceName); found {
-				nextMap[deviceName] = device.Option
+		for _, d := range r.carrier.Devices {
+			if device, found := hasDevice(r.NextDevices, d.Name); found {
+				nextMap[d.Name] = device.Option
 			}
 		}
 	}
 
-	for _, deviceName := range registry.GetDevicesNames(r.CarrierName) {
-		c, _ := hasDevice(r.CurrentDevices, deviceName)
+	for _, device := range r.carrier.Devices {
+		c, _ := hasDevice(r.CurrentDevices, device.Name)
 
 		if len(r.NextDevices) > 0 {
 			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.CarrierDeviceName(c.Device)])

@@ -51,14 +51,19 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	err = validateUserConfiguration(carrierName, nextDevicesConfiguration)
+	carrier, exist := registry.Registry.FindByName(carrierName)
+	if !exist {
+		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
+	}
+
+	err = validateUserConfiguration(carrier, nextDevicesConfiguration)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	overlayList := collectDtboFiles(carrierName, nextDevicesConfiguration)
+	overlayList := collectDtboFiles(carrier, nextDevicesConfiguration)
 
-	err = reset(cfg, carrierName)
+	err = reset(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
@@ -67,17 +72,17 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	err = registry.StatusUpdate(cfg, carrierName, nextDevicesConfiguration)
+	err = registry.StatusUpdate(cfg, carrier, nextDevicesConfiguration)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next, err := registry.GetStatus(cfg, carrierName)
+	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
-	feedback.PrintResult(populateShowResult(carrierName, current, next))
+	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
 func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error) {
@@ -107,16 +112,15 @@ func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error)
 	return parsedUserSelection, nil
 }
 
-func collectDtboFiles(carrierName string, userSelection map[registry.CarrierDeviceName]string) []string {
+func collectDtboFiles(carrier registry.Carrier, userSelection map[registry.CarrierDeviceName]string) []string {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for deviceName, optionName := range userSelection {
-		device, _ := registry.FindDevice(carrierName, deviceName)
+		device, exist := carrier.FindDeviceByName(deviceName)
+		if !exist {
+			continue
+		}
 		for _, option := range device.Options {
-			// always add the basic device configuration
-			if option.Name == string(registry.None) {
-				baseFiles = append(baseFiles, option.DtboFiles...)
-			}
 			// get the user selected option and collect incompatibilities
 			if option.Name == optionName {
 				dtboFiles = append(dtboFiles, option.DtboFiles...)
@@ -189,31 +193,17 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	return nil
 }
 
-func validateUserConfiguration(carrierName string, nextDevicesConfiguration map[registry.CarrierDeviceName]string) error {
-	devices, exists := registry.GetDevices(carrierName)
-	if !exists {
-		return fmt.Errorf("carrier %q not supported", carrierName)
-	}
-
+func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration map[registry.CarrierDeviceName]string) error {
 	for rawDevice, rawOption := range nextDevicesConfiguration {
-		device, exists := getDevice(string(rawDevice), devices)
-		if !exists {
-			return fmt.Errorf("unknown device for carrier %s: %q", carrierName, rawDevice)
+		device, exist := carrier.FindDeviceByName(rawDevice)
+		if !exist {
+			return fmt.Errorf("unknown device for carrier %s: %q", carrier.Name, rawDevice)
 		}
 		if !isOptionValid(rawOption, device) {
 			return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
 		}
 	}
 	return nil
-}
-
-func getDevice(deviceName string, devices []registry.Device) (registry.Device, bool) {
-	for _, device := range devices {
-		if device.Name == deviceName {
-			return device, true
-		}
-	}
-	return registry.Device{}, false
 }
 
 func isOptionValid(optionName string, device registry.Device) bool {
