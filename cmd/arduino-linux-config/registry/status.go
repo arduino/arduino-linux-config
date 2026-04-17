@@ -20,6 +20,9 @@ type StatusFile struct {
 }
 
 type StatusCarrier struct {
+	Status    bool      `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+
 	Devices map[CarrierDeviceName]StatusInfo `json:"devices"`
 }
 
@@ -28,13 +31,18 @@ type StatusInfo struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type CarrierStatus struct {
+	Enable        bool
+	StatusDevices []StatusDevice
+}
+
 type StatusDevice struct {
-	Device string `json:"device"`
-	Option string `json:"option"`
+	Device string
+	Option string
 }
 
 // Called by config and reset
-func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate map[CarrierDeviceName]string) error {
+func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate CarrierStatus) error {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return fmt.Errorf("failed to load status file %w", err)
@@ -56,54 +64,89 @@ func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate map[Ca
 
 // Called by show, load the status structure and apply status fixes before returning
 // Do not update the status file on the disk because show is running as non-root user
-func GetStatus(cfg config.Configuration, carrier Carrier) ([]StatusDevice, []StatusDevice, error) {
+func GetStatus(cfg config.Configuration, carrier Carrier) (CarrierStatus, CarrierStatus, error) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load status file %v", err)
+		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to load status file %v", err)
 	}
 
 	bootTime, err := getBootTime()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get boot time: %v", err)
+		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to get boot time: %v", err)
 	}
 
 	current, next := getStatusStructure(status, carrier, bootTime)
 	return current, next, nil
 }
 
-func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
-	current := make([]StatusDevice, 0, len(carrier.Devices))
-	next := make([]StatusDevice, 0, len(carrier.Devices))
+func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time) (CarrierStatus, CarrierStatus) {
+	current := CarrierStatus{
+		Enable:        false,
+		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
+	}
+	next := CarrierStatus{
+		Enable:        false,
+		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
+	}
 
 	for _, device := range carrier.Devices {
 		// parse next structure, move in actual events happened before the boot
 		if status.NextStatus.Devices[device.Name].CreatedAt.Before(bootTime) {
 			status.CurrentStatus.Devices[device.Name] = status.NextStatus.Devices[device.Name]
 		}
-		current = append(current, StatusDevice{Device: string(device.Name), Option: getOrDefault(status.CurrentStatus.Devices[device.Name].Option)})
-		next = append(next, StatusDevice{Device: string(device.Name), Option: getOrDefault(status.NextStatus.Devices[device.Name].Option)})
+		current.StatusDevices = append(current.StatusDevices, StatusDevice{
+			Device: string(device.Name),
+			Option: getOrDefault(status.CurrentStatus.Devices[device.Name].Option),
+		})
+		next.StatusDevices = append(next.StatusDevices, StatusDevice{
+			Device: string(device.Name),
+			Option: getOrDefault(status.NextStatus.Devices[device.Name].Option),
+		})
 	}
+
+	if status.NextStatus.CreatedAt.Before(bootTime) {
+		status.CurrentStatus.Status = status.NextStatus.Status
+	}
+
+	next.Enable = status.NextStatus.Status
+	current.Enable = status.CurrentStatus.Status
+
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus []StatusDevice, statusUpdate map[CarrierDeviceName]string) {
+func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
+	now := time.Now().UTC()
+
 	// set curr
-	for _, dev := range currentStatus {
+	for _, dev := range currentStatus.StatusDevices {
 		currInfo := StatusInfo{
 			Option:    getOrDefault(dev.Option),
-			CreatedAt: time.Now().UTC(),
+			CreatedAt: now,
 		}
 		status.CurrentStatus.Devices[CarrierDeviceName(dev.Device)] = currInfo
 	}
+	status.CurrentStatus.Status = currentStatus.Enable
+	status.CurrentStatus.CreatedAt = now
 
-	// se next
-	for _, device := range carrier.Devices {
-		newInfo := StatusInfo{
-			Option:    getOrDefault(statusUpdate[device.Name]),
-			CreatedAt: time.Now().UTC(),
+	findOption := func(deviceName CarrierDeviceName) string {
+		for _, dev := range statusUpdate.StatusDevices {
+			if dev.Device == string(deviceName) {
+				return dev.Option
+			}
 		}
-		status.NextStatus.Devices[device.Name] = newInfo
+		return "none"
 	}
+
+	// set next
+	for _, device := range carrier.Devices {
+		status.NextStatus.Devices[device.Name] = StatusInfo{
+			Option:    findOption(device.Name),
+			CreatedAt: now,
+		}
+
+	}
+	status.NextStatus.Status = statusUpdate.Enable
+	status.NextStatus.CreatedAt = now
 }
 
 func getOrDefault(option string) string {

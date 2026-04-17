@@ -45,10 +45,10 @@ func extractCarriersResult() CarriersResult {
 		Carriers: make([]CarrierResult, 0, len(registry.Registry.Carriers)),
 	}
 
-	for k, c := range registry.Registry.Carriers {
+	for _, carrier := range registry.Registry.Carriers {
 		carriersResult.Carriers = append(carriersResult.Carriers, CarrierResult{
-			Name:    fmt.Sprint(rune(k)),
-			Devices: extractDeviceResult(c.Devices),
+			Name:    string(carrier.Name),
+			Devices: extractDeviceResult(carrier.Devices),
 		})
 	}
 	return carriersResult

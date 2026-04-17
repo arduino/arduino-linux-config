@@ -9,33 +9,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newResetCmd(cfg config.Configuration) *cobra.Command {
+func newDisableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "reset <carrier-name>",
-		Short: "Reset a carrier and restore the base DTB",
+		Use:   "disable <carrier-name>",
+		Short: "Disable a carrier and restore the base DTB",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier reset <carrier-name>")
+				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier disable <carrier-name>")
 			}
 			return nil
 		},
 		SilenceUsage: true,
 
 		Run: func(cmd *cobra.Command, args []string) {
-			resetHandler(cfg, args[0])
+			disableHandler(cfg, args[0])
 		},
 	}
 }
 
-func resetHandler(cfg config.Configuration, carrierName string) {
+func disableHandler(cfg config.Configuration, carrierName string) {
 	carrier, exist := registry.Registry.FindByName(carrierName)
 	if !exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	err := reset(cfg, carrier)
+	err := disable(cfg, carrier)
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+		feedback.Fatal(fmt.Sprintf("failed to disable carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
 	current, next, err := registry.GetStatus(cfg, carrier)
@@ -45,7 +45,7 @@ func resetHandler(cfg config.Configuration, carrierName string) {
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func reset(cfg config.Configuration, carrier registry.Carrier) error {
+func disable(cfg config.Configuration, carrier registry.Carrier) error {
 	baseFiles := make([]string, 0)
 
 	for _, device := range carrier.Devices {
@@ -56,13 +56,15 @@ func reset(cfg config.Configuration, carrier registry.Carrier) error {
 		}
 	}
 
+	// Add disable dtbs to restore original board configuration.
+	baseFiles = append(baseFiles, carrier.DisabledDtbos...)
+
 	err := mergeOverlays(cfg, baseFiles)
 	if err != nil {
 		return fmt.Errorf("cannot merge overlays: %w", err)
 	}
 
-	selection := make(map[registry.CarrierDeviceName]string)
-	err = registry.StatusUpdate(cfg, carrier, selection)
+	err = registry.StatusUpdate(cfg, carrier, registry.CarrierStatus{Enable: false})
 	if err != nil {
 		return fmt.Errorf("cannot update status: %w", err)
 	}
@@ -74,7 +76,7 @@ type cmdResult struct {
 }
 
 func (r cmdResult) String() string {
-	return fmt.Sprintf("Carrier %s reset (will take effect on next boot)\n", r.CarrierName)
+	return fmt.Sprintf("Carrier %s disabled (will take effect on next boot)\n", r.CarrierName)
 }
 
 func (r cmdResult) Data() any {

@@ -31,7 +31,7 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 
 func showHandler(cfg config.Configuration, carrierName string) {
 	carrier, exist := registry.Registry.FindByName(carrierName)
-	if exist {
+	if !exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 	current, next, err := registry.GetStatus(cfg, carrier)
@@ -42,16 +42,16 @@ func showHandler(cfg config.Configuration, carrierName string) {
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func populateShowResult(carrier registry.Carrier, current []registry.StatusDevice, next []registry.StatusDevice) showResult {
-	currentResult := make([]StatusDeviceResult, 0, len(current))
-	for _, device := range current {
+func populateShowResult(carrier registry.Carrier, current registry.CarrierStatus, next registry.CarrierStatus) showResult {
+	currentResult := make([]StatusDeviceResult, 0, len(current.StatusDevices))
+	for _, device := range current.StatusDevices {
 		currentResult = append(currentResult, StatusDeviceResult{
 			Device: device.Device,
 			Option: device.Option,
 		})
 	}
-	nextResult := make([]StatusDeviceResult, 0, len(next))
-	for _, device := range next {
+	nextResult := make([]StatusDeviceResult, 0, len(next.StatusDevices))
+	for _, device := range next.StatusDevices {
 		nextResult = append(nextResult, StatusDeviceResult{
 			Device: device.Device,
 			Option: device.Option,
@@ -59,6 +59,8 @@ func populateShowResult(carrier registry.Carrier, current []registry.StatusDevic
 	}
 	return showResult{
 		CarrierName:    string(carrier.Name),
+		CurrentEnabled: current.Enable,
+		NextEnabled:    next.Enable,
 		CurrentDevices: currentResult,
 		NextDevices:    nextResult,
 		carrier:        carrier,
@@ -67,6 +69,8 @@ func populateShowResult(carrier registry.Carrier, current []registry.StatusDevic
 
 type showResult struct {
 	CarrierName    string               `json:"carrier_name"`
+	CurrentEnabled bool                 `json:"current_enabled"`
+	NextEnabled    bool                 `json:"next_enabled"`
 	CurrentDevices []StatusDeviceResult `json:"current"`
 	NextDevices    []StatusDeviceResult `json:"next"`
 
@@ -82,7 +86,16 @@ type StatusDeviceResult struct {
 func (r showResult) String() string {
 	var sb strings.Builder
 	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(&sb, "%s\n", r.CarrierName)
+
+	statusNext := "disabled"
+	if r.NextEnabled {
+		statusNext = "enabled"
+	}
+	statusCurrent := "disabled"
+	if r.CurrentEnabled {
+		statusCurrent = "enabled"
+	}
+	fmt.Fprintf(&sb, "%s [current: %s]\t[next: %s]\n", r.CarrierName, statusCurrent, statusNext)
 
 	nextMap := make(map[registry.CarrierDeviceName]string)
 
@@ -109,7 +122,7 @@ func (r showResult) String() string {
 	return sb.String()
 }
 
-func (r showResult) Data() interface{} {
+func (r showResult) Data() any {
 	return r
 }
 
