@@ -15,24 +15,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newConfigureCmd(cfg config.Configuration) *cobra.Command {
+func newEnableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "config <carrier-name> <device=option...>",
-		Short: "Configure a carrier with the specified device options",
+		Use:   "enable <carrier-name> <device=option...>",
+		Short: "Enable and configure a carrier with the specified device options",
 
 		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 2 {
-				return fmt.Errorf("missing <carrier-name>\nUsage: arduino-linux-config carrier config <carrier-name> <device=option...>")
-			}
 			if len(args) < 1 {
-				return fmt.Errorf("missing carrier configuration\nUsage: arduino-linux-config carrier config <carrier-name>")
+				return fmt.Errorf("missing carrier configuration\nUsage: arduino-linux-config carrier enable <carrier-name>")
 			}
 			return nil
 		},
+
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			configHandler(cfg, args[0], args[1:])
+			enableHandler(cfg, args[0], args[1:])
 		},
 	}
 }
@@ -45,7 +43,7 @@ func newConfigureCmd(cfg config.Configuration) *cobra.Command {
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func configHandler(cfg config.Configuration, carrierName string, deviceArgs []string) {
+func enableHandler(cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -63,7 +61,7 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 
 	overlayList := collectDtboFiles(carrier, nextDevicesConfiguration)
 
-	err = reset(cfg, carrier)
+	err = disable(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
