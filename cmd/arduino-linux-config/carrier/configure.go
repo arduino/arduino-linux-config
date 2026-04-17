@@ -72,7 +72,10 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	err = registry.StatusUpdate(cfg, carrier, nextDevicesConfiguration)
+	err = registry.StatusUpdate(cfg, carrier, registry.CarrierStatus{
+		Enable:        true,
+		StatusDevices: nextDevicesConfiguration,
+	})
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
@@ -85,9 +88,8 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error) {
-	parsedUserSelection := make(map[registry.CarrierDeviceName]string)
-
+func parseUserArgs(args []string) ([]registry.StatusDevice, error) {
+	selection := make([]registry.StatusDevice, 0, len(args))
 	for _, arg := range args {
 		// Handle "key=val,key2=val2"
 		pairs := strings.Split(arg, ",")
@@ -104,31 +106,37 @@ func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error)
 			}
 
 			deviceName, optionName := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-			parsedUserSelection[registry.CarrierDeviceName(deviceName)] = optionName
+			selection = append(selection, registry.StatusDevice{
+				Device: deviceName,
+				Option: optionName,
+			})
 
 		}
 	}
 
-	return parsedUserSelection, nil
+	return selection, nil
 }
 
-func collectDtboFiles(carrier registry.Carrier, userSelection map[registry.CarrierDeviceName]string) []string {
+func collectDtboFiles(carrier registry.Carrier, userSelection []registry.StatusDevice) []string {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
-	for deviceName, optionName := range userSelection {
-		device, exist := carrier.FindDeviceByName(deviceName)
+	for _, selection := range userSelection {
+		device, exist := carrier.FindDeviceByName(registry.CarrierDeviceName(selection.Device))
 		if !exist {
 			continue
 		}
 		for _, option := range device.Options {
 			// get the user selected option and collect incompatibilities
-			if option.Name == optionName {
+			if option.Name == selection.Option {
 				dtboFiles = append(dtboFiles, option.DtboFiles...)
 				incompatibleFiles = append(incompatibleFiles, option.IncompatibleDtbo...)
 				break
 			}
 		}
 	}
+
+	// collect base dtbo files for the media carrier.
+	baseFiles = append(baseFiles, carrier.EnabledDtbo...)
 
 	// check for incompatible overlays in the basic configuration
 	// in this case, the basic overlay can be removed in favor of the device overlays
@@ -193,14 +201,14 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	return nil
 }
 
-func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration map[registry.CarrierDeviceName]string) error {
-	for rawDevice, rawOption := range nextDevicesConfiguration {
-		device, exist := carrier.FindDeviceByName(rawDevice)
+func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration []registry.StatusDevice) error {
+	for _, selection := range nextDevicesConfiguration {
+		device, exist := carrier.FindDeviceByName(registry.CarrierDeviceName(selection.Device))
 		if !exist {
-			return fmt.Errorf("unknown device for carrier %s: %q", carrier.Name, rawDevice)
+			return fmt.Errorf("unknown device for carrier %s: %q", carrier.Name, selection.Device)
 		}
-		if !isOptionValid(rawOption, device) {
-			return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
+		if !isOptionValid(selection.Option, device) {
+			return fmt.Errorf("device %q does not support option %q", selection.Device, selection.Option)
 		}
 	}
 	return nil

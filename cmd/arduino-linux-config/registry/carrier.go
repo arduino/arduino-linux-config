@@ -51,8 +51,10 @@ const (
 )
 
 type Carrier struct {
-	Name    CarrierName
-	Devices []Device
+	Name         CarrierName
+	EnabledDtbo  []string
+	DisabledDtbo []string
+	Devices      []Device
 }
 
 func (c Carrier) FindDeviceByName(deviceName CarrierDeviceName) (Device, bool) {
@@ -81,6 +83,13 @@ type DeviceOption struct {
 var Registry = CarrierRegistry{
 	Carriers: []Carrier{{
 		Name: MediaCarrier,
+		EnabledDtbo: []string{
+			"qrb2210-arduino-imola-carrier-media.dtbo",
+			"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+		},
+		DisabledDtbo: []string{
+			"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+		},
 		Devices: []Device{
 			{
 				Name:       "camera0",

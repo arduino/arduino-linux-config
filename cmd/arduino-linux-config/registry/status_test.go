@@ -12,15 +12,18 @@ import (
 func TestUpdateStatusStructure(t *testing.T) {
 	tests := []struct {
 		name         string
-		statusUpdate map[CarrierDeviceName]string
+		statusUpdate CarrierStatus
 		wantResult   map[CarrierDeviceName]string
 	}{
 		{
 			name: "update all devices",
-			statusUpdate: map[CarrierDeviceName]string{
-				Camera0: "cam1",
-				Camera1: "none",
-				Display: "display",
+			statusUpdate: CarrierStatus{
+				Enable: true,
+				StatusDevices: []StatusDevice{
+					{Device: string(Camera0), Option: "cam1"},
+					{Device: string(Camera1), Option: "none"},
+					{Device: string(Display), Option: "display"},
+				},
 			},
 			wantResult: map[CarrierDeviceName]string{
 				Camera0: "cam1",
@@ -30,8 +33,11 @@ func TestUpdateStatusStructure(t *testing.T) {
 		},
 		{
 			name: "fill empty devices",
-			statusUpdate: map[CarrierDeviceName]string{
-				Display: "display",
+			statusUpdate: CarrierStatus{
+				Enable: true,
+				StatusDevices: []StatusDevice{
+					{Device: string(Display), Option: "display"},
+				},
 			},
 			wantResult: map[CarrierDeviceName]string{
 				Camera0: "none",
@@ -54,7 +60,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
-			updateStatusStructure(status, mediaCarrier, []StatusDevice{}, tt.statusUpdate)
+			updateStatusStructure(status, mediaCarrier, CarrierStatus{}, tt.statusUpdate)
 			carrierDeviceLenght := len(mediaCarrier.Devices)
 			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
@@ -95,7 +101,9 @@ func TestGetStatusStructure(t *testing.T) {
 		{
 			name: "Move outdated device to current, retain current status on show command",
 			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{Devices: make(map[CarrierDeviceName]StatusInfo)},
+				CurrentStatus: StatusCarrier{
+					Devices: make(map[CarrierDeviceName]StatusInfo),
+				},
 				NextStatus: StatusCarrier{
 					Devices: map[CarrierDeviceName]StatusInfo{
 						Camera0: {Option: "cam1", CreatedAt: beforeBoot},
@@ -116,7 +124,9 @@ func TestGetStatusStructure(t *testing.T) {
 		{
 			name: "Both devices after boot stay in next",
 			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{Devices: make(map[CarrierDeviceName]StatusInfo)},
+				CurrentStatus: StatusCarrier{
+					Devices: make(map[CarrierDeviceName]StatusInfo),
+				},
 				NextStatus: StatusCarrier{
 					Devices: map[CarrierDeviceName]StatusInfo{
 						Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
@@ -147,15 +157,15 @@ func TestGetStatusStructure(t *testing.T) {
 
 			// Validate Current Slice
 			for i, want := range tt.expectedCurrent {
-				if current[i].Device != want.Device || current[i].Option != want.Option {
-					t.Errorf("%s [Current]: got %+v, want %+v", tt.name, current[i], want)
+				if current.StatusDevices[i].Device != want.Device || current.StatusDevices[i].Option != want.Option {
+					t.Errorf("%s [Current]: got %+v, want %+v", tt.name, current.StatusDevices[i], want)
 				}
 			}
 
 			// Validate Next Slice
 			for i, want := range tt.expectedNext {
-				if next[i].Device != want.Device || next[i].Option != want.Option {
-					t.Errorf("%s [Next]: got %+v, want %+v", tt.name, next[i], want)
+				if next.StatusDevices[i].Device != want.Device || next.StatusDevices[i].Option != want.Option {
+					t.Errorf("%s [Next]: got %+v, want %+v", tt.name, next.StatusDevices[i], want)
 				}
 			}
 		})

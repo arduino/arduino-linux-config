@@ -56,13 +56,15 @@ func reset(cfg config.Configuration, carrier registry.Carrier) error {
 		}
 	}
 
+	// Add disable dtbs to restore original board configuration.
+	baseFiles = append(baseFiles, carrier.DisabledDtbo...)
+
 	err := mergeOverlays(cfg, baseFiles)
 	if err != nil {
 		return fmt.Errorf("cannot merge overlays: %w", err)
 	}
 
-	selection := make(map[registry.CarrierDeviceName]string)
-	err = registry.StatusUpdate(cfg, carrier, selection)
+	err = registry.StatusUpdate(cfg, carrier, registry.CarrierStatus{Enable: false})
 	if err != nil {
 		return fmt.Errorf("cannot update status: %w", err)
 	}
