@@ -71,15 +71,6 @@ type Device struct {
 	Options    []DeviceOption
 }
 
-func (d Device) FindOptionByName(optionName string) *DeviceOption {
-	for _, o := range d.Options {
-		if o.Name == optionName {
-			return &o
-		}
-	}
-	return nil
-}
-
 // DeviceOption represents a configuration option for a device
 type DeviceOption struct {
 	Name             string
