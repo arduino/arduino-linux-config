@@ -50,25 +50,29 @@ func TestUpdateStatusStructure(t *testing.T) {
 			}
 
 			startTime := time.Now().UTC().Truncate(time.Second)
-			updateStatusStructure(status, "media-carrier", []StatusDevice{}, tt.statusUpdate)
-			carrierDeviceLenght := len(GetDevicesNames("media-carrier"))
+			mediaCarrier, exist := Registry.FindByName("media-carrier")
+			if !exist {
+				t.Fatal("media-carrier not found in registry")
+			}
+			updateStatusStructure(status, mediaCarrier, []StatusDevice{}, tt.statusUpdate)
+			carrierDeviceLenght := len(mediaCarrier.Devices)
 			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
 				if len(status.CurrentStatus.Devices) != 0 {
 					t.Errorf("got %d devices, want %d", len(status.CurrentStatus.Devices), carrierDeviceLenght)
 				}
 
-				for _, name := range GetDevicesNames("media-carrier") {
-					info, exists := status.NextStatus.Devices[name]
+				for _, device := range mediaCarrier.Devices {
+					info, exists := status.NextStatus.Devices[device.Name]
 					if !exists {
-						t.Fatalf("device %s missing from wanted status", name)
+						t.Fatalf("device %s missing from wanted status", device.Name)
 					}
-					if info.Option != tt.wantResult[name] {
-						t.Errorf("device %s: got option %s, want %s", name, info.Option, tt.wantResult[name])
+					if info.Option != tt.wantResult[device.Name] {
+						t.Errorf("device %s: got option %s, want %s", device.Name, info.Option, tt.wantResult[device.Name])
 					}
 
 					if info.CreatedAt.Before(startTime) {
-						t.Errorf("device %s: timestamp %v is too old", name, info.CreatedAt)
+						t.Errorf("device %s: timestamp %v is too old", device.Name, info.CreatedAt)
 					}
 				}
 			}
@@ -135,7 +139,11 @@ func TestGetStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			current, next := getStatusStructure(tt.initialStatus, "media-carrier", bootTime)
+			mediaCarrier, exist := Registry.FindByName("media-carrier")
+			if !exist {
+				t.Fatal("media-carrier not found in registry")
+			}
+			current, next := getStatusStructure(tt.initialStatus, mediaCarrier, bootTime)
 
 			// Validate Current Slice
 			for i, want := range tt.expectedCurrent {

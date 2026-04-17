@@ -47,7 +47,7 @@ func extractCarriersResult() CarriersResult {
 
 	for k, c := range registry.Registry.Carriers {
 		carriersResult.Carriers = append(carriersResult.Carriers, CarrierResult{
-			Name:    string(k),
+			Name:    fmt.Sprint(rune(k)),
 			Devices: extractDeviceResult(c.Devices),
 		})
 	}
@@ -60,7 +60,7 @@ func extractDeviceResult(devices []registry.Device) []DeviceResult {
 	for i, d := range devices {
 		options := extractOptions(d.Options)
 		devicesList[i] = DeviceResult{
-			Name:             d.Name,
+			Name:             string(d.Name),
 			DeviceType:       string(d.DeviceType),
 			AvailableDevices: options,
 		}
