@@ -26,13 +26,13 @@ type CarrierRegistry struct {
 	Carriers []Carrier
 }
 
-func (r CarrierRegistry) FindByName(carrier string) *Carrier {
+func (r CarrierRegistry) FindByName(carrier string) (Carrier, bool) {
 	for _, c := range r.Carriers {
 		if string(c.Name) == carrier {
-			return &c
+			return c, true
 		}
 	}
-	return nil
+	return Carrier{}, false
 }
 
 type CarrierDeviceName string
@@ -55,13 +55,13 @@ type Carrier struct {
 	Devices []Device
 }
 
-func (c Carrier) FindDeviceByName(deviceName CarrierDeviceName) *Device {
+func (c Carrier) FindDeviceByName(deviceName CarrierDeviceName) (Device, bool) {
 	for _, d := range c.Devices {
 		if d.Name == deviceName {
-			return &d
+			return d, true
 		}
 	}
-	return nil
+	return Device{}, false
 }
 
 // Device represents a configurable hardware device on a carrier

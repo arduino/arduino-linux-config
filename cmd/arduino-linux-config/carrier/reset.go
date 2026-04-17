@@ -28,16 +28,15 @@ func newResetCmd(cfg config.Configuration) *cobra.Command {
 }
 
 func resetHandler(cfg config.Configuration, carrierName string) {
-	carrier := registry.Registry.FindByName(carrierName)
-	if carrier == nil {
+	carrier, exist := registry.Registry.FindByName(carrierName)
+	if !exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	reset(cfg, *carrier)
+	reset(cfg, carrier)
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next := registry.GetStatus(cfg, *carrier)
-	feedback.PrintResult(populateShowResult(*carrier, current, next))
-
+	current, next := registry.GetStatus(cfg, carrier)
+	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
 func reset(cfg config.Configuration, carrier registry.Carrier) {

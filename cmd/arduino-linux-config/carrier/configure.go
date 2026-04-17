@@ -51,19 +51,19 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	carrier := registry.Registry.FindByName(carrierName)
-	if carrier == nil {
+	carrier, exist := registry.Registry.FindByName(carrierName)
+	if !exist {
 		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
 	}
 
-	err = validateUserConfiguration(*carrier, nextDevicesConfiguration)
+	err = validateUserConfiguration(carrier, nextDevicesConfiguration)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	overlayList := collectDtboFiles(*carrier, nextDevicesConfiguration)
+	overlayList := collectDtboFiles(carrier, nextDevicesConfiguration)
 
-	reset(cfg, *carrier)
+	reset(cfg, carrier)
 	err = mergeOverlays(cfg, overlayList)
 	if err != nil {
 		feedback.Fatal(
@@ -72,11 +72,11 @@ func configHandler(cfg config.Configuration, carrierName string, deviceArgs []st
 		)
 	}
 
-	registry.StatusUpdate(cfg, *carrier, nextDevicesConfiguration)
+	registry.StatusUpdate(cfg, carrier, nextDevicesConfiguration)
 
 	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next := registry.GetStatus(cfg, *carrier)
-	feedback.PrintResult(populateShowResult(*carrier, current, next))
+	current, next := registry.GetStatus(cfg, carrier)
+	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
 func parseUserArgs(args []string) (map[registry.CarrierDeviceName]string, error) {
@@ -110,8 +110,8 @@ func collectDtboFiles(carrier registry.Carrier, userSelection map[registry.Carri
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for deviceName, optionName := range userSelection {
-		device := carrier.FindDeviceByName(deviceName)
-		if device == nil {
+		device, exist := carrier.FindDeviceByName(deviceName)
+		if !exist {
 			continue
 		}
 		for _, option := range device.Options {
@@ -193,11 +193,11 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 
 func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration map[registry.CarrierDeviceName]string) error {
 	for rawDevice, rawOption := range nextDevicesConfiguration {
-		device := carrier.FindDeviceByName(rawDevice)
-		if device == nil {
+		device, exist := carrier.FindDeviceByName(rawDevice)
+		if !exist {
 			return fmt.Errorf("unknown device for carrier %s: %q", carrier.Name, rawDevice)
 		}
-		if !isOptionValid(rawOption, *device) {
+		if !isOptionValid(rawOption, device) {
 			return fmt.Errorf("device %q does not support option %q", rawDevice, rawOption)
 		}
 	}

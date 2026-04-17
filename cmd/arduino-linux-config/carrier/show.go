@@ -30,12 +30,12 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 }
 
 func showHandler(cfg config.Configuration, carrierName string) {
-	carrier := registry.Registry.FindByName(carrierName)
-	if carrier == nil {
+	carrier, exist := registry.Registry.FindByName(carrierName)
+	if exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
-	current, next := registry.GetStatus(cfg, *carrier)
-	feedback.PrintResult(populateShowResult(*carrier, current, next))
+	current, next := registry.GetStatus(cfg, carrier)
+	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
 func populateShowResult(carrier registry.Carrier, current []registry.StatusDevice, next []registry.StatusDevice) showResult {

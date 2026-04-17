@@ -50,8 +50,11 @@ func TestUpdateStatusStructure(t *testing.T) {
 			}
 
 			startTime := time.Now().UTC().Truncate(time.Second)
-			mediaCarrier := Registry.FindByName("media-carrier")
-			updateStatusStructure(status, *mediaCarrier, []StatusDevice{}, tt.statusUpdate)
+			mediaCarrier, exist := Registry.FindByName("media-carrier")
+			if !exist {
+				t.Fatal("media-carrier not found in registry")
+			}
+			updateStatusStructure(status, mediaCarrier, []StatusDevice{}, tt.statusUpdate)
 			carrierDeviceLenght := len(mediaCarrier.Devices)
 			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
@@ -136,8 +139,11 @@ func TestGetStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mediaCarrier := Registry.FindByName("media-carrier")
-			current, next := getStatusStructure(tt.initialStatus, *mediaCarrier, bootTime)
+			mediaCarrier, exist := Registry.FindByName("media-carrier")
+			if !exist {
+				t.Fatal("media-carrier not found in registry")
+			}
+			current, next := getStatusStructure(tt.initialStatus, mediaCarrier, bootTime)
 
 			// Validate Current Slice
 			for i, want := range tt.expectedCurrent {
