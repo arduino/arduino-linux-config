@@ -52,8 +52,8 @@ const (
 
 type Carrier struct {
 	Name         CarrierName
-	EnabledDtbo  []string
-	DisabledDtbo []string
+	EnabledDtbos  []string
+	DisabledDtbos []string
 	Devices      []Device
 }
 
