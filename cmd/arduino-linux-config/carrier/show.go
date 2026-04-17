@@ -34,7 +34,11 @@ func showHandler(cfg config.Configuration, carrierName string) {
 	if exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
-	current, next := registry.GetStatus(cfg, carrier)
+	current, next, err := registry.GetStatus(cfg, carrier)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+	}
+
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 

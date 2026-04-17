@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/arduino/arduino-linux-config/cmd/config"
-	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/go-paths-helper"
 )
 
@@ -35,39 +34,41 @@ type StatusDevice struct {
 }
 
 // Called by config and reset
-func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate map[CarrierDeviceName]string) {
+func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate map[CarrierDeviceName]string) error {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
+		return fmt.Errorf("failed to load status file %w", err)
 	}
 
 	// save current state if reboot occurred
 	bootTime, err := getBootTime()
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+		return fmt.Errorf("failed to get boot time: %w", err)
 	}
 	currentStatus, _ := getStatusStructure(status, carrier, bootTime)
 	updateStatusStructure(status, carrier, currentStatus, statusUpdate)
 
 	if err := saveStatusFile(getStatusFile(cfg, carrier.Name), *status); err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to save status file: %v", err), feedback.ErrGeneric)
+		return fmt.Errorf("failed to save status file: %w", err)
 	}
+	return nil
 }
 
 // Called by show, load the status structure and apply status fixes before returning
 // Do not update the status file on the disk because show is running as non-root user
-func GetStatus(cfg config.Configuration, carrier Carrier) ([]StatusDevice, []StatusDevice) {
+func GetStatus(cfg config.Configuration, carrier Carrier) ([]StatusDevice, []StatusDevice, error) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to load status file %v", err), feedback.ErrGeneric)
+		return nil, nil, fmt.Errorf("failed to load status file %v", err)
 	}
 
 	bootTime, err := getBootTime()
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get boot time: %v", err), feedback.ErrGeneric)
+		return nil, nil, fmt.Errorf("failed to get boot time: %v", err)
 	}
 
-	return getStatusStructure(status, carrier, bootTime)
+	current, next := getStatusStructure(status, carrier, bootTime)
+	return current, next, nil
 }
 
 func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time) ([]StatusDevice, []StatusDevice) {
