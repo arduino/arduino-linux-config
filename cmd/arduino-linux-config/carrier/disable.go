@@ -13,9 +13,10 @@ func newDisableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "disable <carrier-name>",
 		Short: "Disable a carrier and restore the base DTB",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			disableHandler(cfg, args[0])
+			carrierName := args[0]
+			disableHandler(cfg, carrierName)
 		},
 	}
 }
