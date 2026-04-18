@@ -15,20 +15,14 @@ import (
 
 func newEnableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "enable <carrier-name> <device=option...>",
+		Use:   "enable <carrier-name> [device=option...]",
 		Short: "Enable and configure a carrier with the specified device options",
-
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return fmt.Errorf("missing carrier configuration\nUsage: arduino-linux-config carrier enable <carrier-name>")
-			}
-			return nil
-		},
-
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			enableHandler(cfg, args[0], args[1:])
+			carrierName := args[0]
+			deviceOptions := args[1:]
+
+			enableHandler(cfg, carrierName, deviceOptions)
 		},
 	}
 }

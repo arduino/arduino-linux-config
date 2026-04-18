@@ -13,10 +13,9 @@ import (
 
 func newShowCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:          "show [carrier-name]",
-		Short:        "Show the current configuration",
-		Args:         cobra.MaximumNArgs(1),
-		SilenceUsage: true,
+		Use:   "show [carrier-name]",
+		Short: "Show the current configuration",
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			carrierName := ""
 			if len(args) > 0 {
