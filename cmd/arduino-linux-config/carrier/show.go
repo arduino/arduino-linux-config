@@ -13,30 +13,46 @@ import (
 
 func newShowCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "show <carrier-name>",
-		Short: "Show the current configuration for a carrier",
-
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier config <carrier-name>")
-			}
-			return nil
-		},
+		Use:          "show [carrier-name]",
+		Short:        "Show the current configuration",
+		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			showHandler(cfg, args[0])
+			carrierName := ""
+			if len(args) > 0 {
+				carrierName = args[0]
+			}
+			showHandler(cfg, carrierName)
 		},
 	}
 }
 
 func showHandler(cfg config.Configuration, carrierName string) {
-	carrier, exist := registry.Registry.FindByName(carrierName)
-	if !exist {
-		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
+	found := false
+	for _, carrier := range registry.Registry.Carriers {
+		// No carrier specified - Show everything
+		if carrierName == "" {
+			showCarrier(cfg, carrier)
+			continue
+		}
+
+		// Specific carrier specified - Filter the carriers
+		if string(carrier.Name) == carrierName {
+			showCarrier(cfg, carrier)
+			found = true
+			break
+		}
 	}
+
+	if carrierName != "" && !found {
+		feedback.Warnf(fmt.Sprintf("carrier %s not found", carrierName))
+	}
+}
+
+func showCarrier(cfg config.Configuration, carrier registry.Carrier) {
 	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
 	}
 
 	feedback.PrintResult(populateShowResult(carrier, current, next))
@@ -95,10 +111,11 @@ func (r showResult) String() string {
 	if r.CurrentEnabled {
 		statusCurrent = "enabled"
 	}
-	fmt.Fprintf(&sb, "%s [current: %s]\t[next: %s]\n", r.CarrierName, statusCurrent, statusNext)
+
+	// Write the header
+	fmt.Fprintf(w, "%s\t[current: %s]\t[next: %s]\n", r.CarrierName, statusCurrent, statusNext)
 
 	nextMap := make(map[registry.CarrierDeviceName]string)
-
 	if len(r.NextDevices) > 0 {
 		for _, d := range r.carrier.Devices {
 			if device, found := hasDevice(r.NextDevices, d.Name); found {
@@ -110,12 +127,16 @@ func (r showResult) String() string {
 	for _, device := range r.carrier.Devices {
 		c, _ := hasDevice(r.CurrentDevices, device.Name)
 
+		// Write column for curr and next
 		if len(r.NextDevices) > 0 {
-			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextMap[registry.CarrierDeviceName(c.Device)])
+			nextOpt := nextMap[registry.CarrierDeviceName(c.Device)]
+			if nextOpt == "" {
+				nextOpt = "none" // Fallback for display clarity
+			}
+			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextOpt)
 		} else {
 			fmt.Fprintf(w, "  %s:\t[current: %s]\t\n", c.Device, c.Option)
 		}
-
 	}
 
 	w.Flush()

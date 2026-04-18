@@ -3,8 +3,6 @@ package carrier
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -173,15 +171,15 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	overlays = slices.Compact(overlays)
 
 	systemDtb := cfg.SystemDTB()
-	overlaysPath := filepath.Dir(systemDtb.String())
-	temporaryDtb := filepath.Join(overlaysPath, "qrb2210-arduino-imola.dtb.next")
-	defer func() { _ = os.Remove(temporaryDtb) }()
+	overlaysPath := systemDtb.Parent()
+	temporaryDtb := overlaysPath.Join("qrb2210-arduino-imola.dtb.next")
+	defer func() { _ = temporaryDtb.Remove() }()
 
 	for i := range overlays {
-		overlays[i] = filepath.Join(overlaysPath, overlays[i])
+		overlays[i] = overlaysPath.Join(overlays[i]).String()
 	}
 
-	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...)
+	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb.String()}, overlays...)
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
 		return fmt.Errorf("failed to create process: %w", err)
@@ -192,7 +190,7 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
 	}
 
-	if err := os.Rename(temporaryDtb, systemDtb.String()); err != nil {
+	if err := temporaryDtb.Rename(systemDtb); err != nil {
 		return fmt.Errorf("failed to move output file: %w", err)
 	}
 
