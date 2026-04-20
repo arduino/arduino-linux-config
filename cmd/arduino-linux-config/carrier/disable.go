@@ -3,6 +3,7 @@ package carrier
 import (
 	"fmt"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
@@ -17,6 +18,9 @@ func newDisableCmd(cfg config.Configuration) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			carrierName := args[0]
 			disableHandler(cfg, carrierName)
+		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			return completion.CompleteCarrierName(args, toComplete)
 		},
 	}
 }

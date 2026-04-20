@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
@@ -25,6 +26,18 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 			deviceOptions := args[1:]
 
 			enableHandler(cfg, carrierName, deviceOptions)
+		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return completion.CompleteCarrierName(args, toComplete)
+			}
+
+			carrier, exist := registry.Registry.FindByName(args[0])
+			if !exist {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			return completion.CompleteDeviceOption(carrier, toComplete)
 		},
 	}
 }

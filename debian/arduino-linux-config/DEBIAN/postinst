@@ -3,3 +3,6 @@
 set -e
 
 mkdir -p /var/lib/arduino-linux-config/status > /dev/null 2>&1 || true
+
+mkdir -p /etc/bash_completion.d/
+arduino-linux-config completion bash > /etc/bash_completion.d/arduino-linux-config.bash || true
