@@ -2,4 +2,7 @@ Package: arduino-linux-config
 Version: $VERSION
 Architecture: $ARCH
 Maintainer: arduino <support@arduino.cc>
+Depends: device-tree-compiler
 Description: Arduino application for board media carrier configuration
+ This tool provides a CLI interface for managing and applying 
+ device tree overlays for various media carrier boards.

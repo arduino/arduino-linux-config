@@ -14,6 +14,7 @@ func newListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "Lists the available carriers and devices for the current hardware",
+		Args:  cobra.MaximumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			listHandler()
 		},
@@ -75,39 +76,31 @@ func extractOptions(options []registry.DeviceOption) []string {
 	}
 	return res
 }
-
 func (r CarriersResult) String() string {
 	var b strings.Builder
-	// Using a simple builder for headers, and tabwriter for the indented table
+	// minwidth: 0, tabwidth: 0, padding: 4, padchar: ' ', flags: 0
+	w := tabwriter.NewWriter(&b, 0, 0, 4, ' ', 0)
+
+	fmt.Fprintln(w, "CARRIER\tDEVICE\tOPTIONS")
+	fmt.Fprintln(w, "-------\t------\t-------")
 
 	for _, carrier := range r.Carriers {
-		// 1. Print the "Header" for each carrier file
-		fmt.Fprintf(&b, "%s\n", carrier.Name)
-
-		// 2. Initialize a tabwriter for the indented section
-		// We use a new writer per carrier to keep column widths consistent within that group
-		w := tabwriter.NewWriter(&b, 0, 8, 2, ' ', 0)
-
-		fmt.Fprintln(w, "  Device\tAvailable options")
-		fmt.Fprintln(w, "  ------\t-----------------")
-
-		if len(carrier.Devices) == 0 {
-			fmt.Fprintln(w, "  -\t-")
-		} else {
-			for _, device := range carrier.Devices {
-				options := strings.Join(device.AvailableDevices, ", ")
-				if options == "" {
-					options = "none"
-				}
-				// Use a leading space/tab for the "indented" look
-				fmt.Fprintf(w, "  %s\t%s\n", device.Name, options)
+		for i, device := range carrier.Devices {
+			carrierName := ""
+			if i == 0 {
+				carrierName = carrier.Name
 			}
-		}
 
-		w.Flush()
-		b.WriteString("\n") // Add a newline between different carrier files
+			fmt.Fprintf(w, "%s\t%s\t%s\n",
+				carrierName,
+				device.Name,
+				strings.Join(device.AvailableDevices, ", "),
+			)
+		}
+		fmt.Fprintln(w, "\t\t")
 	}
 
+	w.Flush()
 	return b.String()
 }
 

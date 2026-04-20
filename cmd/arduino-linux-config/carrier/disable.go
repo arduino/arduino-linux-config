@@ -13,16 +13,10 @@ func newDisableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "disable <carrier-name>",
 		Short: "Disable a carrier and restore the base DTB",
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return fmt.Errorf("missing <carrier-name>. Usage: arduino-linux-config carrier disable <carrier-name>")
-			}
-			return nil
-		},
-		SilenceUsage: true,
-
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			disableHandler(cfg, args[0])
+			carrierName := args[0]
+			disableHandler(cfg, carrierName)
 		},
 	}
 }

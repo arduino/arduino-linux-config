@@ -3,8 +3,6 @@ package carrier
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -17,20 +15,16 @@ import (
 
 func newEnableCmd(cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "enable <carrier-name> <device=option...>",
+		Use:   "enable <carrier-name> [device=option...]",
 		Short: "Enable and configure a carrier with the specified device options",
-
-		Args: func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return fmt.Errorf("missing carrier configuration\nUsage: arduino-linux-config carrier enable <carrier-name>")
-			}
-			return nil
-		},
-
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Example: `  # To configure a media-carrier with two cameras attached, one type1 and one type2:
+  arduino-linux-config carrier enable media-carrier camera0=type1-2lane camera1=type2-4lane`,
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			enableHandler(cfg, args[0], args[1:])
+			carrierName := args[0]
+			deviceOptions := args[1:]
+
+			enableHandler(cfg, carrierName, deviceOptions)
 		},
 	}
 }
@@ -173,15 +167,15 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	overlays = slices.Compact(overlays)
 
 	systemDtb := cfg.SystemDTB()
-	overlaysPath := filepath.Dir(systemDtb.String())
-	temporaryDtb := filepath.Join(overlaysPath, "qrb2210-arduino-imola.dtb.next")
-	defer func() { _ = os.Remove(temporaryDtb) }()
+	overlaysPath := systemDtb.Parent()
+	temporaryDtb := overlaysPath.Join("qrb2210-arduino-imola.dtb.next")
+	defer func() { _ = temporaryDtb.Remove() }()
 
 	for i := range overlays {
-		overlays[i] = filepath.Join(overlaysPath, overlays[i])
+		overlays[i] = overlaysPath.Join(overlays[i]).String()
 	}
 
-	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb}, overlays...)
+	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb.String()}, overlays...)
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
 		return fmt.Errorf("failed to create process: %w", err)
@@ -192,7 +186,7 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
 	}
 
-	if err := os.Rename(temporaryDtb, systemDtb.String()); err != nil {
+	if err := temporaryDtb.Rename(systemDtb); err != nil {
 		return fmt.Errorf("failed to move output file: %w", err)
 	}
 
