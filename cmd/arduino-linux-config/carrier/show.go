@@ -25,10 +25,7 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 			showHandler(cfg, carrierName)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			if len(args) > 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-			return completion.CompleteCarrierName(toComplete)
+			return completion.CompleteCarrierName(args, toComplete)
 		},
 	}
 }

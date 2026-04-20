@@ -29,7 +29,7 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				return completion.CompleteCarrierName(toComplete)
+				return completion.CompleteCarrierName(args, toComplete)
 			}
 
 			carrier, exist := registry.Registry.FindByName(args[0])
