@@ -44,7 +44,7 @@ func showHandler(cfg config.Configuration, carrierName string) {
 	}
 
 	if carrierName != "" && !found {
-		feedback.Warnf(fmt.Sprintf("carrier %s not found", carrierName))
+		feedback.Warnf("carrier %s not found", carrierName)
 	}
 }
 
