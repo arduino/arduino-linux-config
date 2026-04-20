@@ -5,6 +5,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
@@ -22,6 +23,12 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 				carrierName = args[0]
 			}
 			showHandler(cfg, carrierName)
+		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			if len(args) > 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return completion.CompleteCarrierName(toComplete)
 		},
 	}
 }
