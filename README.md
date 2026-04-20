@@ -9,13 +9,13 @@
 arduino-linux-config carrier list
 
 # Configure a carrier with specific devices
-arduino-linux-config carrier configure media-carrier camera1=type1-2lane display=8-dsi-touch-a
+arduino-linux-config carrier enable media-carrier camera1=type1-2lane display=8-dsi-touch-a
 
 # Show current and pending configuration
 arduino-linux-config carrier show media-carrier
 
 # Reset a carrier to factory defaults
-arduino-linux-config carrier reset media-carrier
+arduino-linux-config carrier disable media-carrier
 ```
 
 ## Installation
@@ -40,8 +40,8 @@ The binary will be available at `./build/arduino-linux-config`.
 
 - **`list`**: Lists all available carriers and devices for the current hardware.
 - **`show <carrier-name>`**: Displays the current and pending (next boot) configuration for a carrier.
-- **`configure <carrier-name> [device=option...]`**: Configures a carrier with the specified device options. Factory defaults are applied before the new configuration.
-- **`reset <carrier-name>`**: Resets all devices on a carrier to factory defaults.
+- **`enable <carrier-name> [device=option...]`**: Configures a carrier with the specified device options. Factory defaults are applied before the new configuration.
+- **`disable <carrier-name>`**: Resets all devices on a carrier to factory defaults.
 
 ## Global Flags
 
