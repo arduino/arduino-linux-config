@@ -132,7 +132,7 @@ test_camera_capture() {
 
 config_camera_hardware() {
     echo -e "\n[6] Configuring camera hardware type..."
-    sudo arduino-linux-config carrier config media-carrier camera0=type1-4lane > /dev/null 2>&1
+    sudo arduino-linux-config carrier enable media-carrier camera0=type1-4lane > /dev/null 2>&1
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}CAMERA CONFIG SUCCESS${NC}"
         echo "A reboot is required to apply hardware changes."
