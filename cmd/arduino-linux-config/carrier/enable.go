@@ -19,7 +19,7 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 		Use:   "enable <carrier-name> [device=option...]",
 		Short: "Enable and configure a carrier with the specified device options",
 		Example: `  # To configure a media-carrier with two cameras attached, one type1:
-  arduino-linux-config carrier enable media-carrier camera0=type1-2lane camera1=type1-4lane`,
+  arduino-linux-config carrier enable media-carrier camera0=type1-2lanes camera1=type1-4lanes`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			carrierName := args[0]
