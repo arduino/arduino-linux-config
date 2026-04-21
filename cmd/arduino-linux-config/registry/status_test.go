@@ -56,7 +56,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 			}
 
 			startTime := time.Now().UTC().Truncate(time.Second)
-			mediaCarrier, exist := Registry.FindByName("media-carrier")
+			mediaCarrier, exist := New().FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
@@ -149,7 +149,7 @@ func TestGetStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mediaCarrier, exist := Registry.FindByName("media-carrier")
+			mediaCarrier, exist := New().FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}

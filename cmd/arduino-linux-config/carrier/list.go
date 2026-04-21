@@ -16,13 +16,13 @@ func newListCmd() *cobra.Command {
 		Short: "Lists the available carriers and devices for the current hardware",
 		Args:  cobra.MaximumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			listHandler()
+			listHandler(registry.New())
 		},
 	}
 }
 
-func listHandler() {
-	carriersResult := extractCarriersResult()
+func listHandler(reg registry.CarrierRegistry) {
+	carriersResult := extractCarriersResult(reg)
 	feedback.PrintResult(carriersResult)
 }
 
@@ -41,12 +41,12 @@ type DeviceResult struct {
 	AvailableDevices []string `json:"available_devices"`
 }
 
-func extractCarriersResult() CarriersResult {
+func extractCarriersResult(reg registry.CarrierRegistry) CarriersResult {
 	carriersResult := CarriersResult{
-		Carriers: make([]CarrierResult, 0, len(registry.Registry.Carriers)),
+		Carriers: make([]CarrierResult, 0, len(reg.Carriers)),
 	}
 
-	for _, carrier := range registry.Registry.Carriers {
+	for _, carrier := range reg.Carriers {
 		carriersResult.Carriers = append(carriersResult.Carriers, CarrierResult{
 			Name:    string(carrier.Name),
 			Devices: extractDeviceResult(carrier.Devices),
