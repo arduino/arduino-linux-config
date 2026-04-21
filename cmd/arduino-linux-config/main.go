@@ -7,7 +7,6 @@ import (
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
-	"github.com/arduino/arduino-linux-config/cmd/i18n"
 
 	"github.com/spf13/cobra"
 	"go.bug.st/cleanup"
@@ -25,7 +24,7 @@ func run() error {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			format, ok := feedback.ParseOutputFormat(format)
 			if !ok {
-				feedback.Fatal(i18n.Tr("Invalid output format: %s", format), feedback.ErrBadArgument)
+				feedback.Fatal(fmt.Sprintf("Invalid output format: %s", format), feedback.ErrBadArgument)
 			}
 			feedback.SetFormat(format)
 

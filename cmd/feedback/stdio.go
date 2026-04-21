@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-
-	"github.com/arduino/arduino-linux-config/cmd/i18n"
 )
 
 // DirectStreams returns the underlying io.Writer to directly stream to
@@ -19,7 +17,7 @@ func DirectStreams() (io.Writer, io.Writer, error) {
 		panic("output format not yet selected")
 	}
 	if format != Text {
-		return nil, nil, errors.New(i18n.Tr("available only in text format"))
+		return nil, nil, errors.New("available only in text format")
 	}
 	return stdOut, stdErr, nil
 }
