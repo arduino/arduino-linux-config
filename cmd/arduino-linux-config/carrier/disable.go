@@ -10,18 +10,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDisableCmd(cfg config.Configuration) *cobra.Command {
+func newDisableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "disable <carrier-name>",
 		Short: "Disable a carrier and restore the base DTB",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			carrierName := args[0]
-			disableHandler(registry.New(), cfg, carrierName)
+			disableHandler(reg, cfg, carrierName)
 		},
 
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteCarrierName(registry.New(), args, toComplete)
+			return completion.CompleteCarrierName(reg, args, toComplete)
 		},
 	}
 }

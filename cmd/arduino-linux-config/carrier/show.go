@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newShowCmd(cfg config.Configuration) *cobra.Command {
+func newShowCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show [carrier-name]",
 		Short: "Show the current configuration",
@@ -22,10 +22,10 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 			if len(args) > 0 {
 				carrierName = args[0]
 			}
-			showHandler(registry.New(), cfg, carrierName)
+			showHandler(reg, cfg, carrierName)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteCarrierName(registry.New(), args, toComplete)
+			return completion.CompleteCarrierName(reg, args, toComplete)
 		},
 	}
 }

@@ -3,6 +3,7 @@ package carrier
 import (
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/spf13/cobra"
 )
 
@@ -18,10 +19,12 @@ func NewCarrierCmd() *cobra.Command {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	carrierCmd.AddCommand(newListCmd())
-	carrierCmd.AddCommand(newEnableCmd(cfg))
-	carrierCmd.AddCommand(newDisableCmd(cfg))
-	carrierCmd.AddCommand(newShowCmd(cfg))
+	reg := registry.New()
+
+	carrierCmd.AddCommand(newListCmd(reg))
+	carrierCmd.AddCommand(newEnableCmd(reg, cfg))
+	carrierCmd.AddCommand(newDisableCmd(reg, cfg))
+	carrierCmd.AddCommand(newShowCmd(reg, cfg))
 
 	return carrierCmd
 }

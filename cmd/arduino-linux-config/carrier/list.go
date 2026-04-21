@@ -10,13 +10,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newListCmd() *cobra.Command {
+func newListCmd(reg registry.CarrierRegistry) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "Lists the available carriers and devices for the current hardware",
 		Args:  cobra.MaximumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			listHandler(registry.New())
+			listHandler(reg)
 		},
 	}
 }

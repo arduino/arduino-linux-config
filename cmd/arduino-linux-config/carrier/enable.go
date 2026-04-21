@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newEnableCmd(cfg config.Configuration) *cobra.Command {
+func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "enable <carrier-name> [device=option...]",
 		Short: "Enable and configure a carrier with the specified device options",
@@ -25,10 +25,9 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 			carrierName := args[0]
 			deviceOptions := args[1:]
 
-			enableHandler(registry.New(), cfg, carrierName, deviceOptions)
+			enableHandler(reg, cfg, carrierName, deviceOptions)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			reg := registry.New()
 			if len(args) == 0 {
 				return completion.CompleteCarrierName(reg, args, toComplete)
 			}
