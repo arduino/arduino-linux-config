@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
-	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
 	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/go-paths-helper"
 	"github.com/spf13/cobra"
 )
