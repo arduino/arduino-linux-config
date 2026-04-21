@@ -100,7 +100,7 @@ var Registry = CarrierRegistry{
 						DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
 					},
 					{
-						Name: "type1-2lane",
+						Name: "type1-2lanes",
 						DtboFiles: []string{
 							"qrb2210-arduino-imola-video_sound-usbc.dtbo",
 							"qrb2210-arduino-imola-carrier-media.dtbo",
@@ -108,7 +108,7 @@ var Registry = CarrierRegistry{
 						},
 					},
 					{
-						Name: "type1-4lane",
+						Name: "type1-4lanes",
 						DtboFiles: []string{
 							"qrb2210-arduino-imola-video_sound-usbc.dtbo",
 							"qrb2210-arduino-imola-carrier-media.dtbo",
@@ -126,14 +126,14 @@ var Registry = CarrierRegistry{
 						DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
 					},
 					{
-						Name: "type1-2lane",
+						Name: "type1-2lanes",
 						DtboFiles: []string{
 							"qrb2210-arduino-imola-video_sound-usbc.dtbo",
 							"qrb2210-arduino-imola-carrier-media.dtbo",
 							"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
 						},
 					}, {
-						Name: "type1-4lane",
+						Name: "type1-4lanes",
 						DtboFiles: []string{
 							"qrb2210-arduino-imola-video_sound-usbc.dtbo",
 							"qrb2210-arduino-imola-carrier-media.dtbo",

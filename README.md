@@ -9,7 +9,7 @@
 arduino-linux-config carrier list
 
 # Configure a carrier with specific devices
-arduino-linux-config carrier enable media-carrier camera1=type1-2lane display=8-dsi-touch-a
+arduino-linux-config carrier enable media-carrier camera1=type1-2lanes display=8-dsi-touch-a
 
 # Show current and pending configuration
 arduino-linux-config carrier show media-carrier

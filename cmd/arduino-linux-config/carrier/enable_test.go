@@ -25,33 +25,33 @@ func Test_parseArguments(t *testing.T) {
 		},
 		{
 			name: "Two configuration in one string",
-			args: []string{"display=8-dsi-touch-a,camera0=type1-2lane"},
+			args: []string{"display=8-dsi-touch-a,camera0=type1-2lanes"},
 			want: map[registry.CarrierDeviceName]string{
 				"display": "8-dsi-touch-a",
-				"camera0": "type1-2lane",
+				"camera0": "type1-2lanes",
 			},
 			wantErr: false,
 		},
 		{
 			name: "Happy path: multiple arguments and spaces",
-			args: []string{" display=8-dsi-touch-a ", " camera0 = type1-2lane "},
+			args: []string{" display=8-dsi-touch-a ", " camera0 = type1-2lanes "},
 			want: map[registry.CarrierDeviceName]string{
 				"display": "8-dsi-touch-a",
-				"camera0": "type1-2lane",
+				"camera0": "type1-2lanes",
 			},
 			wantErr: false,
 		},
 		{
 			name: "One option defined with a comma",
-			args: []string{"camera0=type1-2lane,"},
+			args: []string{"camera0=type1-2lanes,"},
 			want: map[registry.CarrierDeviceName]string{
-				"camera0": "type1-2lane",
+				"camera0": "type1-2lanes",
 			},
 			wantErr: false,
 		},
 		{
 			name:    "Error: Values containing more than one equal sign, invalid format",
-			args:    []string{"camera0=camera1=type1-2lane"},
+			args:    []string{"camera0=camera1=type1-2lanes"},
 			want:    nil,
 			wantErr: true,
 		},
