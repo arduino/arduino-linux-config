@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
-	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/spf13/cobra"
 )
