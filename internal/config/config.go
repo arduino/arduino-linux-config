@@ -35,6 +35,10 @@ func (c *Configuration) StatusDir() *paths.Path {
 	return c.statusDir
 }
 
+func (c *Configuration) DtbDir() *paths.Path {
+	return c.dtbDir
+}
+
 func (c *Configuration) SystemDTB() *paths.Path {
 	return c.dtbDir.Join("qrb2210-arduino-imola.dtb")
 }
