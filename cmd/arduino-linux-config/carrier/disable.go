@@ -17,16 +17,17 @@ func newDisableCmd(cfg config.Configuration) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			carrierName := args[0]
-			disableHandler(cfg, carrierName)
+			disableHandler(registry.New(), cfg, carrierName)
 		},
+
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteCarrierName(args, toComplete)
+			return completion.CompleteCarrierName(registry.New(), args, toComplete)
 		},
 	}
 }
 
-func disableHandler(cfg config.Configuration, carrierName string) {
-	carrier, exist := registry.Registry.FindByName(carrierName)
+func disableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrierName string) {
+	carrier, exist := reg.FindByName(carrierName)
 	if !exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}

@@ -25,14 +25,15 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 			carrierName := args[0]
 			deviceOptions := args[1:]
 
-			enableHandler(cfg, carrierName, deviceOptions)
+			enableHandler(registry.New(), cfg, carrierName, deviceOptions)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			reg := registry.New()
 			if len(args) == 0 {
-				return completion.CompleteCarrierName(args, toComplete)
+				return completion.CompleteCarrierName(reg, args, toComplete)
 			}
 
-			carrier, exist := registry.Registry.FindByName(args[0])
+			carrier, exist := reg.FindByName(args[0])
 			if !exist {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -50,13 +51,13 @@ func newEnableCmd(cfg config.Configuration) *cobra.Command {
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func enableHandler(cfg config.Configuration, carrierName string, deviceArgs []string) {
+func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	carrier, exist := registry.Registry.FindByName(carrierName)
+	carrier, exist := reg.FindByName(carrierName)
 	if !exist {
 		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
 	}

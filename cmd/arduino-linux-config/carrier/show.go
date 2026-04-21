@@ -22,17 +22,17 @@ func newShowCmd(cfg config.Configuration) *cobra.Command {
 			if len(args) > 0 {
 				carrierName = args[0]
 			}
-			showHandler(cfg, carrierName)
+			showHandler(registry.New(), cfg, carrierName)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteCarrierName(args, toComplete)
+			return completion.CompleteCarrierName(registry.New(), args, toComplete)
 		},
 	}
 }
 
-func showHandler(cfg config.Configuration, carrierName string) {
+func showHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrierName string) {
 	found := false
-	for _, carrier := range registry.Registry.Carriers {
+	for _, carrier := range reg.Carriers {
 		// No carrier specified - Show everything
 		if carrierName == "" {
 			showCarrier(cfg, carrier)

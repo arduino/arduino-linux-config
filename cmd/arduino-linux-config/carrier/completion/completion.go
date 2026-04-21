@@ -9,13 +9,13 @@ import (
 )
 
 // CompleteCarrierName provides completion for carrier names on the first argument.
-func CompleteCarrierName(args []string, partial string) ([]cobra.Completion, cobra.ShellCompDirective) {
+func CompleteCarrierName(registry registry.CarrierRegistry, args []string, partial string) ([]cobra.Completion, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
 
-	completions := make([]cobra.Completion, 0, len(registry.Registry.Carriers))
-	for _, carrier := range registry.Registry.Carriers {
+	completions := make([]cobra.Completion, 0, len(registry.Carriers))
+	for _, carrier := range registry.Carriers {
 		completions = append(completions, cobra.Completion(carrier.Name))
 	}
 
