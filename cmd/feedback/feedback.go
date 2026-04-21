@@ -7,8 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-
-	"github.com/arduino/arduino-linux-config/cmd/i18n"
 )
 
 // OutputFormat is an output format
@@ -218,13 +216,13 @@ func PrintResult(res Result) {
 	case JSON:
 		d, err := json.MarshalIndent(augment(res.Data()), "", "  ")
 		if err != nil {
-			Fatal(i18n.Tr("Error during JSON encoding of the output: %v", err), ErrGeneric)
+			Fatal(fmt.Sprintf("Error during JSON encoding of the output: %v", err), ErrGeneric)
 		}
 		data = string(d)
 	case MinifiedJSON:
 		d, err := json.Marshal(augment(res.Data()))
 		if err != nil {
-			Fatal(i18n.Tr("Error during JSON encoding of the output: %v", err), ErrGeneric)
+			Fatal(fmt.Sprintf("Error during JSON encoding of the output: %v", err), ErrGeneric)
 		}
 		data = string(d)
 	case Text:
