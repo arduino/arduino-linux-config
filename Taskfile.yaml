@@ -94,7 +94,28 @@ tasks:
       - ./scripts/run-remote-sudo.sh "dpkg -i /tmp/arduino-linux-config*_arm64.deb && needrestart -r a"
 
 
-  boards:check:leds:
+  board:leds:set-manual:
+    desc: "Set LED(s) trigger to manual mode. Pass index (1,2,3,4) to target that position across all colors, or no args for all. Usage: task board:leds:set-manual -- 1"
+    silent: true
+    cmds:
+      - |
+          adb shell "
+          set_manual() { echo none > /sys/class/leds/media-carrier:\$1/trigger; }
+          {{if .CLI_ARGS}}
+          set_manual blue{{.CLI_ARGS}}
+          set_manual red{{.CLI_ARGS}}
+          set_manual green{{.CLI_ARGS}}
+          {{else}}
+          for color in blue red green; do
+            for i in 1 2 3 4; do
+              set_manual \${color}\${i}
+              echo 'Set '\${color}' LED '\${i}' to manual mode...'
+            done
+          done
+          {{end}}
+          "
+
+  board:leds:check:
     desc: Iterate through blue, red, green LEDs and power them on, then off
     silent: true
     cmds:
@@ -104,27 +125,33 @@ tasks:
           echo 1 > /sys/class/leds/media-carrier:blue1/brightness
           echo 1 > /sys/class/leds/media-carrier:blue2/brightness
           echo 1 > /sys/class/leds/media-carrier:blue3/brightness
+          echo 1 > /sys/class/leds/media-carrier:blue4/brightness
           sleep 3
           echo 'Powering on red LEDs...'
           echo 1 > /sys/class/leds/media-carrier:red1/brightness
           echo 1 > /sys/class/leds/media-carrier:red2/brightness
           echo 1 > /sys/class/leds/media-carrier:red3/brightness
+          echo 1 > /sys/class/leds/media-carrier:red4/brightness
           sleep 3
           echo 'Powering on green LEDs...'
           echo 1 > /sys/class/leds/media-carrier:green1/brightness
           echo 1 > /sys/class/leds/media-carrier:green2/brightness
           echo 1 > /sys/class/leds/media-carrier:green3/brightness
+          echo 1 > /sys/class/leds/media-carrier:green4/brightness
           sleep 3
           echo 'Powering off all LEDs...'
           echo 0 > /sys/class/leds/media-carrier:blue1/brightness
           echo 0 > /sys/class/leds/media-carrier:blue2/brightness
           echo 0 > /sys/class/leds/media-carrier:blue3/brightness
+          echo 0 > /sys/class/leds/media-carrier:blue4/brightness
           echo 0 > /sys/class/leds/media-carrier:red1/brightness
           echo 0 > /sys/class/leds/media-carrier:red2/brightness
           echo 0 > /sys/class/leds/media-carrier:red3/brightness
+          echo 0 > /sys/class/leds/media-carrier:red4/brightness
           echo 0 > /sys/class/leds/media-carrier:green1/brightness
           echo 0 > /sys/class/leds/media-carrier:green2/brightness
           echo 0 > /sys/class/leds/media-carrier:green3/brightness
+          echo 0 > /sys/class/leds/media-carrier:green4/brightness
           echo 'Done!'
           "
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-dependencies-task/Taskfile.yml
