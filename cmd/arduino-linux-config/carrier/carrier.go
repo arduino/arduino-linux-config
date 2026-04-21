@@ -1,8 +1,8 @@
 package carrier
 
 import (
-	"github.com/arduino/arduino-linux-config/cmd/config"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +13,7 @@ func NewCarrierCmd() *cobra.Command {
 		Long:  "Manage Arduino Carriers, including listing, configuring, and resetting.",
 	}
 
-	cfg, err := config.NewConfig()
+	cfg, err := config.New()
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}

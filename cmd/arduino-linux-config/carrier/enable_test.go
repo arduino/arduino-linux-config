@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
+	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
 func Test_parseArguments(t *testing.T) {

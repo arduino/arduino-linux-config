@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/registry"
+	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/spf13/cobra"
 )
 

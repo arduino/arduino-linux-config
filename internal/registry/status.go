@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arduino/arduino-linux-config/cmd/config"
+	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/go-paths-helper"
 )
 
