@@ -179,11 +179,11 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	slices.Sort(overlays)
 	overlays = slices.Compact(overlays)
 
-	temporaryDtb := cfg.BaseDTB().Join("qrb2210-arduino-imola.dtb.next")
+	temporaryDtb := cfg.DtbDir().Join("qrb2210-arduino-imola.dtb.next")
 	defer func() { _ = temporaryDtb.Remove() }()
 
 	for i := range overlays {
-		overlays[i] = cfg.BaseDTB().Join(overlays[i]).String()
+		overlays[i] = cfg.DtbDir().Join(overlays[i]).String()
 	}
 
 	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb.String()}, overlays...)
