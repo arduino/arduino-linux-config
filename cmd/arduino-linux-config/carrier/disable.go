@@ -68,15 +68,3 @@ func disable(cfg config.Configuration, carrier registry.Carrier) error {
 	}
 	return nil
 }
-
-type cmdResult struct {
-	CarrierName string `json:"carrier_name"`
-}
-
-func (r cmdResult) String() string {
-	return fmt.Sprintf("Carrier %s disabled (will take effect on next boot)\n", r.CarrierName)
-}
-
-func (r cmdResult) Data() any {
-	return r
-}
