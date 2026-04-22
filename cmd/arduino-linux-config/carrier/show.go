@@ -64,16 +64,20 @@ func showCarrier(cfg config.Configuration, carrier registry.Carrier) {
 func populateShowResult(carrier registry.Carrier, current registry.CarrierStatus, next registry.CarrierStatus) showResult {
 	currentResult := make([]StatusDeviceResult, 0, len(current.StatusDevices))
 	for _, device := range current.StatusDevices {
+		registerDevice, _ := carrier.FindDeviceByName(registry.CarrierDeviceName(device.Device))
 		currentResult = append(currentResult, StatusDeviceResult{
-			Device: device.Device,
-			Option: device.Option,
+			Device:     device.Device,
+			Option:     device.Option,
+			DeviceType: string(registerDevice.DeviceType),
 		})
 	}
 	nextResult := make([]StatusDeviceResult, 0, len(next.StatusDevices))
 	for _, device := range next.StatusDevices {
+		registerDevice, _ := carrier.FindDeviceByName(registry.CarrierDeviceName(device.Device))
 		nextResult = append(nextResult, StatusDeviceResult{
-			Device: device.Device,
-			Option: device.Option,
+			Device:     device.Device,
+			Option:     device.Option,
+			DeviceType: string(registerDevice.DeviceType),
 		})
 	}
 	return showResult{
