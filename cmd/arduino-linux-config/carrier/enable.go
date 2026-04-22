@@ -179,13 +179,11 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	slices.Sort(overlays)
 	overlays = slices.Compact(overlays)
 
-	systemDtb := cfg.SystemDTB()
-	overlaysPath := systemDtb.Parent()
-	temporaryDtb := overlaysPath.Join("qrb2210-arduino-imola.dtb.next")
+	temporaryDtb := cfg.DtbDir().Join("qrb2210-arduino-imola.dtb.next")
 	defer func() { _ = temporaryDtb.Remove() }()
 
 	for i := range overlays {
-		overlays[i] = overlaysPath.Join(overlays[i]).String()
+		overlays[i] = cfg.DtbDir().Join(overlays[i]).String()
 	}
 
 	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb.String()}, overlays...)
@@ -199,7 +197,7 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
 	}
 
-	if err := temporaryDtb.Rename(systemDtb); err != nil {
+	if err := temporaryDtb.Rename(cfg.SystemDTB()); err != nil {
 		return fmt.Errorf("failed to move output file: %w", err)
 	}
 
