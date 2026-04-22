@@ -19,8 +19,9 @@ var logLevelStr string
 
 func run() error {
 	rootCmd := &cobra.Command{
-		Use:   "arduino-linux-config",
-		Short: "A CLI to manage Arduino Linux Configurations",
+		Use:     "arduino-linux-config",
+		Short:   "A CLI to manage Arduino Linux Configurations",
+		Version: Version,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			format, ok := feedback.ParseOutputFormat(format)
 			if !ok {
