@@ -36,6 +36,9 @@ func disableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carr
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to disable carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
+
+	fmt.Printf("Carrier %s disabled (will take effect on next boot)", carrier.Name)
+
 	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
