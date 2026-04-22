@@ -13,9 +13,6 @@ require (
 	github.com/dnephin/pflag v1.0.7 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	gotest.tools/gotestsum v1.13.0 // indirect
-)
-
-require (
 	cel.dev/expr v0.25.1 // indirect
 	charm.land/bubbles/v2 v2.0.0-rc.1 // indirect
 	charm.land/bubbletea/v2 v2.0.0-rc.2 // indirect
