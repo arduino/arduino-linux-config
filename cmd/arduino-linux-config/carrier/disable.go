@@ -2,6 +2,7 @@ package carrier
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
@@ -37,7 +38,7 @@ func disableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carr
 		feedback.Fatal(fmt.Sprintf("failed to disable carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
-	fmt.Printf("Carrier %s disabled (will take effect on next boot)\n", carrier.Name)
+	slog.Warn("Carrier disabled (will take effect on next boot)", "carrier", carrier.Name)
 
 	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {

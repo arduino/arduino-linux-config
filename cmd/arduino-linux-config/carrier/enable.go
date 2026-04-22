@@ -3,6 +3,7 @@ package carrier
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -85,7 +86,7 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
-	fmt.Printf("Carrier %s enabled (will take effect on next boot)\n", carrier.Name)
+	slog.Warn("Carrier enabled (will take effect on next boot)", "carrier", carrier.Name)
 
 	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
