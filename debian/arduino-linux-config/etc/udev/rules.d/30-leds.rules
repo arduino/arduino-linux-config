@@ -14,6 +14,3 @@ SUBSYSTEM=="leds", KERNEL=="unoq:user-blue1",  ACTION=="add", RUN+="/bin/ln -sf 
 SUBSYSTEM=="leds", KERNEL=="unoq:panic-red2",  ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led2_r"
 SUBSYSTEM=="leds", KERNEL=="unoq:wlan-green2", ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led2_g"
 SUBSYSTEM=="leds", KERNEL=="unoq:bt-blue2",    ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led2_b"
-
-
-
