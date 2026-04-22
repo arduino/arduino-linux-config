@@ -111,6 +111,13 @@ func parseUserArgs(args []string) ([]registry.StatusDevice, error) {
 			}
 
 			deviceName, optionName := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+
+			if slices.ContainsFunc(selection, func(s registry.StatusDevice) bool {
+				return s.Device == deviceName
+			}) {
+				return nil, fmt.Errorf("duplicate device %q in arguments", deviceName)
+			}
+
 			selection = append(selection, registry.StatusDevice{
 				Device: deviceName,
 				Option: optionName,
