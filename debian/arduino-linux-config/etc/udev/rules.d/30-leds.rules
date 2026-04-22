@@ -1,0 +1,19 @@
+# create leds directories
+SUBSYSTEM=="leds", ACTION=="add" RUN+="/usr/bin/mkdir -p /dev/leds"
+
+# builtin leds
+SUBSYSTEM=="leds", KERNEL=="unoq:*", ACTION=="add", RUN+="/usr/bin/mkdir -p /dev/leds/builtin"
+SUBSYSTEM=="leds", KERNEL=="unoq:*", ACTION=="remove", RUN+="/usr/bin/mkdir -p /dev/leds/builtin"
+
+# --- User LEDs (Mapped to led1) ---
+SUBSYSTEM=="leds", KERNEL=="unoq:user-red1",   ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led1_r"
+SUBSYSTEM=="leds", KERNEL=="unoq:user-green1", ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led1_g"
+SUBSYSTEM=="leds", KERNEL=="unoq:user-blue1",  ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led1_b"
+
+# --- Sys LEDs (Mapped to led2) ---
+SUBSYSTEM=="leds", KERNEL=="unoq:panic-red2",  ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led2_r"
+SUBSYSTEM=="leds", KERNEL=="unoq:wlan-green2", ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led2_g"
+SUBSYSTEM=="leds", KERNEL=="unoq:bt-blue2",    ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/builtin/led2_b"
+
+
+
