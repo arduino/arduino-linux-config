@@ -85,7 +85,6 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
-	feedback.PrintResult(cmdResult{CarrierName: carrierName})
 	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
