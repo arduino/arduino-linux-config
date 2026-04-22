@@ -12,40 +12,40 @@ func Test_parseArguments(t *testing.T) {
 		name        string
 		carrierName string
 		args        []string
-		want        map[registry.CarrierDeviceName]string
+		want        []registry.StatusDevice
 		wantErr     bool
 	}{
 		{
 			name: "One single configuration",
 			args: []string{"display=8-dsi-touch-a"},
-			want: map[registry.CarrierDeviceName]string{
-				"display": "8-dsi-touch-a",
+			want: []registry.StatusDevice{
+				{Device: "display", Option: "8-dsi-touch-a"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "Two configuration in one string",
 			args: []string{"display=8-dsi-touch-a,camera0=type1-2lanes"},
-			want: map[registry.CarrierDeviceName]string{
-				"display": "8-dsi-touch-a",
-				"camera0": "type1-2lanes",
+			want: []registry.StatusDevice{
+				{Device: "display", Option: "8-dsi-touch-a"},
+				{Device: "camera0", Option: "type1-2lanes"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "Happy path: multiple arguments and spaces",
 			args: []string{" display=8-dsi-touch-a ", " camera0 = type1-2lanes "},
-			want: map[registry.CarrierDeviceName]string{
-				"display": "8-dsi-touch-a",
-				"camera0": "type1-2lanes",
+			want: []registry.StatusDevice{
+				{Device: "display", Option: "8-dsi-touch-a"},
+				{Device: "camera0", Option: "type1-2lanes"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "One option defined with a comma",
 			args: []string{"camera0=type1-2lanes,"},
-			want: map[registry.CarrierDeviceName]string{
-				"camera0": "type1-2lanes",
+			want: []registry.StatusDevice{
+				{Device: "camera0", Option: "type1-2lanes"},
 			},
 			wantErr: false,
 		},
