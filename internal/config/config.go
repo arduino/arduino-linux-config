@@ -25,13 +25,8 @@ type Configuration struct {
 }
 
 func New() Configuration {
-	stateFile := paths.New("/var/lib/arduino-linux-config/state.json")
-	if err := stateFile.MkdirAll(); err != nil {
-		panic("cannot create state file directory: " + err.Error())
-	}
-
 	return Configuration{
-		stateFile: stateFile,
+		stateFile: paths.New("/var/lib/arduino-linux-config/state.json"),
 		dtbDir:    paths.New("/boot/efi/dtb/qcom/"),
 	}
 }

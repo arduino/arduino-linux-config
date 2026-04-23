@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 	"strconv"
@@ -84,6 +85,8 @@ func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate Carrie
 	currentStatus, _ := getStatusStructure(state, carrier, bootTime)
 
 	newstate := updateStatusStructure(state, carrier, currentStatus, statusUpdate)
+
+	slog.Info("wrutupdating status file with new state", "carrier", carrier.Name, "status", statusUpdate.Enable, "devices", statusUpdate.StatusDevices)
 
 	if err := saveStatusFile(cfg.StateFile(), newstate); err != nil {
 		return fmt.Errorf("failed to save status file: %w", err)
