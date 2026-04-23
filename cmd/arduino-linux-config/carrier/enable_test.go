@@ -61,6 +61,12 @@ func Test_parseArguments(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 		},
+		{
+			name:    "Error: duplicated device in arguments, invalid format",
+			args:    []string{"camera0=type1-2lanes", "camera0=type1-4lanes"},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
