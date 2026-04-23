@@ -36,7 +36,9 @@ func disableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carr
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to disable carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
-	feedback.PrintResult(cmdResult{CarrierName: carrierName})
+
+	feedback.Warnf("Carrier '%s' disabled (will take effect on next boot)", carrier.Name)
+
 	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
@@ -68,16 +70,4 @@ func disable(cfg config.Configuration, carrier registry.Carrier) error {
 		return fmt.Errorf("cannot update status: %w", err)
 	}
 	return nil
-}
-
-type cmdResult struct {
-	CarrierName string `json:"carrier_name"`
-}
-
-func (r cmdResult) String() string {
-	return fmt.Sprintf("Carrier %s disabled (will take effect on next boot)\n", r.CarrierName)
-}
-
-func (r cmdResult) Data() any {
-	return r
 }

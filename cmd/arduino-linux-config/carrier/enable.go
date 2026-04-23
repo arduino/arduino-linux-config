@@ -85,7 +85,8 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
-	feedback.PrintResult(cmdResult{CarrierName: carrierName})
+	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
+
 	current, next, err := registry.GetStatus(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
@@ -152,7 +153,7 @@ func collectDtboFiles(carrier registry.Carrier, userSelection []registry.StatusD
 		baseFiles = slices.DeleteFunc(baseFiles, func(overlay string) bool {
 			return slices.Contains(incompatibleFiles, overlay)
 		})
-		feedback.Warnf("Incompatible ovelays, removing %v", incompatibleOverlays)
+		feedback.Warnf("Incompatible overlays, removing %v", incompatibleOverlays)
 	}
 
 	return append(dtboFiles, baseFiles...)
