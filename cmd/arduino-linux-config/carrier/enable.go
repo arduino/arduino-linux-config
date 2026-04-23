@@ -37,7 +37,7 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			return completion.CompleteDeviceOption(carrier, toComplete)
+			return completion.CompleteDeviceOption(carrier, args[1:], toComplete)
 		},
 	}
 }
