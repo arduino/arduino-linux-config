@@ -153,7 +153,7 @@ func collectDtboFiles(carrier registry.Carrier, userSelection []registry.StatusD
 		baseFiles = slices.DeleteFunc(baseFiles, func(overlay string) bool {
 			return slices.Contains(incompatibleFiles, overlay)
 		})
-		feedback.Warnf("Incompatible ovelays, removing %v", incompatibleOverlays)
+		feedback.Warnf("Incompatible overlays, removing %v", incompatibleOverlays)
 	}
 
 	return append(dtboFiles, baseFiles...)
