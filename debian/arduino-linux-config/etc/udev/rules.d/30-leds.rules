@@ -1,0 +1,25 @@
+# create leds directories
+SUBSYSTEM=="leds", ACTION=="add", RUN+="/usr/bin/mkdir -p /dev/leds"
+
+# media-carrier leds
+SUBSYSTEM=="leds", KERNEL=="media-carrier:*", ACTION=="add", RUN+="/usr/bin/mkdir -p /dev/leds/media-carrier"
+
+# --- Media-carrier Led1 ---
+SUBSYSTEM=="leds", KERNEL=="media-carrier:red1",   ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led1_r"
+SUBSYSTEM=="leds", KERNEL=="media-carrier:green1", ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led1_g"
+SUBSYSTEM=="leds", KERNEL=="media-carrier:blue1",  ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led1_b"
+
+# --- Media-carrier Led2 ---
+SUBSYSTEM=="leds", KERNEL=="media-carrier:red2",   ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led2_r"
+SUBSYSTEM=="leds", KERNEL=="media-carrier:green2", ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led2_g"
+SUBSYSTEM=="leds", KERNEL=="media-carrier:blue2",  ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led2_b"
+
+# --- Media-carrier Led3 ---
+SUBSYSTEM=="leds", KERNEL=="media-carrier:red3",   ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led3_r"
+SUBSYSTEM=="leds", KERNEL=="media-carrier:green3", ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led3_g"
+SUBSYSTEM=="leds", KERNEL=="media-carrier:blue3",  ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led3_b"
+
+# --- Media-carrier Led4 ---
+SUBSYSTEM=="leds", KERNEL=="media-carrier:red4",   ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led4_r"
+SUBSYSTEM=="leds", KERNEL=="media-carrier:green4", ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led4_g"
+SUBSYSTEM=="leds", KERNEL=="media-carrier:blue4",  ACTION=="add", RUN+="/bin/ln -sf /sys$devpath /dev/leds/media-carrier/led4_b"
