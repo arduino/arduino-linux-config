@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +15,34 @@ import (
 	"github.com/arduino/go-paths-helper"
 )
 
-type StatusFile struct {
+type StateFile struct {
+	Carriers []CarrierState `json:"carriers"`
+}
+
+func (s *StateFile) FindOrCreateCarrierState(carrier Carrier) CarrierState {
+	idx := slices.IndexFunc(s.Carriers, func(s CarrierState) bool {
+		return s.Name == carrier.Name
+	})
+	if idx == -1 {
+		newCarrier := CarrierState{
+			Name: carrier.Name,
+			CurrentStatus: StatusCarrier{
+				Status:  false,
+				Devices: make(map[CarrierDeviceName]StatusInfo, len(carrier.Devices)),
+			},
+			NextStatus: StatusCarrier{
+				Status:  false,
+				Devices: make(map[CarrierDeviceName]StatusInfo, len(carrier.Devices)),
+			},
+		}
+		s.Carriers = append(s.Carriers, newCarrier)
+		return newCarrier
+	}
+	return s.Carriers[idx]
+}
+
+type CarrierState struct {
+	Name          CarrierName   `json:"name"`
 	CurrentStatus StatusCarrier `json:"current_status"`
 	NextStatus    StatusCarrier `json:"next_status"`
 }
@@ -43,9 +71,9 @@ type StatusDevice struct {
 
 // Called by config and reset
 func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate CarrierStatus) error {
-	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
+	state, err := loadStateFile(cfg.StateFile())
 	if err != nil {
-		return fmt.Errorf("failed to load status file %w", err)
+		return fmt.Errorf("failed to load state file: %w", err)
 	}
 
 	// save current state if reboot occurred
@@ -53,10 +81,11 @@ func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate Carrie
 	if err != nil {
 		return fmt.Errorf("failed to get boot time: %w", err)
 	}
-	currentStatus, _ := getStatusStructure(status, carrier, bootTime)
-	updateStatusStructure(status, carrier, currentStatus, statusUpdate)
+	currentStatus, _ := getStatusStructure(state, carrier, bootTime)
 
-	if err := saveStatusFile(getStatusFile(cfg, carrier.Name), *status); err != nil {
+	newstate := updateStatusStructure(state, carrier, currentStatus, statusUpdate)
+
+	if err := saveStatusFile(cfg.StateFile(), newstate); err != nil {
 		return fmt.Errorf("failed to save status file: %w", err)
 	}
 	return nil
@@ -65,7 +94,7 @@ func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate Carrie
 // Called by show, load the status structure and apply status fixes before returning
 // Do not update the status file on the disk because show is running as non-root user
 func GetStatus(cfg config.Configuration, carrier Carrier) (CarrierStatus, CarrierStatus, error) {
-	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
+	state, err := loadStateFile(cfg.StateFile())
 	if err != nil {
 		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to load status file %v", err)
 	}
@@ -75,11 +104,11 @@ func GetStatus(cfg config.Configuration, carrier Carrier) (CarrierStatus, Carrie
 		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to get boot time: %v", err)
 	}
 
-	current, next := getStatusStructure(status, carrier, bootTime)
+	current, next := getStatusStructure(state, carrier, bootTime)
 	return current, next, nil
 }
 
-func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time) (CarrierStatus, CarrierStatus) {
+func getStatusStructure(state StateFile, carrier Carrier, bootTime time.Time) (CarrierStatus, CarrierStatus) {
 	current := CarrierStatus{
 		Enable:        false,
 		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
@@ -89,33 +118,37 @@ func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time)
 		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
 	}
 
+	carrierState := state.FindOrCreateCarrierState(carrier)
+
 	for _, device := range carrier.Devices {
 		// parse next structure, move in actual events happened before the boot
-		if status.NextStatus.Devices[device.Name].CreatedAt.Before(bootTime) {
-			status.CurrentStatus.Devices[device.Name] = status.NextStatus.Devices[device.Name]
+		if carrierState.NextStatus.Devices[device.Name].CreatedAt.Before(bootTime) {
+			carrierState.CurrentStatus.Devices[device.Name] = carrierState.NextStatus.Devices[device.Name]
 		}
 		current.StatusDevices = append(current.StatusDevices, StatusDevice{
 			Device: string(device.Name),
-			Option: getOrDefault(status.CurrentStatus.Devices[device.Name].Option),
+			Option: getOrDefault(carrierState.CurrentStatus.Devices[device.Name].Option),
 		})
 		next.StatusDevices = append(next.StatusDevices, StatusDevice{
 			Device: string(device.Name),
-			Option: getOrDefault(status.NextStatus.Devices[device.Name].Option),
+			Option: getOrDefault(carrierState.NextStatus.Devices[device.Name].Option),
 		})
 	}
 
-	if status.NextStatus.CreatedAt.Before(bootTime) {
-		status.CurrentStatus.Status = status.NextStatus.Status
+	if carrierState.NextStatus.CreatedAt.Before(bootTime) {
+		carrierState.CurrentStatus.Status = carrierState.NextStatus.Status
 	}
 
-	next.Enable = status.NextStatus.Status
-	current.Enable = status.CurrentStatus.Status
+	next.Enable = carrierState.NextStatus.Status
+	current.Enable = carrierState.CurrentStatus.Status
 
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
+func updateStatusStructure(state StateFile, carrier Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) StateFile {
 	now := time.Now().UTC()
+
+	carrierState := state.FindOrCreateCarrierState(carrier)
 
 	// set curr
 	for _, dev := range currentStatus.StatusDevices {
@@ -123,10 +156,10 @@ func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus Ca
 			Option:    getOrDefault(dev.Option),
 			CreatedAt: now,
 		}
-		status.CurrentStatus.Devices[CarrierDeviceName(dev.Device)] = currInfo
+		carrierState.CurrentStatus.Devices[CarrierDeviceName(dev.Device)] = currInfo
 	}
-	status.CurrentStatus.Status = currentStatus.Enable
-	status.CurrentStatus.CreatedAt = now
+	carrierState.CurrentStatus.Status = currentStatus.Enable
+	carrierState.CurrentStatus.CreatedAt = now
 
 	findOption := func(deviceName CarrierDeviceName) string {
 		for _, dev := range statusUpdate.StatusDevices {
@@ -139,14 +172,15 @@ func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus Ca
 
 	// set next
 	for _, device := range carrier.Devices {
-		status.NextStatus.Devices[device.Name] = StatusInfo{
+		carrierState.NextStatus.Devices[device.Name] = StatusInfo{
 			Option:    findOption(device.Name),
 			CreatedAt: now,
 		}
 
 	}
-	status.NextStatus.Status = statusUpdate.Enable
-	status.NextStatus.CreatedAt = now
+	carrierState.NextStatus.Status = statusUpdate.Enable
+	carrierState.NextStatus.CreatedAt = now
+	return state
 }
 
 func getOrDefault(option string) string {
@@ -174,39 +208,27 @@ func getBootTime() (time.Time, error) {
 	return bootTime, nil
 }
 
-func getStatusFile(cfg config.Configuration, carrierName CarrierName) *paths.Path {
-	return cfg.StatusDir().Join(string(carrierName) + ".json")
-}
-
-func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
-	data, err := statusFile.ReadFile()
+func loadStateFile(stateFile *paths.Path) (StateFile, error) {
+	data, err := stateFile.ReadFile()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			newStatus := StatusFile{
-				CurrentStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
-				},
-				NextStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
-				},
-			}
-			return &newStatus, nil
+			return StateFile{}, nil
 		} else {
-			return nil, err
+			return StateFile{}, err
 		}
 	}
 
-	var status StatusFile
+	var status StateFile
 	err = json.Unmarshal(data, &status)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse json: %w", err)
+		return StateFile{}, fmt.Errorf("could not parse json: %w", err)
 	}
 
-	return &status, nil
+	return status, nil
 }
 
-func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
-	data, err := json.MarshalIndent(status, "", "    ")
+func saveStatusFile(statusFile *paths.Path, state StateFile) error {
+	data, err := json.MarshalIndent(state, "", "    ")
 	if err != nil {
 		return fmt.Errorf("marshal error: %w", err)
 	}

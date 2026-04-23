@@ -49,9 +49,13 @@ func TestUpdateStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			status := &StatusFile{
-				NextStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
+			status := StateFile{
+				[]CarrierState{
+					{
+						NextStatus: StatusCarrier{
+							Devices: make(map[CarrierDeviceName]StatusInfo),
+						},
+					},
 				},
 			}
 
@@ -60,16 +64,17 @@ func TestUpdateStatusStructure(t *testing.T) {
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
-			updateStatusStructure(status, mediaCarrier, CarrierStatus{}, tt.statusUpdate)
+			newState := updateStatusStructure(status, mediaCarrier, CarrierStatus{}, tt.statusUpdate)
 			carrierDeviceLenght := len(mediaCarrier.Devices)
-			if len(status.NextStatus.Devices) != carrierDeviceLenght {
+			newCarrierState := newState.FindOrCreateCarrierState(mediaCarrier)
+			if len(newCarrierState.NextStatus.Devices) != carrierDeviceLenght {
 
-				if len(status.CurrentStatus.Devices) != 0 {
-					t.Errorf("got %d devices, want %d", len(status.CurrentStatus.Devices), carrierDeviceLenght)
+				if len(newCarrierState.CurrentStatus.Devices) != 0 {
+					t.Errorf("got %d devices, want %d", len(newCarrierState.CurrentStatus.Devices), carrierDeviceLenght)
 				}
 
 				for _, device := range mediaCarrier.Devices {
-					info, exists := status.NextStatus.Devices[device.Name]
+					info, exists := newCarrierState.NextStatus.Devices[device.Name]
 					if !exists {
 						t.Fatalf("device %s missing from wanted status", device.Name)
 					}
@@ -94,19 +99,23 @@ func TestGetStatusStructure(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		initialStatus   *StatusFile
+		initialStatus   StateFile
 		expectedCurrent []StatusDevice
 		expectedNext    []StatusDevice
 	}{
 		{
 			name: "Move outdated device to current, retain current status on show command",
-			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
-				},
-				NextStatus: StatusCarrier{
-					Devices: map[CarrierDeviceName]StatusInfo{
-						Camera0: {Option: "cam1", CreatedAt: beforeBoot},
+			initialStatus: StateFile{
+				[]CarrierState{
+					{
+						CurrentStatus: StatusCarrier{
+							Devices: make(map[CarrierDeviceName]StatusInfo),
+						},
+						NextStatus: StatusCarrier{
+							Devices: map[CarrierDeviceName]StatusInfo{
+								Camera0: {Option: "cam1", CreatedAt: beforeBoot},
+							},
+						},
 					},
 				},
 			},
@@ -123,14 +132,18 @@ func TestGetStatusStructure(t *testing.T) {
 		},
 		{
 			name: "Both devices after boot stay in next",
-			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
-				},
-				NextStatus: StatusCarrier{
-					Devices: map[CarrierDeviceName]StatusInfo{
-						Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
-						Display: {Option: "display", CreatedAt: afterBoot}, // fresh
+			initialStatus: StateFile{
+				[]CarrierState{
+					{
+						CurrentStatus: StatusCarrier{
+							Devices: make(map[CarrierDeviceName]StatusInfo),
+						},
+						NextStatus: StatusCarrier{
+							Devices: map[CarrierDeviceName]StatusInfo{
+								Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
+								Display: {Option: "display", CreatedAt: afterBoot}, // fresh
+							},
+						},
 					},
 				},
 			},
@@ -172,7 +185,7 @@ func TestGetStatusStructure(t *testing.T) {
 	}
 }
 
-func TestLoadStatusFile(t *testing.T) {
+func TestLoaStateFile(t *testing.T) {
 	tests := []struct {
 		name          string
 		fileContent   string // Empty string means file doesn't exist
@@ -213,11 +226,11 @@ func TestLoadStatusFile(t *testing.T) {
 				}
 			}
 
-			status, err := loadStatusFile(p)
+			state, err := loadStateFile(p)
 
 			// 1. Check Error expectation
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("loadStatusFile() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("loadStateFile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if tt.wantErr {
@@ -226,14 +239,16 @@ func TestLoadStatusFile(t *testing.T) {
 
 			// 2. Verify Initialization (The "os.ErrNotExist" case)
 			if !tt.shouldExist {
-				if status.CurrentStatus.Devices == nil || status.NextStatus.Devices == nil {
+				carrierState := state.FindOrCreateCarrierState(Carrier{Name: CarrierName(carrierName)})
+				if carrierState.CurrentStatus.Devices == nil || carrierState.NextStatus.Devices == nil {
 					t.Error("Maps should be initialized when file is missing")
 				}
 			}
 
 			// 3. Verify Data Parsing
 			if tt.checkContents {
-				if _, ok := status.CurrentStatus.Devices["Cam0"]; !ok {
+				carrierState := state.FindOrCreateCarrierState(Carrier{Name: CarrierName(carrierName)})
+				if _, ok := carrierState.CurrentStatus.Devices["Cam0"]; !ok {
 					t.Error("Expected device 'Cam0' to be parsed from JSON")
 				}
 			}

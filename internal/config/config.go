@@ -20,19 +20,24 @@ import (
 )
 
 type Configuration struct {
-	statusDir *paths.Path
+	stateFile *paths.Path
 	dtbDir    *paths.Path
 }
 
 func New() Configuration {
+	stateFile := paths.New("/var/lib/arduino-linux-config/state.json")
+	if err := stateFile.MkdirAll(); err != nil {
+		panic("cannot create state file directory: " + err.Error())
+	}
+
 	return Configuration{
-		statusDir: paths.New("/var/lib/arduino-linux-config/status"),
+		stateFile: stateFile,
 		dtbDir:    paths.New("/boot/efi/dtb/qcom/"),
 	}
 }
 
-func (c *Configuration) StatusDir() *paths.Path {
-	return c.statusDir
+func (c *Configuration) StateFile() *paths.Path {
+	return c.stateFile
 }
 
 func (c *Configuration) DtbDir() *paths.Path {
