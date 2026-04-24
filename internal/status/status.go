@@ -1,4 +1,4 @@
-package registry
+package status
 
 import (
 	"cmp"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/go-paths-helper"
 )
 
@@ -23,7 +24,7 @@ type StatusCarrier struct {
 	Status    bool      `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 
-	Devices map[CarrierDeviceName]StatusInfo `json:"devices"`
+	Devices map[registry.CarrierDeviceName]StatusInfo `json:"devices"`
 }
 
 type StatusInfo struct {
@@ -42,7 +43,7 @@ type StatusDevice struct {
 }
 
 // Called by config and reset
-func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate CarrierStatus) error {
+func Update(cfg config.Configuration, carrier registry.Carrier, statusUpdate CarrierStatus) error {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return fmt.Errorf("failed to load status file %w", err)
@@ -64,7 +65,7 @@ func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate Carrie
 
 // Called by show, load the status structure and apply status fixes before returning
 // Do not update the status file on the disk because show is running as non-root user
-func GetStatus(cfg config.Configuration, carrier Carrier) (CarrierStatus, CarrierStatus, error) {
+func Get(cfg config.Configuration, carrier registry.Carrier) (CarrierStatus, CarrierStatus, error) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to load status file %v", err)
@@ -79,7 +80,7 @@ func GetStatus(cfg config.Configuration, carrier Carrier) (CarrierStatus, Carrie
 	return current, next, nil
 }
 
-func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time) (CarrierStatus, CarrierStatus) {
+func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime time.Time) (CarrierStatus, CarrierStatus) {
 	current := CarrierStatus{
 		Enable:        false,
 		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
@@ -114,7 +115,7 @@ func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time)
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
+func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
 	now := time.Now().UTC()
 
 	// set curr
@@ -123,12 +124,12 @@ func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus Ca
 			Option:    getOrDefault(dev.Option),
 			CreatedAt: now,
 		}
-		status.CurrentStatus.Devices[CarrierDeviceName(dev.Device)] = currInfo
+		status.CurrentStatus.Devices[registry.CarrierDeviceName(dev.Device)] = currInfo
 	}
 	status.CurrentStatus.Status = currentStatus.Enable
 	status.CurrentStatus.CreatedAt = now
 
-	findOption := func(deviceName CarrierDeviceName) string {
+	findOption := func(deviceName registry.CarrierDeviceName) string {
 		for _, dev := range statusUpdate.StatusDevices {
 			if dev.Device == string(deviceName) {
 				return dev.Option
@@ -150,7 +151,7 @@ func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus Ca
 }
 
 func getOrDefault(option string) string {
-	return cmp.Or(option, string(None))
+	return cmp.Or(option, string(registry.None))
 }
 
 func getBootTime() (time.Time, error) {
@@ -174,7 +175,7 @@ func getBootTime() (time.Time, error) {
 	return bootTime, nil
 }
 
-func getStatusFile(cfg config.Configuration, carrierName CarrierName) *paths.Path {
+func getStatusFile(cfg config.Configuration, carrierName registry.CarrierName) *paths.Path {
 	return cfg.StatusDir().Join(string(carrierName) + ".json")
 }
 
@@ -184,10 +185,10 @@ func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			newStatus := StatusFile{
 				CurrentStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
+					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
 				},
 				NextStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
+					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
 				},
 			}
 			return &newStatus, nil

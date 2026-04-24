@@ -7,6 +7,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
+	"github.com/arduino/arduino-linux-config/internal/status"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,7 @@ func disableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carr
 
 	feedback.Warnf("Carrier '%s' disabled (will take effect on next boot)", carrier.Name)
 
-	current, next, err := registry.GetStatus(cfg, carrier)
+	current, next, err := status.Get(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
@@ -65,7 +66,7 @@ func disable(cfg config.Configuration, carrier registry.Carrier) error {
 		return fmt.Errorf("cannot merge overlays: %w", err)
 	}
 
-	err = registry.StatusUpdate(cfg, carrier, registry.CarrierStatus{Enable: false})
+	err = status.Update(cfg, carrier, status.CarrierStatus{Enable: false})
 	if err != nil {
 		return fmt.Errorf("cannot update status: %w", err)
 	}

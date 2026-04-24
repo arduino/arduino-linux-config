@@ -1,4 +1,4 @@
-package registry
+package status
 
 import (
 	"os"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/go-paths-helper"
 )
 
@@ -13,22 +14,22 @@ func TestUpdateStatusStructure(t *testing.T) {
 	tests := []struct {
 		name         string
 		statusUpdate CarrierStatus
-		wantResult   map[CarrierDeviceName]string
+		wantResult   map[registry.CarrierDeviceName]string
 	}{
 		{
 			name: "update all devices",
 			statusUpdate: CarrierStatus{
 				Enable: true,
 				StatusDevices: []StatusDevice{
-					{Device: string(Camera0), Option: "cam1"},
-					{Device: string(Camera1), Option: "none"},
-					{Device: string(Display), Option: "display"},
+					{Device: string(registry.Camera0), Option: "cam1"},
+					{Device: string(registry.Camera1), Option: "none"},
+					{Device: string(registry.Display), Option: "display"},
 				},
 			},
-			wantResult: map[CarrierDeviceName]string{
-				Camera0: "cam1",
-				Camera1: "none",
-				Display: "display",
+			wantResult: map[registry.CarrierDeviceName]string{
+				registry.Camera0: "cam1",
+				registry.Camera1: "none",
+				registry.Display: "display",
 			},
 		},
 		{
@@ -36,13 +37,13 @@ func TestUpdateStatusStructure(t *testing.T) {
 			statusUpdate: CarrierStatus{
 				Enable: true,
 				StatusDevices: []StatusDevice{
-					{Device: string(Display), Option: "display"},
+					{Device: string(registry.Display), Option: "display"},
 				},
 			},
-			wantResult: map[CarrierDeviceName]string{
-				Camera0: "none",
-				Camera1: "none",
-				Display: "display",
+			wantResult: map[registry.CarrierDeviceName]string{
+				registry.Camera0: "none",
+				registry.Camera1: "none",
+				registry.Display: "display",
 			},
 		},
 	}
@@ -51,12 +52,12 @@ func TestUpdateStatusStructure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			status := &StatusFile{
 				NextStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
+					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
 				},
 			}
 
 			startTime := time.Now().UTC().Truncate(time.Second)
-			mediaCarrier, exist := New().FindByName("media-carrier")
+			mediaCarrier, exist := registry.New().FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
@@ -102,54 +103,54 @@ func TestGetStatusStructure(t *testing.T) {
 			name: "Move outdated device to current, retain current status on show command",
 			initialStatus: &StatusFile{
 				CurrentStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
+					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
 				},
 				NextStatus: StatusCarrier{
-					Devices: map[CarrierDeviceName]StatusInfo{
-						Camera0: {Option: "cam1", CreatedAt: beforeBoot},
+					Devices: map[registry.CarrierDeviceName]StatusInfo{
+						registry.Camera0: {Option: "cam1", CreatedAt: beforeBoot},
 					},
 				},
 			},
 			expectedCurrent: []StatusDevice{
-				{Device: string(Camera0), Option: "cam1"},
-				{Device: string(Camera1), Option: "none"},
-				{Device: string(Display), Option: "none"},
+				{Device: string(registry.Camera0), Option: "cam1"},
+				{Device: string(registry.Camera1), Option: "none"},
+				{Device: string(registry.Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
-				{Device: string(Camera0), Option: "cam1"},
-				{Device: string(Camera1), Option: "none"},
-				{Device: string(Display), Option: "none"},
+				{Device: string(registry.Camera0), Option: "cam1"},
+				{Device: string(registry.Camera1), Option: "none"},
+				{Device: string(registry.Display), Option: "none"},
 			},
 		},
 		{
 			name: "Both devices after boot stay in next",
 			initialStatus: &StatusFile{
 				CurrentStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
+					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
 				},
 				NextStatus: StatusCarrier{
-					Devices: map[CarrierDeviceName]StatusInfo{
-						Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
-						Display: {Option: "display", CreatedAt: afterBoot}, // fresh
+					Devices: map[registry.CarrierDeviceName]StatusInfo{
+						registry.Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
+						registry.Display: {Option: "display", CreatedAt: afterBoot}, // fresh
 					},
 				},
 			},
 			expectedCurrent: []StatusDevice{
-				{Device: string(Camera0), Option: "none"},
-				{Device: string(Camera1), Option: "none"},
-				{Device: string(Display), Option: "none"},
+				{Device: string(registry.Camera0), Option: "none"},
+				{Device: string(registry.Camera1), Option: "none"},
+				{Device: string(registry.Display), Option: "none"},
 			},
 			expectedNext: []StatusDevice{
-				{Device: string(Camera0), Option: "cam1"},
-				{Device: string(Camera1), Option: "none"},
-				{Device: string(Display), Option: "display"},
+				{Device: string(registry.Camera0), Option: "cam1"},
+				{Device: string(registry.Camera1), Option: "none"},
+				{Device: string(registry.Display), Option: "display"},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mediaCarrier, exist := New().FindByName("media-carrier")
+			mediaCarrier, exist := registry.New().FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
