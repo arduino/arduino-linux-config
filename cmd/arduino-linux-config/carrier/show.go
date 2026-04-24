@@ -33,16 +33,16 @@ func newShowCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.C
 
 func showHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrierName string) {
 	found := false
+	result := showResult{Carriers: make([]showCarrierResult, 0, len(reg.Carriers))}
+
 	for _, carrier := range reg.Carriers {
 		// No carrier specified - Show everything
 		if carrierName == "" {
-			showCarrier(cfg, carrier)
+			result.Carriers = append(result.Carriers, buildShowCarrierResult(cfg, carrier))
 			continue
 		}
-
-		// Specific carrier specified - Filter the carriers
 		if string(carrier.Name) == carrierName {
-			showCarrier(cfg, carrier)
+			result.Carriers = append(result.Carriers, buildShowCarrierResult(cfg, carrier))
 			found = true
 			break
 		}
@@ -51,18 +51,19 @@ func showHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrier
 	if carrierName != "" && !found {
 		feedback.Warnf("carrier %s not found", carrierName)
 	}
+	feedback.PrintResult(result)
 }
 
-func showCarrier(cfg config.Configuration, carrier registry.Carrier) {
+func buildShowCarrierResult(cfg config.Configuration, carrier registry.Carrier) showCarrierResult {
 	current, next, err := status.Get(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
 	}
 
-	feedback.PrintResult(populateShowResult(carrier, current, next))
+	return populateShowResult(carrier, current, next)
 }
 
-func populateShowResult(carrier registry.Carrier, current status.CarrierStatus, next status.CarrierStatus) showResult {
+func populateShowResult(carrier registry.Carrier, current status.CarrierStatus, next status.CarrierStatus) showCarrierResult {
 	currentResult := make([]StatusDeviceResult, 0, len(current.StatusDevices))
 	for _, device := range current.StatusDevices {
 		registerDevice, _ := carrier.FindDeviceByName(registry.CarrierDeviceName(device.Device))
@@ -81,7 +82,7 @@ func populateShowResult(carrier registry.Carrier, current status.CarrierStatus, 
 			DeviceType: string(registerDevice.DeviceType),
 		})
 	}
-	return showResult{
+	return showCarrierResult{
 		CarrierName:    string(carrier.Name),
 		CurrentEnabled: current.Enable,
 		NextEnabled:    next.Enable,
@@ -92,6 +93,10 @@ func populateShowResult(carrier registry.Carrier, current status.CarrierStatus, 
 }
 
 type showResult struct {
+	Carriers []showCarrierResult `json:"carriers"`
+}
+
+type showCarrierResult struct {
 	CarrierName    string               `json:"carrier_name"`
 	CurrentEnabled bool                 `json:"current_enabled"`
 	NextEnabled    bool                 `json:"next_enabled"`
@@ -107,7 +112,7 @@ type StatusDeviceResult struct {
 	DeviceType string `json:"device_type"`
 }
 
-func (r showResult) String() string {
+func (r showCarrierResult) String() string {
 	var sb strings.Builder
 	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
 
@@ -148,6 +153,17 @@ func (r showResult) String() string {
 	}
 
 	w.Flush()
+	return sb.String()
+}
+func (r showCarrierResult) Data() any {
+	return r
+}
+func (r showResult) String() string {
+	var sb strings.Builder
+	for _, carrier := range r.Carriers {
+		sb.WriteString(carrier.String())
+		sb.WriteString("\n")
+	}
 	return sb.String()
 }
 
