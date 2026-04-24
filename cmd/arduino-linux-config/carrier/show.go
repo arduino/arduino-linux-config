@@ -159,6 +159,7 @@ func (r showResult) String() string {
 	var sb strings.Builder
 	for _, carrier := range r.Carriers {
 		sb.WriteString(carrier.String())
+		sb.WriteString("\n")
 	}
 	return sb.String()
 }
