@@ -44,7 +44,7 @@ func disableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carr
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
-	feedback.PrintResult(populateShowResult(carrier, current, next))
+	feedback.PrintResult(showResult{Carriers: []showCarrierResult{populateShowResult(carrier, current, next)}})
 }
 
 func disable(cfg config.Configuration, carrier registry.Carrier) error {
