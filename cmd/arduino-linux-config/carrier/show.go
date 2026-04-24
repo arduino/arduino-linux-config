@@ -60,7 +60,7 @@ func buildShowCarrierResult(cfg config.Configuration, carrier registry.Carrier) 
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
 	}
 
-	return (populateShowResult(carrier, current, next))
+	return populateShowResult(carrier, current, next)
 }
 
 func populateShowResult(carrier registry.Carrier, current status.CarrierStatus, next status.CarrierStatus) showCarrierResult {
@@ -155,7 +155,9 @@ func (r showCarrierResult) String() string {
 	w.Flush()
 	return sb.String()
 }
-
+func (r showCarrierResult) Data() any {
+	return r
+}
 func (r showResult) String() string {
 	var sb strings.Builder
 	for _, carrier := range r.Carriers {
