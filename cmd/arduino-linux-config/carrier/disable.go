@@ -6,6 +6,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/dto"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 	"github.com/spf13/cobra"
@@ -61,7 +62,7 @@ func disable(cfg config.Configuration, carrier registry.Carrier) error {
 	// Add disable dtbs to restore original board configuration.
 	baseFiles = append(baseFiles, carrier.DisabledDtbos...)
 
-	err := mergeOverlays(cfg, baseFiles)
+	err := dto.Apply(baseFiles)
 	if err != nil {
 		return fmt.Errorf("cannot merge overlays: %w", err)
 	}

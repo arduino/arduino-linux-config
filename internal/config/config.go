@@ -21,28 +21,14 @@ import (
 
 type Configuration struct {
 	statusDir *paths.Path
-	dtbDir    *paths.Path
 }
 
 func New() Configuration {
 	return Configuration{
 		statusDir: paths.New("/var/lib/arduino-linux-config/status"),
-		dtbDir:    paths.New("/boot/efi/dtb/qcom/"),
 	}
 }
 
 func (c *Configuration) StatusDir() *paths.Path {
 	return c.statusDir
-}
-
-func (c *Configuration) DtbDir() *paths.Path {
-	return c.dtbDir
-}
-
-func (c *Configuration) SystemDTB() *paths.Path {
-	return c.dtbDir.Join("qrb2210-arduino-imola.dtb")
-}
-
-func (c *Configuration) BaseDTB() *paths.Path {
-	return c.dtbDir.Join("qrb2210-arduino-imola-base.dtb")
 }

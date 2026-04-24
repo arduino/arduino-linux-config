@@ -1,7 +1,6 @@
 package carrier
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -9,9 +8,9 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/dto"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
-	"github.com/arduino/go-paths-helper"
 	"github.com/spf13/cobra"
 )
 
@@ -73,7 +72,7 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
-	err = mergeOverlays(cfg, overlayList)
+	err = dto.Apply(overlayList)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
@@ -176,41 +175,6 @@ func getIntersection(a, b []string) []string {
 	}
 	slices.Sort(result)
 	return slices.Compact(result)
-}
-
-var overlayCommand = "/usr/bin/fdtoverlay"
-
-func mergeOverlays(cfg config.Configuration, overlays []string) error {
-	if len(overlays) == 0 {
-		return nil
-	}
-
-	slices.Sort(overlays)
-	overlays = slices.Compact(overlays)
-
-	temporaryDtb := cfg.DtbDir().Join("qrb2210-arduino-imola.dtb.next")
-	defer func() { _ = temporaryDtb.Remove() }()
-
-	for i := range overlays {
-		overlays[i] = cfg.DtbDir().Join(overlays[i]).String()
-	}
-
-	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb.String()}, overlays...)
-	cmd, err := paths.NewProcess(nil, args...)
-	if err != nil {
-		return fmt.Errorf("failed to create process: %w", err)
-	}
-
-	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
-	if err != nil {
-		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
-	}
-
-	if err := temporaryDtb.Rename(cfg.SystemDTB()); err != nil {
-		return fmt.Errorf("failed to move output file: %w", err)
-	}
-
-	return nil
 }
 
 func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration []status.StatusDevice) error {
