@@ -10,6 +10,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
+	"github.com/arduino/arduino-linux-config/internal/status"
 	"github.com/arduino/go-paths-helper"
 	"github.com/spf13/cobra"
 )
@@ -77,7 +78,7 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	err = registry.StatusUpdate(cfg, carrier, registry.CarrierStatus{
+	err = status.Update(cfg, carrier, status.CarrierStatus{
 		Enable:        true,
 		StatusDevices: nextDevicesConfiguration,
 	})
@@ -87,15 +88,15 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 
 	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
 
-	current, next, err := registry.GetStatus(cfg, carrier)
+	current, next, err := status.Get(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func parseUserArgs(args []string) ([]registry.StatusDevice, error) {
-	selection := make([]registry.StatusDevice, 0, len(args))
+func parseUserArgs(args []string) ([]status.StatusDevice, error) {
+	selection := make([]status.StatusDevice, 0, len(args))
 	for _, arg := range args {
 		// Handle "key=val,key2=val2"
 		pairs := strings.Split(arg, ",")
@@ -113,13 +114,13 @@ func parseUserArgs(args []string) ([]registry.StatusDevice, error) {
 
 			deviceName, optionName := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 
-			if slices.ContainsFunc(selection, func(s registry.StatusDevice) bool {
+			if slices.ContainsFunc(selection, func(s status.StatusDevice) bool {
 				return s.Device == deviceName
 			}) {
 				return nil, fmt.Errorf("duplicate device %q in arguments", deviceName)
 			}
 
-			selection = append(selection, registry.StatusDevice{
+			selection = append(selection, status.StatusDevice{
 				Device: deviceName,
 				Option: optionName,
 			})
@@ -130,7 +131,7 @@ func parseUserArgs(args []string) ([]registry.StatusDevice, error) {
 	return selection, nil
 }
 
-func collectDtboFiles(carrier registry.Carrier, userSelection []registry.StatusDevice) []string {
+func collectDtboFiles(carrier registry.Carrier, userSelection []status.StatusDevice) []string {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for _, selection := range userSelection {
@@ -212,7 +213,7 @@ func mergeOverlays(cfg config.Configuration, overlays []string) error {
 	return nil
 }
 
-func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration []registry.StatusDevice) error {
+func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration []status.StatusDevice) error {
 	for _, selection := range nextDevicesConfiguration {
 		device, exist := carrier.FindDeviceByName(registry.CarrierDeviceName(selection.Device))
 		if !exist {

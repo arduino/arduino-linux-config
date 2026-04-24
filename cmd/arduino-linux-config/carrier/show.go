@@ -9,6 +9,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
+	"github.com/arduino/arduino-linux-config/internal/status"
 	"github.com/spf13/cobra"
 )
 
@@ -53,7 +54,7 @@ func showHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrier
 }
 
 func showCarrier(cfg config.Configuration, carrier registry.Carrier) {
-	current, next, err := registry.GetStatus(cfg, carrier)
+	current, next, err := status.Get(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
 	}
@@ -61,7 +62,7 @@ func showCarrier(cfg config.Configuration, carrier registry.Carrier) {
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func populateShowResult(carrier registry.Carrier, current registry.CarrierStatus, next registry.CarrierStatus) showResult {
+func populateShowResult(carrier registry.Carrier, current status.CarrierStatus, next status.CarrierStatus) showResult {
 	currentResult := make([]StatusDeviceResult, 0, len(current.StatusDevices))
 	for _, device := range current.StatusDevices {
 		registerDevice, _ := carrier.FindDeviceByName(registry.CarrierDeviceName(device.Device))
