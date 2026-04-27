@@ -3,6 +3,7 @@ package carrier
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
@@ -19,6 +20,10 @@ func newDisableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobr
 		Short: "Disable a carrier and restore the base DTB",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			if os.Geteuid() != 0 {
+				feedback.Fatal("Command 'disable' must be run as root", feedback.ErrPermissionDenied)
+			}
+
 			carrierName := args[0]
 			disableHandler(cmd.Context(), reg, cfg, carrierName)
 		},
