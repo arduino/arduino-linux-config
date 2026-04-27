@@ -4,15 +4,16 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/arduino/go-paths-helper"
 )
 
 var fdtoverlayPath = paths.New("/usr/bin/fdtoverlay")
 
-var qcomDBTDir = paths.New("/boot/efi/dtb/qcom/")
-var systemDTB = qcomDBTDir.Join("qrb2210-arduino-imola.dtb")
-var baseDTB = qcomDBTDir.Join("qrb2210-arduino-imola-base.dtb")
+var qcomDTBDir = paths.New("/boot/efi/dtb/qcom/")
+var systemDTB = qcomDTBDir.Join("qrb2210-arduino-imola.dtb")
+var baseDTB = qcomDTBDir.Join("qrb2210-arduino-imola-base.dtb")
 
 func Apply(overlays []string) error {
 	if len(overlays) == 0 {
@@ -22,7 +23,7 @@ func Apply(overlays []string) error {
 	slices.Sort(overlays)
 	overlays = slices.Compact(overlays)
 
-	args, tempFile := buildFdtoverlayCommand(overlays)
+	args, tempFile := buildFdtoverlayCommandAt(overlays, time.Now())
 
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
@@ -43,12 +44,15 @@ func Apply(overlays []string) error {
 	return nil
 }
 
-func buildFdtoverlayCommand(overlays []string) ([]string, *paths.Path) {
-	temporaryDtb := qcomDBTDir.Join("qrb2210-arduino-imola.dtb.next")
+func buildFdtoverlayCommandAt(overlays []string, now time.Time) ([]string, *paths.Path) {
+	// Generate unique temp file name using nanosecond timestamp to prevent
+	// race conditions when multiple instances run concurrently
+	tempFileName := fmt.Sprintf("qrb2210-arduino-imola.dtb.%d.temp", now.UnixNano())
+	temporaryDtb := qcomDTBDir.Join(tempFileName)
 
 	overlayPaths := make([]string, len(overlays))
 	for i, overlay := range overlays {
-		overlayPaths[i] = qcomDBTDir.Join(overlay).String()
+		overlayPaths[i] = qcomDTBDir.Join(overlay).String()
 	}
 
 	args := append([]string{fdtoverlayPath.String(), "-i", baseDTB.String(), "-o", temporaryDtb.String()}, overlayPaths...)
