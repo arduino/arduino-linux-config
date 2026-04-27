@@ -65,7 +65,7 @@ func disable(ctx context.Context, cfg config.Configuration, carrier registry.Car
 
 	err := dto.Apply(ctx, baseFiles)
 	if err != nil {
-		return fmt.Errorf("cannot merge overlays: %w", err)
+		return err
 	}
 
 	err = status.Update(cfg, carrier, status.CarrierStatus{Enable: false})
