@@ -1,6 +1,7 @@
 package carrier
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -25,7 +26,7 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
 			carrierName := args[0]
 			deviceOptions := args[1:]
 
-			enableHandler(reg, cfg, carrierName, deviceOptions)
+			enableHandler(cmd.Context(), reg, cfg, carrierName, deviceOptions)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
@@ -50,7 +51,7 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrierName string, deviceArgs []string) {
+func enableHandler(ctx context.Context, reg registry.CarrierRegistry, cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -68,11 +69,11 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 
 	overlayList := collectDtboFiles(carrier, nextDevicesConfiguration)
 
-	err = disable(cfg, carrier)
+	err = disable(ctx, cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
-	err = dto.Apply(overlayList)
+	err = dto.Apply(ctx, overlayList)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}

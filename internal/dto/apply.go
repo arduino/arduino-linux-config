@@ -15,7 +15,7 @@ var qcomDTBDir = paths.New("/boot/efi/dtb/qcom/")
 var systemDTB = qcomDTBDir.Join("qrb2210-arduino-imola.dtb")
 var baseDTB = qcomDTBDir.Join("qrb2210-arduino-imola-base.dtb")
 
-func Apply(overlays []string) error {
+func Apply(ctx context.Context, overlays []string) error {
 	if len(overlays) == 0 {
 		return nil
 	}
@@ -32,7 +32,7 @@ func Apply(overlays []string) error {
 
 	defer func() { _ = tempFile.Remove() }()
 
-	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
+	_, stderr, err := cmd.RunAndCaptureOutput(ctx)
 	if err != nil {
 		return fmt.Errorf("fdtoverlay failed with command %v: %w (stderr: %s)", args, err, stderr)
 	}
