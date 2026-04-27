@@ -3,6 +3,7 @@ package carrier
 import (
 	"context"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -23,6 +24,10 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
   arduino-linux-config carrier enable media-carrier camera0=type1-2lanes camera1=type1-4lanes`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			if os.Geteuid() != 0 {
+				feedback.Fatal("Command 'enable' must be run as root", feedback.ErrPermissionDenied)
+			}
+
 			carrierName := args[0]
 			deviceOptions := args[1:]
 
