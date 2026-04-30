@@ -48,6 +48,11 @@ The binary will be available at `./build/arduino-linux-config`.
 - **`--format`**: Output format (`text` or `json`). Default: `text`.
 - **`--log-level`**: Log verbosity (`debug`, `info`, `warn`, `error`). Default: `error`.
 
+## Other contents
+This package includes the following additional content:
+- LED permission configuration rules;
+- Volume control scripts and keybindings.
+
 ## Contributions are welcome!
 
 Please read the [Contributor Guide] document, which will show you how to build the source code, run the tests, and
