@@ -49,7 +49,9 @@ The binary will be available at `./build/arduino-linux-config`.
 - **`--log-level`**: Log verbosity (`debug`, `info`, `warn`, `error`). Default: `error`.
 
 ## Other contents
+
 This package includes the following additional content:
+
 - LED permission configuration rules;
 - Volume control scripts and keybindings.
 
