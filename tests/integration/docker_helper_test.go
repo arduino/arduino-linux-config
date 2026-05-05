@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -16,8 +17,9 @@ import (
 const (
 	dockerImageName = "arduino-linux-config-test"
 	containerName   = "arduino-linux-config-test-container"
-	arch            = "arm64"
 )
+
+var arch = runtime.GOARCH
 
 func buildDockerImage(t testing.TB) {
 	if t != nil {

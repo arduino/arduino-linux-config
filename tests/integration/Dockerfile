@@ -1,4 +1,4 @@
-FROM --platform=linux/arm64 debian:bookworm
+FROM debian:bookworm
 
 ARG ARCH=arm64
 
