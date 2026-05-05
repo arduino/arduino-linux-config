@@ -19,7 +19,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Build deb
-        run: go tool task build-deb ARCH=arm64
+        run: go tool task build-deb ARCH=amd64
 
       - name: Run tests
         run: go tool task test
