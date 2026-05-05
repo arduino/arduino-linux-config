@@ -1,6 +1,6 @@
 FROM debian:bookworm
 
-ARG ARCH=arm64
+ARG ARCH=amd64
 
 COPY build/arduino-linux-config_*_${ARCH}.deb /tmp/arduino-linux-config.deb
 RUN apt-get update && apt-get install -y /tmp/arduino-linux-config.deb && rm /tmp/arduino-linux-config.deb
