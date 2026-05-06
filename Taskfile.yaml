@@ -33,8 +33,10 @@ tasks:
       - mkdir -p .bin && cp $HOME/.dprint/bin/dprint .bin/dprint # workaround for local install
 
   test:integration:
-    desc: Run integration tests (requires deb already built in build/)
+    desc: Run integration tests
     cmds:
+      - rm ./build/*.deb || true
+      - task: build-deb
       - go test -v -tags integration ./tests/integration/...
 
   test:
