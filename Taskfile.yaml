@@ -44,7 +44,7 @@ tasks:
       - rm ./build/*.deb || true
       - task: build-deb
         vars:
-          ARCH: {{ARCH}}
+          ARCH: "{{.ARCH}}"
       - go test -v -tags integration ./tests/integration/...
 
   test:unit:
@@ -57,7 +57,7 @@ tasks:
     cmds:
       - task: test:unit
         vars:
-         ARGS: -coverprofile=coverage.out
+          ARGS: -coverprofile=coverage.out
       - go tool cover -func=coverage.out
       - go tool cover -html=coverage.out
 
