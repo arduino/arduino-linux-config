@@ -23,3 +23,5 @@ jobs:
 
       - name: Run integration tests
         run: go tool task test:integration
+        env:
+          ARCH: amd64
