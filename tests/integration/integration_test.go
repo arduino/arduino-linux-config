@@ -28,7 +28,7 @@ type showResult struct {
 	Carriers []carrierResult `json:"carriers"`
 }
 
-func TestCarrierShow_Empty(t *testing.T) {
+func TestCarrierShowEmpty(t *testing.T) {
 	startDockerContainer(t)
 	t.Cleanup(func() { stopDockerContainer(t) })
 
@@ -55,7 +55,7 @@ func TestCarrierShow_Empty(t *testing.T) {
 	require.Equal(t, expectedDevices, carrier.Next)
 }
 
-func TestCarrierEnable_AllDevices(t *testing.T) {
+func TestCarrierEnableAllDevices(t *testing.T) {
 	startDockerContainer(t)
 	t.Cleanup(func() { stopDockerContainer(t) })
 

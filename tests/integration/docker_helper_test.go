@@ -32,6 +32,7 @@ func buildDockerImage(t *testing.T) {
 }
 
 func FindRepositoryRootPath(t *testing.T) *paths.Path {
+	t.Helper()
 	repoRootPath, err := paths.Getwd()
 	require.NoError(t, err)
 	for !repoRootPath.Join(".git").Exist() {
