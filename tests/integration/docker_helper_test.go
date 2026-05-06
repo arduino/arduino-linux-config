@@ -3,14 +3,12 @@
 package integration
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
+	"github.com/arduino/go-paths-helper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,43 +17,35 @@ const (
 	containerName   = "arduino-linux-config-test-container"
 )
 
-var arch = runtime.GOARCH
-
-func buildDockerImage(t testing.TB) {
-	if t != nil {
-		t.Helper()
-	}
-	root := repoRoot()
+func buildDockerImage(t *testing.T) {
+	t.Helper()
+	root := FindRepositoryRootPath(t).String()
 	cmd := exec.Command("docker", "build",
-		"--platform", "linux/"+arch,
-		"--build-arg", "ARCH="+arch,
 		"-t", dockerImageName,
 		"-f", filepath.Join(root, "tests/integration/Dockerfile"),
 		root,
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		if t != nil {
-			t.Fatalf("failed to build docker image: %v", err)
-		} else {
-			fmt.Fprintf(os.Stderr, "failed to build docker image: %v\n", err)
-			os.Exit(1)
-		}
-	}
+	err := cmd.Run()
+	require.NoError(t, err, "failed to build docker image")
 }
 
-func repoRoot() string {
-	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to get repo root: %v\n", err)
-		os.Exit(1)
+func FindRepositoryRootPath(t *testing.T) *paths.Path {
+	repoRootPath, err := paths.Getwd()
+	require.NoError(t, err)
+	for !repoRootPath.Join(".git").Exist() {
+		parent := repoRootPath.Parent()
+		require.NotEqual(t, parent.String(), repoRootPath.String(),
+			"could not find repository root: reached filesystem root without finding .git")
+		repoRootPath = parent
 	}
-	return strings.TrimSpace(string(out))
+	return repoRootPath
 }
 
 func startDockerContainer(t *testing.T) {
 	t.Helper()
+	buildDockerImage(t)
 	cmd := exec.Command("docker", "run", "-d", "--name", containerName, dockerImageName, "sleep", "infinity")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

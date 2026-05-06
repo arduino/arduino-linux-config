@@ -1,8 +1,6 @@
 FROM debian:bookworm
+COPY build/arduino-linux-config_*_amd64.deb /tmp/arduino-linux-config.deb
 
-ARG ARCH=amd64
-
-COPY build/arduino-linux-config_*_${ARCH}.deb /tmp/arduino-linux-config.deb
 RUN apt-get update && apt-get install -y /tmp/arduino-linux-config.deb && rm /tmp/arduino-linux-config.deb
 
 # Create fake dtb directory and files

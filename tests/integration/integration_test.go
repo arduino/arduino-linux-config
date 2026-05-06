@@ -4,8 +4,6 @@ package integration
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -28,11 +26,6 @@ type carrierResult struct {
 
 type showResult struct {
 	Carriers []carrierResult `json:"carriers"`
-}
-
-func TestMain(m *testing.M) {
-	buildDockerImage(nil)
-	os.Exit(m.Run())
 }
 
 func TestCarrierShow_Empty(t *testing.T) {
@@ -72,7 +65,7 @@ func TestCarrierEnable_AllDevices(t *testing.T) {
 		"display=8-dsi-touch-a",
 		"--format", "json",
 	)
-	fmt.Println(out)
+
 	var result carrierResult
 	err := json.Unmarshal([]byte(out), &result)
 	require.NoError(t, err, "output should be valid JSON")
