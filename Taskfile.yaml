@@ -32,6 +32,12 @@ tasks:
       - curl -fsSL https://dprint.dev/install.sh | sh -s {{ .DPRINT_VERSION }}
       - mkdir -p .bin && cp $HOME/.dprint/bin/dprint .bin/dprint # workaround for local install
 
+  test:
+    desc: Run all tests
+    cmds:
+      - go tool gotest.tools/gotestsum -- -v ./...
+      - task: test:integration
+
   test:integration:
     desc: Run integration tests
     cmds:
@@ -41,16 +47,17 @@ tasks:
           ARCH: amd64
       - go test -v -tags integration ./tests/integration/...
 
-  test:
-    desc: Run all tests
+  test:unit:
+    desc: Run unit tests
     cmds:
-      - go tool gotest.tools/gotestsum -- -v ./...
-      - task: test:integration
+      - go tool gotest.tools/gotestsum -- -v {{.ARGS}} ./...
 
   test:cover:
     desc: Run all tests and open cover html report
     cmds:
-      - task test -- -coverprofile=coverage.out
+      - task: test:unit
+        vars:
+         ARGS: -coverprofile=coverage.out
       - go tool cover -func=coverage.out
       - go tool cover -html=coverage.out
 
