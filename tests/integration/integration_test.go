@@ -171,3 +171,56 @@ func TestCarrierList(t *testing.T) {
 		AvailableDevices: []string{"none", "8-dsi-touch-a"},
 	}, carrier.Devices[2])
 }
+
+func TestWriteReadFromConfigFile(t *testing.T) {
+	startDockerContainer(t)
+	t.Cleanup(func() { stopDockerContainer(t) })
+
+	// Assert post installation config
+	require.NotEmpty(t, execInContainer(t, "ls", "-a", "/var/lib/arduino-linux-config/status"))
+
+	out := execInContainer(t, "arduino-linux-config", "carrier", "enable", "media-carrier",
+		"camera1=type1-2lanes",
+		"--format", "json",
+	)
+
+	var result carrierResult
+	err := json.Unmarshal([]byte(out), &result)
+	require.NoError(t, err, "output should be valid JSON")
+
+	// Assert configuration file created after the first configuration
+	configFile := "/var/lib/arduino-linux-config/status/media-carrier.json"
+	require.NotEmpty(t, execInContainer(t, "ls", configFile))
+
+	require.Equal(t, "media-carrier", result.CarrierName)
+	require.Equal(t, false, result.CurrentEnabled)
+	require.Equal(t, true, result.NextEnabled)
+
+	expectedCurrent := []deviceResult{
+		{Device: "camera0", Option: "none", DeviceType: "camera"},
+		{Device: "camera1", Option: "none", DeviceType: "camera"},
+		{Device: "display", Option: "none", DeviceType: "display"},
+	}
+
+	expectedNext := []deviceResult{
+		{Device: "camera0", Option: "none", DeviceType: "camera"},
+		{Device: "camera1", Option: "type1-2lanes", DeviceType: "camera"},
+		{Device: "display", Option: "none", DeviceType: "display"},
+	}
+
+	require.Equal(t, expectedCurrent, result.Current)
+	require.Equal(t, expectedNext, result.Next)
+
+	// Assert read from file
+	out = execInContainer(t, "arduino-linux-config", "carrier", "enable", "media-carrier",
+		"camera1=type1-2lanes",
+		"--format", "json",
+	)
+
+	require.Equal(t, "media-carrier", result.CarrierName)
+	require.Equal(t, false, result.CurrentEnabled)
+	require.Equal(t, true, result.NextEnabled)
+
+	require.Equal(t, expectedCurrent, result.Current)
+	require.Equal(t, expectedNext, result.Next)
+}
