@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -119,7 +120,8 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime t
 
 func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
 	now := time.Now().UTC()
-	forceTimeSicronizationPersistance()
+	// make sure system time is greater than or equal to the time used in the state file.
+	forceTimeSynchronizationPersistence()
 
 	// set curr
 	for _, dev := range currentStatus.StatusDevices {
@@ -176,7 +178,8 @@ func getBootTime() (time.Time, error) {
 		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
 	}
 	uptimeSeconds -= 5 // take into account shutdown time
-	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds) * time.Second)
+	uptime := time.Duration(math.Round(uptimeSeconds)) * time.Second
+	bootTime := time.Now().UTC().Add(-uptime)
 
 	return bootTime, nil
 }
@@ -226,25 +229,19 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 	return nil
 }
 
-// This synchronization file persists the system time on devices
-// without a battery. It defines the initial time used at boot
-// while waiting for NTP updates.
-//
-// By default it is updated every 60 seconds, this is not enough,
-// because a new configuration followed by a reboot could occur
-// between updates.
-// This would result in a non-consistent show command output.
-//
-// We force an update of synchronization file here
-// to ensure the system time remains monotonic.
-func forceTimeSicronizationPersistance() {
+// forceTimeSynchronizationPersistence manually persists the current
+// system time to disk. The systemd-timesyncd service normally updates
+// this file during every synchronization, or every 60 seconds if no
+// updates occur.
+// See: https://www.man7.org/linux/man-pages/man5/timesyncd.conf.5.html
+func forceTimeSynchronizationPersistence() {
 	clockFile := "/var/lib/systemd/timesync/clock"
 	if !paths.New(clockFile).Exist() {
 		feedback.Warnf("Clock time synchronization service file %s not found", clockFile)
+		return
 	}
 	cmd := exec.Command("touch", clockFile)
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		feedback.Warnf("Error touch clock time synchronization service file %s", clockFile)
 	}
 }
