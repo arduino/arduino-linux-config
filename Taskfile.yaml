@@ -40,9 +40,14 @@ tasks:
 
   test:integration:
     desc: Run integration tests
+    vars:
+      ARCH:
+        sh: uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'
     cmds:
       - rm ./build/*.deb || true
       - task: build-deb
+        vars:
+          ARCH: "{{.ARCH}}"
       - go test -v -tags integration ./tests/integration/...
 
   test:unit:
