@@ -43,8 +43,6 @@ tasks:
     cmds:
       - rm ./build/*.deb || true
       - task: build-deb
-        vars:
-          ARCH: "{{.ARCH}}"
       - go test -v -tags integration ./tests/integration/...
 
   test:unit:
