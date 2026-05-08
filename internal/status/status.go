@@ -118,13 +118,8 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime t
 }
 
 func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
-	// TODO Check how UTC is handled
 	now := time.Now().UTC()
-	cmd := exec.Command("touch", "/var/lib/systemd/timesync/clock")
-	err := cmd.Run()
-	if err != nil {
-		feedback.Warnf("Error touching clock")
-	}
+	forceTimeSicronizationPersistance()
 
 	// set curr
 	for _, dev := range currentStatus.StatusDevices {
@@ -162,6 +157,9 @@ func getOrDefault(option string) string {
 	return cmp.Or(option, string(registry.None))
 }
 
+// Compute the boot time by subtracting the uptime from the current time.
+// This will be compared with the timestamp stored in the configuration file.
+// An extra 5 seconds to account for the duration of the shutdown procedure.
 func getBootTime() (time.Time, error) {
 	data, err := os.ReadFile("/proc/uptime")
 	if err != nil {
@@ -177,7 +175,7 @@ func getBootTime() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
 	}
-	uptimeSeconds = uptimeSeconds - 10 // take in account reboot time
+	uptimeSeconds = uptimeSeconds - 5 // take in account shutdown time
 	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds) * time.Second)
 
 	return bootTime, nil
@@ -226,4 +224,27 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 		return fmt.Errorf("write error: %w", err)
 	}
 	return nil
+}
+
+// This synchronization file persists the system time on devices
+// without a battery. It defines the initial time used at boot
+// while waiting for NTP updates.
+//
+// By default it is updated every 60 seconds, this is not enought,
+// because a new configuration followed by a reboot could occur
+// between updates.
+// This would result in a non-consistent show command output.
+//
+// We force an update of synchronization file here
+// to ensure the system time remains monotonic.
+func forceTimeSicronizationPersistance() {
+	clockFile := "/var/lib/systemd/timesync/clock"
+	if !paths.New(clockFile).Exist() {
+		feedback.Warnf("Clock time syncronization service file %s not found", clockFile)
+	}
+	cmd := exec.Command("touch", clockFile)
+	err := cmd.Run()
+	if err != nil {
+		feedback.Warnf("Error touch clock time syncronization service file %s", clockFile)
+	}
 }
