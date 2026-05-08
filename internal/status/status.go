@@ -175,7 +175,7 @@ func getBootTime() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
 	}
-	uptimeSeconds = uptimeSeconds - 5 // take in account shutdown time
+	uptimeSeconds -= 5 // take into account shutdown time
 	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds) * time.Second)
 
 	return bootTime, nil
@@ -240,11 +240,11 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 func forceTimeSicronizationPersistance() {
 	clockFile := "/var/lib/systemd/timesync/clock"
 	if !paths.New(clockFile).Exist() {
-		feedback.Warnf("Clock time syncronization service file %s not found", clockFile)
+		feedback.Warnf("Clock time synchronization service file %s not found", clockFile)
 	}
 	cmd := exec.Command("touch", clockFile)
 	err := cmd.Run()
 	if err != nil {
-		feedback.Warnf("Error touch clock time syncronization service file %s", clockFile)
+		feedback.Warnf("Error touch clock time synchronization service file %s", clockFile)
 	}
 }
