@@ -230,7 +230,7 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 // without a battery. It defines the initial time used at boot
 // while waiting for NTP updates.
 //
-// By default it is updated every 60 seconds, this is not enought,
+// By default it is updated every 60 seconds, this is not enough,
 // because a new configuration followed by a reboot could occur
 // between updates.
 // This would result in a non-consistent show command output.
