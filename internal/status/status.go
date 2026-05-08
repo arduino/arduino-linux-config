@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/go-paths-helper"
@@ -116,7 +118,13 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime t
 }
 
 func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
+	// TODO Check how UTC is handled
 	now := time.Now().UTC()
+	cmd := exec.Command("touch", "/var/lib/systemd/timesync/clock")
+	err := cmd.Run()
+	if err != nil {
+		feedback.Warnf("Error touching clock")
+	}
 
 	// set curr
 	for _, dev := range currentStatus.StatusDevices {
@@ -169,8 +177,8 @@ func getBootTime() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
 	}
-
-	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
+	uptimeSeconds = uptimeSeconds - 10 // take in account reboot time
+	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds) * time.Second)
 
 	return bootTime, nil
 }
