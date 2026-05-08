@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/go-paths-helper"
@@ -117,6 +120,8 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime t
 
 func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
 	now := time.Now().UTC()
+	// make sure system time is greater than or equal to the time used in the state file.
+	forceTimeSynchronizationPersistence()
 
 	// set curr
 	for _, dev := range currentStatus.StatusDevices {
@@ -154,6 +159,9 @@ func getOrDefault(option string) string {
 	return cmp.Or(option, string(registry.None))
 }
 
+// Compute the boot time by subtracting the uptime from the current time.
+// This will be compared with the timestamp stored in the configuration file.
+// An extra 5 seconds to account for the duration of the shutdown procedure.
 func getBootTime() (time.Time, error) {
 	data, err := os.ReadFile("/proc/uptime")
 	if err != nil {
@@ -169,8 +177,9 @@ func getBootTime() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
 	}
-
-	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
+	uptimeSeconds -= 5 // take into account shutdown time
+	uptime := time.Duration(math.Round(uptimeSeconds)) * time.Second
+	bootTime := time.Now().UTC().Add(-uptime)
 
 	return bootTime, nil
 }
@@ -218,4 +227,21 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 		return fmt.Errorf("write error: %w", err)
 	}
 	return nil
+}
+
+// forceTimeSynchronizationPersistence manually persists the current
+// system time to disk. The systemd-timesyncd service normally updates
+// this file during every synchronization, or every 60 seconds if no
+// updates occur.
+// See: https://www.man7.org/linux/man-pages/man5/timesyncd.conf.5.html
+func forceTimeSynchronizationPersistence() {
+	clockFile := "/var/lib/systemd/timesync/clock"
+	if !paths.New(clockFile).Exist() {
+		feedback.Warnf("Clock time synchronization service file %s not found", clockFile)
+		return
+	}
+	cmd := exec.Command("touch", clockFile)
+	if err := cmd.Run(); err != nil {
+		feedback.Warnf("Error touch clock time synchronization service file %s", clockFile)
+	}
 }
