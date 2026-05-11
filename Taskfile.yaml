@@ -40,29 +40,22 @@ tasks:
 
   test:integration:
     desc: Run integration tests
-    vars:
-      ARCH:
-        sh: uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'
     cmds:
       - rm ./build/*.deb || true
       - task: build-deb
         vars:
-          ARCH: "{{.ARCH}}"
+          ARCH: "{{ARCH}}"
       - go test -v -tags integration ./tests/integration/...
 
   test:unit:
     desc: Run unit tests
     cmds:
-      - go tool gotest.tools/gotestsum -- -v {{.ARGS}} ./...
+      - go tool gotest.tools/gotestsum -- -v {{.CLI_ARGS}} ./...
 
   test:cover:
     desc: Run all tests and open cover html report
     cmds:
-      - task: test:unit
-        vars:
-          ARGS: -coverprofile=coverage.out
-      - go tool cover -func=coverage.out
-      - go tool cover -html=coverage.out
+      - task test -- -coverprofile=coverage.out
 
   lint:
     desc: Run the linters
