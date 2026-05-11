@@ -50,7 +50,7 @@ linters:
       - builtin$
       - examples$
     rules:
-      - path: cmd/arduino-app-cli/*_test.go
+      - path: cmd/arduino-linux-config/*_test.go
         linters:
           - forbidigo
       - path: cmd/feedback/
@@ -72,7 +72,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/arduino/arduino-app-cli
+        - github.com/arduino/arduino-linux-config
   exclusions:
     generated: lax
     paths:

@@ -1,4 +1,4 @@
-name: Release arduino-app-cli
+name: Release arduino-linux-config
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+*"
 
 env:
-  PROJECT_NAME: "arduino-app-cli"
   GITHUB_TOKEN: ${{ secrets.ARDUINOBOT_TOKEN }}
   GITHUB_USERNAME: ArduinoBot
 
