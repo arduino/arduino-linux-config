@@ -12,10 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arduino/go-paths-helper"
+
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
-	"github.com/arduino/go-paths-helper"
 )
 
 type StatusFile struct {
