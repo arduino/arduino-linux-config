@@ -5,9 +5,10 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/spf13/cobra"
+
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/registry"
-	"github.com/spf13/cobra"
 )
 
 func newListCmd(reg registry.CarrierRegistry) *cobra.Command {

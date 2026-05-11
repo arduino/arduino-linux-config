@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/go-paths-helper"
+
+	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
 func TestUpdateStatusStructure(t *testing.T) {

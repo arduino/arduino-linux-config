@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/spf13/cobra"
+
+	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
 // CompleteCarrierName provides completion for carrier names on the first argument.

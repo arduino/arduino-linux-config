@@ -1,9 +1,10 @@
 package carrier
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
-	"github.com/spf13/cobra"
 )
 
 func NewCarrierCmd() *cobra.Command {
