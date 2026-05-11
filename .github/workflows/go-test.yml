@@ -18,5 +18,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run tests
-        run: go tool task test
+      - name: Run unit tests
+        run: go tool task test:unit
+
+      - name: Run integration tests
+        run: go tool task test:integration

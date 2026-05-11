@@ -36,13 +36,26 @@ tasks:
     desc: Run all tests
     cmds:
       - go tool gotest.tools/gotestsum -- -v ./...
+      - task: test:integration
+
+  test:integration:
+    desc: Run integration tests
+    cmds:
+      - rm ./build/*.deb || true
+      - task: build-deb
+        vars:
+          ARCH: "{{ARCH}}"
+      - go test -v -tags integration ./tests/integration/...
+
+  test:unit:
+    desc: Run unit tests
+    cmds:
+      - go tool gotest.tools/gotestsum -- -v {{.CLI_ARGS}} ./...
 
   test:cover:
     desc: Run all tests and open cover html report
     cmds:
       - task test -- -coverprofile=coverage.out
-      - go tool cover -func=coverage.out
-      - go tool cover -html=coverage.out
 
   lint:
     desc: Run the linters
