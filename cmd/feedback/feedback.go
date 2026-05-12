@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 )
 
@@ -144,7 +143,6 @@ func Warnf(msg string, args ...interface{}) {
 	} else {
 		bufferWarnings = append(bufferWarnings, msg)
 	}
-	slog.Warn(msg)
 }
 
 // FatalError outputs the error and exits with status exitCode.

@@ -3,15 +3,18 @@ package carrier
 import (
 	"context"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
+
+	"github.com/spf13/cobra"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/dto"
 	"github.com/arduino/arduino-linux-config/internal/registry"
-	"github.com/arduino/go-paths-helper"
-	"github.com/spf13/cobra"
+	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
 func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.Command {
@@ -22,10 +25,14 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
   arduino-linux-config carrier enable media-carrier camera0=type1-2lanes camera1=type1-4lanes`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			if os.Geteuid() != 0 {
+				feedback.Fatal("Command 'enable' must be run as root", feedback.ErrPermissionDenied)
+			}
+
 			carrierName := args[0]
 			deviceOptions := args[1:]
 
-			enableHandler(reg, cfg, carrierName, deviceOptions)
+			enableHandler(cmd.Context(), reg, cfg, carrierName, deviceOptions)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
@@ -37,7 +44,7 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			return completion.CompleteDeviceOption(carrier, toComplete)
+			return completion.CompleteDeviceOption(carrier, args[1:], toComplete)
 		},
 	}
 }
@@ -50,7 +57,7 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
 //
 // When a status request occurs, the system compares the last boot time with
 // the configuration timestamp to update the current and next states.
-func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrierName string, deviceArgs []string) {
+func enableHandler(ctx context.Context, reg registry.CarrierRegistry, cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -68,16 +75,16 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 
 	overlayList := collectDtboFiles(carrier, nextDevicesConfiguration)
 
-	err = disable(cfg, carrier)
+	err = disable(ctx, cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
-	err = mergeOverlays(cfg, overlayList)
+	err = dto.Apply(ctx, overlayList)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	err = registry.StatusUpdate(cfg, carrier, registry.CarrierStatus{
+	err = status.Update(cfg, carrier, status.CarrierStatus{
 		Enable:        true,
 		StatusDevices: nextDevicesConfiguration,
 	})
@@ -85,16 +92,17 @@ func enableHandler(reg registry.CarrierRegistry, cfg config.Configuration, carri
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
-	feedback.PrintResult(cmdResult{CarrierName: carrierName})
-	current, next, err := registry.GetStatus(cfg, carrier)
+	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
+
+	current, next, err := status.Get(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func parseUserArgs(args []string) ([]registry.StatusDevice, error) {
-	selection := make([]registry.StatusDevice, 0, len(args))
+func parseUserArgs(args []string) ([]status.StatusDevice, error) {
+	selection := make([]status.StatusDevice, 0, len(args))
 	for _, arg := range args {
 		// Handle "key=val,key2=val2"
 		pairs := strings.Split(arg, ",")
@@ -111,7 +119,14 @@ func parseUserArgs(args []string) ([]registry.StatusDevice, error) {
 			}
 
 			deviceName, optionName := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
-			selection = append(selection, registry.StatusDevice{
+
+			if slices.ContainsFunc(selection, func(s status.StatusDevice) bool {
+				return s.Device == deviceName
+			}) {
+				return nil, fmt.Errorf("duplicate device %q in arguments", deviceName)
+			}
+
+			selection = append(selection, status.StatusDevice{
 				Device: deviceName,
 				Option: optionName,
 			})
@@ -122,7 +137,7 @@ func parseUserArgs(args []string) ([]registry.StatusDevice, error) {
 	return selection, nil
 }
 
-func collectDtboFiles(carrier registry.Carrier, userSelection []registry.StatusDevice) []string {
+func collectDtboFiles(carrier registry.Carrier, userSelection []status.StatusDevice) []string {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for _, selection := range userSelection {
@@ -152,7 +167,7 @@ func collectDtboFiles(carrier registry.Carrier, userSelection []registry.StatusD
 		baseFiles = slices.DeleteFunc(baseFiles, func(overlay string) bool {
 			return slices.Contains(incompatibleFiles, overlay)
 		})
-		feedback.Warnf("Incompatible ovelays, removing %v", incompatibleOverlays)
+		feedback.Warnf("Incompatible overlays, removing %v", incompatibleOverlays)
 	}
 
 	return append(dtboFiles, baseFiles...)
@@ -169,44 +184,7 @@ func getIntersection(a, b []string) []string {
 	return slices.Compact(result)
 }
 
-var overlayCommand = "/usr/bin/fdtoverlay"
-
-func mergeOverlays(cfg config.Configuration, overlays []string) error {
-	if len(overlays) == 0 {
-		return nil
-	}
-
-	slices.Sort(overlays)
-	overlays = slices.Compact(overlays)
-
-	systemDtb := cfg.SystemDTB()
-	overlaysPath := systemDtb.Parent()
-	temporaryDtb := overlaysPath.Join("qrb2210-arduino-imola.dtb.next")
-	defer func() { _ = temporaryDtb.Remove() }()
-
-	for i := range overlays {
-		overlays[i] = overlaysPath.Join(overlays[i]).String()
-	}
-
-	args := append([]string{overlayCommand, "-i", cfg.BaseDTB().String(), "-o", temporaryDtb.String()}, overlays...)
-	cmd, err := paths.NewProcess(nil, args...)
-	if err != nil {
-		return fmt.Errorf("failed to create process: %w", err)
-	}
-
-	_, stderr, err := cmd.RunAndCaptureOutput(context.Background())
-	if err != nil {
-		return fmt.Errorf("overlay failed: %w\n%s", err, stderr)
-	}
-
-	if err := temporaryDtb.Rename(systemDtb); err != nil {
-		return fmt.Errorf("failed to move output file: %w", err)
-	}
-
-	return nil
-}
-
-func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration []registry.StatusDevice) error {
+func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration []status.StatusDevice) error {
 	for _, selection := range nextDevicesConfiguration {
 		device, exist := carrier.FindDeviceByName(registry.CarrierDeviceName(selection.Device))
 		if !exist {

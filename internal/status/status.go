@@ -1,17 +1,22 @@
-package registry
+package status
 
 import (
 	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/go-paths-helper"
+
+	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
 type StatusFile struct {
@@ -23,7 +28,7 @@ type StatusCarrier struct {
 	Status    bool      `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 
-	Devices map[CarrierDeviceName]StatusInfo `json:"devices"`
+	Devices map[registry.CarrierDeviceName]StatusInfo `json:"devices"`
 }
 
 type StatusInfo struct {
@@ -42,7 +47,7 @@ type StatusDevice struct {
 }
 
 // Called by config and reset
-func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate CarrierStatus) error {
+func Update(cfg config.Configuration, carrier registry.Carrier, statusUpdate CarrierStatus) error {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return fmt.Errorf("failed to load status file %w", err)
@@ -64,7 +69,7 @@ func StatusUpdate(cfg config.Configuration, carrier Carrier, statusUpdate Carrie
 
 // Called by show, load the status structure and apply status fixes before returning
 // Do not update the status file on the disk because show is running as non-root user
-func GetStatus(cfg config.Configuration, carrier Carrier) (CarrierStatus, CarrierStatus, error) {
+func Get(cfg config.Configuration, carrier registry.Carrier) (CarrierStatus, CarrierStatus, error) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to load status file %v", err)
@@ -79,7 +84,7 @@ func GetStatus(cfg config.Configuration, carrier Carrier) (CarrierStatus, Carrie
 	return current, next, nil
 }
 
-func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time) (CarrierStatus, CarrierStatus) {
+func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime time.Time) (CarrierStatus, CarrierStatus) {
 	current := CarrierStatus{
 		Enable:        false,
 		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
@@ -114,8 +119,10 @@ func getStatusStructure(status *StatusFile, carrier Carrier, bootTime time.Time)
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
+func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
 	now := time.Now().UTC()
+	// make sure system time is greater than or equal to the time used in the state file.
+	forceTimeSynchronizationPersistence()
 
 	// set curr
 	for _, dev := range currentStatus.StatusDevices {
@@ -123,12 +130,12 @@ func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus Ca
 			Option:    getOrDefault(dev.Option),
 			CreatedAt: now,
 		}
-		status.CurrentStatus.Devices[CarrierDeviceName(dev.Device)] = currInfo
+		status.CurrentStatus.Devices[registry.CarrierDeviceName(dev.Device)] = currInfo
 	}
 	status.CurrentStatus.Status = currentStatus.Enable
 	status.CurrentStatus.CreatedAt = now
 
-	findOption := func(deviceName CarrierDeviceName) string {
+	findOption := func(deviceName registry.CarrierDeviceName) string {
 		for _, dev := range statusUpdate.StatusDevices {
 			if dev.Device == string(deviceName) {
 				return dev.Option
@@ -150,9 +157,12 @@ func updateStatusStructure(status *StatusFile, carrier Carrier, currentStatus Ca
 }
 
 func getOrDefault(option string) string {
-	return cmp.Or(option, string(None))
+	return cmp.Or(option, string(registry.None))
 }
 
+// Compute the boot time by subtracting the uptime from the current time.
+// This will be compared with the timestamp stored in the configuration file.
+// An extra 5 seconds to account for the duration of the shutdown procedure.
 func getBootTime() (time.Time, error) {
 	data, err := os.ReadFile("/proc/uptime")
 	if err != nil {
@@ -168,13 +178,14 @@ func getBootTime() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
 	}
-
-	bootTime := time.Now().UTC().Add(-time.Duration(uptimeSeconds * float64(time.Second)))
+	uptimeSeconds -= 5 // take into account shutdown time
+	uptime := time.Duration(math.Round(uptimeSeconds)) * time.Second
+	bootTime := time.Now().UTC().Add(-uptime)
 
 	return bootTime, nil
 }
 
-func getStatusFile(cfg config.Configuration, carrierName CarrierName) *paths.Path {
+func getStatusFile(cfg config.Configuration, carrierName registry.CarrierName) *paths.Path {
 	return cfg.StatusDir().Join(string(carrierName) + ".json")
 }
 
@@ -184,10 +195,10 @@ func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			newStatus := StatusFile{
 				CurrentStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
+					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
 				},
 				NextStatus: StatusCarrier{
-					Devices: make(map[CarrierDeviceName]StatusInfo),
+					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
 				},
 			}
 			return &newStatus, nil
@@ -217,4 +228,21 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 		return fmt.Errorf("write error: %w", err)
 	}
 	return nil
+}
+
+// forceTimeSynchronizationPersistence manually persists the current
+// system time to disk. The systemd-timesyncd service normally updates
+// this file during every synchronization, or every 60 seconds if no
+// updates occur.
+// See: https://www.man7.org/linux/man-pages/man5/timesyncd.conf.5.html
+func forceTimeSynchronizationPersistence() {
+	clockFile := "/var/lib/systemd/timesync/clock"
+	if !paths.New(clockFile).Exist() {
+		feedback.Warnf("Clock time synchronization service file %s not found", clockFile)
+		return
+	}
+	cmd := exec.Command("touch", clockFile)
+	if err := cmd.Run(); err != nil {
+		feedback.Warnf("Error touch clock time synchronization service file %s", clockFile)
+	}
 }

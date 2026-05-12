@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/arduino/arduino-linux-config/internal/registry"
+	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
 func Test_parseArguments(t *testing.T) {
@@ -12,40 +12,40 @@ func Test_parseArguments(t *testing.T) {
 		name        string
 		carrierName string
 		args        []string
-		want        map[registry.CarrierDeviceName]string
+		want        []status.StatusDevice
 		wantErr     bool
 	}{
 		{
 			name: "One single configuration",
 			args: []string{"display=8-dsi-touch-a"},
-			want: map[registry.CarrierDeviceName]string{
-				"display": "8-dsi-touch-a",
+			want: []status.StatusDevice{
+				{Device: "display", Option: "8-dsi-touch-a"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "Two configuration in one string",
 			args: []string{"display=8-dsi-touch-a,camera0=type1-2lanes"},
-			want: map[registry.CarrierDeviceName]string{
-				"display": "8-dsi-touch-a",
-				"camera0": "type1-2lanes",
+			want: []status.StatusDevice{
+				{Device: "display", Option: "8-dsi-touch-a"},
+				{Device: "camera0", Option: "type1-2lanes"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "Happy path: multiple arguments and spaces",
 			args: []string{" display=8-dsi-touch-a ", " camera0 = type1-2lanes "},
-			want: map[registry.CarrierDeviceName]string{
-				"display": "8-dsi-touch-a",
-				"camera0": "type1-2lanes",
+			want: []status.StatusDevice{
+				{Device: "display", Option: "8-dsi-touch-a"},
+				{Device: "camera0", Option: "type1-2lanes"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "One option defined with a comma",
 			args: []string{"camera0=type1-2lanes,"},
-			want: map[registry.CarrierDeviceName]string{
-				"camera0": "type1-2lanes",
+			want: []status.StatusDevice{
+				{Device: "camera0", Option: "type1-2lanes"},
 			},
 			wantErr: false,
 		},
@@ -58,6 +58,12 @@ func Test_parseArguments(t *testing.T) {
 		{
 			name:    "Error: missing equals sign, invalid format",
 			args:    []string{"camera0"},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "Error: duplicated device in arguments, invalid format",
+			args:    []string{"camera0=type1-2lanes", "camera0=type1-4lanes"},
 			want:    nil,
 			wantErr: true,
 		},

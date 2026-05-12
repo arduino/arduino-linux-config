@@ -26,7 +26,7 @@ body:
     attributes:
       label: Arduino App CLI version
       description: |
-        Which version of Arduino App CLI are you using? (output of `arduino-app-cli version` executed inside the board)
+        Which version of Arduino App CLI are you using? (output of `arduino-linux-config version` executed inside the board)
         _This should be the most recent version available._
     validations:
       required: true
@@ -43,7 +43,7 @@ body:
       label: Issue checklist
       description: Please double-check that you have done each of the following things before submitting the issue.
       options:
-        - label: I searched for previous requests in [the issue tracker](https://github.com/arduino/arduino-app-cli/issues?q=)
+        - label: I searched for previous requests in [the issue tracker](https://github.com/arduino/arduino-linux-config/issues?q=)
           required: true
         - label: I verified the feature was still missing when using the latest version
           required: true

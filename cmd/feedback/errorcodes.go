@@ -56,4 +56,9 @@ const (
 
 	// ErrMissingProgrammer is returned when the programmer argument is missing (11)
 	ErrMissingProgrammer
+
+	_ // skip (12)
+
+	// ErrPermissionDenied is returned when the command must be run as root but is not (13)
+	ErrPermissionDenied
 )

@@ -41,6 +41,7 @@ func run() error {
 
 	rootCmd.AddCommand(
 		carrier.NewCarrierCmd(),
+		NewVersionCmd(),
 	)
 
 	ctx := context.Background()
@@ -65,4 +66,26 @@ func ParseLogLevel(level string) (slog.Level, error) {
 		return 0, fmt.Errorf("invalid log level: %w", err)
 	}
 	return l, nil
+}
+
+func NewVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:  "version",
+		Long: "Print version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			feedback.PrintResult(VersionInfo{Version: Version})
+		},
+	}
+}
+
+type VersionInfo struct {
+	Version string `json:"version"`
+}
+
+func (v VersionInfo) String() string {
+	return fmt.Sprintf("Arduino Linux Config %s", v.Version)
+}
+
+func (v VersionInfo) Data() any {
+	return v
 }
