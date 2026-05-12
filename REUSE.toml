@@ -1,0 +1,53 @@
+version = 1
+
+# .licenses files
+[[annotations]]
+path = ".licenses/**"
+SPDX-FileCopyrightText = "Arduino s.r.l. and/or its affiliated companies"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# .github files
+[[annotations]]
+path = ".github/**"
+SPDX-FileCopyrightText = "Arduino s.r.l. and/or its affiliated companies"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Debian build scripts
+[[annotations]]
+path = "debian/**"
+SPDX-FileCopyrightText = "Arduino s.r.l. and/or its affiliated companies"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Docs
+[[annotations]]
+path = [
+  "docs/**",
+]
+SPDX-FileCopyrightText = "Arduino s.r.l. and/or its affiliated companies"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Scripts
+[[annotations]]
+path = "scripts/**"
+SPDX-FileCopyrightText = "Arduino s.r.l. and/or its affiliated companies"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Tool-generated or configuration files.
+[[annotations]]
+path = [
+  ".editorconfig",
+  ".golangci.yml",
+  ".gitignore",
+  ".licensed.yml",
+  "dprint.json",
+  "adbd.Dockerfile",
+  "Taskfile.yaml",
+  "go.mod",
+  "go.sum",
+  "README.md",
+  "internal/api/docs/**",
+  "tests/integration/Dockerfile",
+  "license_header.tpl",
+]
+SPDX-FileCopyrightText = "Arduino s.r.l. and/or its affiliated companies"
+SPDX-License-Identifier = "GPL-3.0-or-later"
