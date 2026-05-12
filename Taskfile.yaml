@@ -114,38 +114,38 @@ tasks:
       - |
           adb shell "
           echo 'Powering on blue LEDs...'
-          echo 1 > /sys/class/leds/media-carrier:blue1/brightness
-          echo 1 > /sys/class/leds/media-carrier:blue2/brightness
-          echo 1 > /sys/class/leds/media-carrier:blue3/brightness
-          echo 1 > /sys/class/leds/media-carrier:blue4/brightness
+          echo 1 > /dev/leds/media-carrier/led1_b/brightness
+          echo 1 > /dev/leds/media-carrier/led2_b/brightness
+          echo 1 > /dev/leds/media-carrier/led3_b/brightness
+          echo 1 > /dev/leds/media-carrier/led4_b/brightness
           sleep 3
           echo 'Powering on blue LEDs...'
-          echo 0 > /sys/class/leds/media-carrier:blue1/brightness
-          echo 0 > /sys/class/leds/media-carrier:blue2/brightness
-          echo 0 > /sys/class/leds/media-carrier:blue3/brightness
-          echo 0 > /sys/class/leds/media-carrier:blue4/brightness
+          echo 0 > /dev/leds/media-carrier/led1_b/brightness
+          echo 0 > /dev/leds/media-carrier/led2_b/brightness
+          echo 0 > /dev/leds/media-carrier/led3_b/brightness
+          echo 0 > /dev/leds/media-carrier/led4_b/brightness
           echo 'Powering on red LEDs...'
-          echo 1 > /sys/class/leds/media-carrier:red1/brightness
-          echo 1 > /sys/class/leds/media-carrier:red2/brightness
-          echo 1 > /sys/class/leds/media-carrier:red3/brightness
-          echo 1 > /sys/class/leds/media-carrier:red4/brightness
+          echo 1 > /dev/leds/media-carrier/led1_r/brightness
+          echo 1 > /dev/leds/media-carrier/led2_r/brightness
+          echo 1 > /dev/leds/media-carrier/led3_r/brightness
+          echo 1 > /dev/leds/media-carrier/led4_r/brightness
           sleep 3
           echo 'Powering off red LEDs...'
-          echo 0 > /sys/class/leds/media-carrier:red1/brightness
-          echo 0 > /sys/class/leds/media-carrier:red2/brightness
-          echo 0 > /sys/class/leds/media-carrier:red3/brightness
-          echo 0 > /sys/class/leds/media-carrier:red4/brightness
+          echo 0 > /dev/leds/media-carrier/led1_r/brightness
+          echo 0 > /dev/leds/media-carrier/led2_r/brightness
+          echo 0 > /dev/leds/media-carrier/led3_r/brightness
+          echo 0 > /dev/leds/media-carrier/led4_r/brightness
           echo 'Powering on green LEDs...'
-          echo 1 > /sys/class/leds/media-carrier:green1/brightness
-          echo 1 > /sys/class/leds/media-carrier:green2/brightness
-          echo 1 > /sys/class/leds/media-carrier:green3/brightness
-          echo 1 > /sys/class/leds/media-carrier:green4/brightness
+          echo 1 > /dev/leds/media-carrier/led1_g/brightness
+          echo 1 > /dev/leds/media-carrier/led2_g/brightness
+          echo 1 > /dev/leds/media-carrier/led3_g/brightness
+          echo 1 > /dev/leds/media-carrier/led4_g/brightness
           sleep 3
           echo 'Powering off green LEDs...'
-          echo 0 > /sys/class/leds/media-carrier:green1/brightness
-          echo 0 > /sys/class/leds/media-carrier:green2/brightness
-          echo 0 > /sys/class/leds/media-carrier:green3/brightness
-          echo 0 > /sys/class/leds/media-carrier:green4/brightness
+          echo 0 > /dev/leds/media-carrier/led1_g/brightness
+          echo 0 > /dev/leds/media-carrier/led2_g/brightness
+          echo 0 > /dev/leds/media-carrier/led3_g/brightness
+          echo 0 > /dev/leds/media-carrier/led4_g/brightness
           echo 'Done!'
           "
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-dependencies-task/Taskfile.yml
