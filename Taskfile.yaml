@@ -107,6 +107,47 @@ tasks:
       - adb push ./build/arduino-linux-config_*_arm64.deb /tmp/
       - ./scripts/run-remote-sudo.sh "dpkg -i /tmp/arduino-linux-config*_arm64.deb && needrestart -r a"
 
+  board:leds:check:
+    desc: Iterate through blue, red, green LEDs and power them on, then off
+    silent: true
+    cmds:
+      - |
+          adb shell "
+          echo 'Powering on blue LEDs...'
+          echo 1 > /dev/leds/media-carrier/led1_b/brightness
+          echo 1 > /dev/leds/media-carrier/led2_b/brightness
+          echo 1 > /dev/leds/media-carrier/led3_b/brightness
+          echo 1 > /dev/leds/media-carrier/led4_b/brightness
+          sleep 3
+          echo 'Powering on blue LEDs...'
+          echo 0 > /dev/leds/media-carrier/led1_b/brightness
+          echo 0 > /dev/leds/media-carrier/led2_b/brightness
+          echo 0 > /dev/leds/media-carrier/led3_b/brightness
+          echo 0 > /dev/leds/media-carrier/led4_b/brightness
+          echo 'Powering on red LEDs...'
+          echo 1 > /dev/leds/media-carrier/led1_r/brightness
+          echo 1 > /dev/leds/media-carrier/led2_r/brightness
+          echo 1 > /dev/leds/media-carrier/led3_r/brightness
+          echo 1 > /dev/leds/media-carrier/led4_r/brightness
+          sleep 3
+          echo 'Powering off red LEDs...'
+          echo 0 > /dev/leds/media-carrier/led1_r/brightness
+          echo 0 > /dev/leds/media-carrier/led2_r/brightness
+          echo 0 > /dev/leds/media-carrier/led3_r/brightness
+          echo 0 > /dev/leds/media-carrier/led4_r/brightness
+          echo 'Powering on green LEDs...'
+          echo 1 > /dev/leds/media-carrier/led1_g/brightness
+          echo 1 > /dev/leds/media-carrier/led2_g/brightness
+          echo 1 > /dev/leds/media-carrier/led3_g/brightness
+          echo 1 > /dev/leds/media-carrier/led4_g/brightness
+          sleep 3
+          echo 'Powering off green LEDs...'
+          echo 0 > /dev/leds/media-carrier/led1_g/brightness
+          echo 0 > /dev/leds/media-carrier/led2_g/brightness
+          echo 0 > /dev/leds/media-carrier/led3_g/brightness
+          echo 0 > /dev/leds/media-carrier/led4_g/brightness
+          echo 'Done!'
+          "
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-dependencies-task/Taskfile.yml
   general:cache-dep-licenses:
     desc: Cache dependency license metadata
