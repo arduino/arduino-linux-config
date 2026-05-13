@@ -1,17 +1,5 @@
 version = 1
 
-# .licenses files
-[[annotations]]
-path = ".licenses/**"
-SPDX-FileCopyrightText = "Arduino s.r.l. and/or its affiliated companies"
-SPDX-License-Identifier = "GPL-3.0-or-later"
-
-# .github files
-[[annotations]]
-path = ".github/**"
-SPDX-FileCopyrightText = "Arduino s.r.l. and/or its affiliated companies"
-SPDX-License-Identifier = "GPL-3.0-or-later"
-
 # Debian build scripts
 [[annotations]]
 path = "debian/**"
