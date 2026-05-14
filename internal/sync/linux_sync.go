@@ -7,8 +7,8 @@
 
 package sync
 
-import "golang.org/x/sys/unix"
+import "syscall"
 
 func SyncToDisk() {
-	unix.Sync()
+	syscall.Sync()
 }
