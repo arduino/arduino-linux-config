@@ -50,7 +50,7 @@ func Apply(ctx context.Context, overlays []string) error {
 	// Flush kernel buffers to disk to ensure the DTB is persisted
 	// before the system potentially reboots or loses power.
 	sync.SyncToDisk()
-
+	return nil
 }
 
 func buildFdtoverlayCommandAt(overlays []string, now time.Time) ([]string, *paths.Path) {
