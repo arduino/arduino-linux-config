@@ -37,3 +37,14 @@ updates:
     labels:
       - "dependencies"
       - "gomod"
+  # Maintain dependencies for docker
+  - package-ecosystem: "docker"
+    directory: "/debian"
+    registries:
+      - bcmi-labs-github-actions
+    schedule:
+      interval: "weekly" # or "daily", "monthly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "docker"
