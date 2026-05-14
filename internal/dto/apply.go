@@ -8,10 +8,10 @@ package dto
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"slices"
 	"time"
 
+	"github.com/arduino/arduino-linux-config/internal/sync"
 	"github.com/arduino/go-paths-helper"
 )
 
@@ -49,11 +49,8 @@ func Apply(ctx context.Context, overlays []string) error {
 
 	// Flush kernel buffers to disk to ensure the DTB is persisted
 	// before the system potentially reboots or loses power.
-	err = exec.Command("sync").Run()
-	if err != nil {
-		return fmt.Errorf("failed to sync filesystem: %w", err)
-	}
-	return nil
+	sync.SyncToDisk()
+
 }
 
 func buildFdtoverlayCommandAt(overlays []string, now time.Time) ([]string, *paths.Path) {
