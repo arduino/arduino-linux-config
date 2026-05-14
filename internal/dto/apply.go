@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/arduino/go-paths-helper"
+
+	"github.com/arduino/arduino-linux-config/internal/sync"
 )
 
 var fdtoverlayPath = paths.New("/usr/bin/fdtoverlay")
@@ -46,6 +48,9 @@ func Apply(ctx context.Context, overlays []string) error {
 		return fmt.Errorf("failed to move %s to %s: %w", tempFile, systemDTB, err)
 	}
 
+	// Flush kernel buffers to disk to ensure the DTB is persisted
+	// before the system potentially reboots or loses power.
+	sync.SyncToDisk()
 	return nil
 }
 
