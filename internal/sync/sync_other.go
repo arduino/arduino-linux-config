@@ -8,5 +8,5 @@
 package sync
 
 func SyncToDisk() {
-	// No-op on Windows, as the OS handles disk synchronization automatically.
+	// No-op on any other OSs.
 }
