@@ -8,6 +8,7 @@ package dto
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"slices"
 	"time"
 
@@ -46,6 +47,12 @@ func Apply(ctx context.Context, overlays []string) error {
 		return fmt.Errorf("failed to move %s to %s: %w", tempFile, systemDTB, err)
 	}
 
+	// Flush kernel buffers to disk to ensure the DTB is persisted
+	// before the system potentially reboots or loses power.
+	err = exec.Command("sync").Run()
+	if err != nil {
+		return fmt.Errorf("failed to sync filesystem: %w", err)
+	}
 	return nil
 }
 
