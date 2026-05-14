@@ -11,8 +11,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/arduino/arduino-linux-config/internal/sync"
 	"github.com/arduino/go-paths-helper"
+
+	"github.com/arduino/arduino-linux-config/internal/sync"
 )
 
 var fdtoverlayPath = paths.New("/usr/bin/fdtoverlay")
