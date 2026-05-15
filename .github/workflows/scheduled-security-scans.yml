@@ -10,7 +10,7 @@
 name: Scheduled Security Full Scan
 on:
   schedule:
-    - cron: '0 3 * * MON'
+    - cron: "0 3 * * MON"
 
 permissions:
   contents: read
