@@ -7,8 +7,10 @@ package carrier
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
+	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
@@ -82,6 +84,90 @@ func Test_parseArguments(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseArguments() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCollectDtboFiles(t *testing.T) {
+	reg := registry.New()
+	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
+	if !exists {
+		t.Fatalf("Failed to initialize production test: MediaCarrier registry not found")
+	}
+
+	tests := []struct {
+		name          string
+		userSelection []status.StatusDevice
+		want          []string
+	}{
+		{
+			name: "Camera0 selection without compatibility issues",
+			userSelection: []status.StatusDevice{
+				{Device: "camera0", Option: "type1-2lanes"},
+			},
+			want: []string{
+				"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
+				"qrb2210-arduino-imola-carrier-media.dtbo",
+				"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+			},
+		},
+		{
+			name: "Incompatible Selection - All devices",
+			userSelection: []status.StatusDevice{
+				{Device: "camera0", Option: "type1-4lanes"},
+				{Device: "camera1", Option: "type1-4lanes"},
+				{Device: "display", Option: "8-dsi-touch-a"},
+			},
+			want: []string{
+				"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo",
+				"qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo",
+				"qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
+				"qrb2210-arduino-imola-carrier-media.dtbo",
+			},
+		},
+		{
+			name: "Incompatible Selection - Touchscreen triggers deletion of video_sound-usbc",
+			userSelection: []status.StatusDevice{
+				{Device: "display", Option: "8-dsi-touch-a"},
+			},
+			want: []string{
+				"qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
+				"qrb2210-arduino-imola-carrier-media.dtbo",
+			},
+		},
+		{
+			name: "Invalid device names are ignored completely",
+			userSelection: []status.StatusDevice{
+				{Device: "unknown-hw", Option: "none"},
+				{Device: "camera0", Option: "invalid-option-str"},
+			},
+			want: []string{
+				"qrb2210-arduino-imola-carrier-media.dtbo",
+				"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+			},
+		},
+		{
+			name: "Compound Selection - Multiple Devices",
+			userSelection: []status.StatusDevice{
+				{Device: "camera0", Option: "none"},
+				{Device: "camera1", Option: "none"},
+			},
+			want: []string{
+				"qrb2210-arduino-imola-carrier-media.dtbo",
+				"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			overlays := collectDtboFiles(carrier, tt.userSelection)
+
+			slices.Sort(overlays)
+			overlays = slices.Compact(overlays)
+			if !slices.Equal(overlays, tt.want) {
+				t.Errorf("\nGot:  %v\nWant: %v", overlays, tt.want)
 			}
 		})
 	}
