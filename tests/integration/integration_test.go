@@ -173,7 +173,7 @@ func TestCarrierList(t *testing.T) {
 	require.Equal(t, listDeviceResult{
 		Name:             "display",
 		DeviceType:       "display",
-		AvailableDevices: []string{"none", "8-dsi-touch-a"},
+		AvailableDevices: []string{"none", "5-dsi-touch-a", "8-dsi-touch-a", "10-dsi-touch-a"},
 	}, carrier.Devices[2])
 }
 
