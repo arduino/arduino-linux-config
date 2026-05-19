@@ -142,10 +142,30 @@ func New() CarrierRegistry {
 							DtboFiles: []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
 						},
 						{
+							Name: "5-dsi-touch-a",
+							DtboFiles: []string{
+								"qrb2210-arduino-imola-carrier-media.dtbo",
+								"qrb2210-arduino-imola-carrier-media-panel-5in_touch_a-dsi.dtbo",
+							},
+							IncompatibleDtbo: []string{
+								"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+							},
+						},
+						{
 							Name: "8-dsi-touch-a",
 							DtboFiles: []string{
 								"qrb2210-arduino-imola-carrier-media.dtbo",
 								"qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
+							},
+							IncompatibleDtbo: []string{
+								"qrb2210-arduino-imola-video_sound-usbc.dtbo",
+							},
+						},
+						{
+							Name: "10-dsi-touch-a",
+							DtboFiles: []string{
+								"qrb2210-arduino-imola-carrier-media.dtbo",
+								"qrb2210-arduino-imola-carrier-media-panel-10in_touch_a-dsi.dtbo",
 							},
 							IncompatibleDtbo: []string{
 								"qrb2210-arduino-imola-video_sound-usbc.dtbo",

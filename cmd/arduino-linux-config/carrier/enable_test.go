@@ -158,6 +158,16 @@ func TestCollectDtboFiles(t *testing.T) {
 				"qrb2210-arduino-imola-video_sound-usbc.dtbo",
 			},
 		},
+		{
+			name: "Touchscreen 10 triggers deletion of video_sound-usbc",
+			userSelection: []status.StatusDevice{
+				{Device: "display", Option: "10-dsi-touch-a"},
+			},
+			want: []string{
+				"qrb2210-arduino-imola-carrier-media-panel-10in_touch_a-dsi.dtbo",
+				"qrb2210-arduino-imola-carrier-media.dtbo",
+			},
+		},
 	}
 
 	for _, tt := range tests {
