@@ -12,11 +12,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/arduino/go-paths-helper"
 
-	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
@@ -60,7 +58,7 @@ func Update(cfg config.Configuration, carrier registry.Carrier, statusUpdate Car
 		return fmt.Errorf("failed to get boot-id: %w", err)
 	}
 	currentStatus, _ := getStatusStructure(status, carrier, currentBootId)
-	updateStatusStructure(status, carrier, currentStatus, statusUpdate)
+	updateStatusStructure(status, carrier, currentStatus, statusUpdate, currentBootId)
 
 	if err := saveStatusFile(getStatusFile(cfg, carrier.Name), *status); err != nil {
 		return fmt.Errorf("failed to save status file: %w", err)
@@ -120,11 +118,7 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, currentBoo
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
-	bootId, _ := getCurrentBootID()
-	// make sure system time is greater than or equal to the time used in the state file.
-	forceTimeSynchronizationPersistence()
-
+func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus, bootId string) {
 	// set curr
 	for _, dev := range currentStatus.StatusDevices {
 		currInfo := StatusInfo{
@@ -204,23 +198,6 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 		return fmt.Errorf("write error: %w", err)
 	}
 	return nil
-}
-
-// forceTimeSynchronizationPersistence manually persists the current
-// system time to disk. The systemd-timesyncd service normally updates
-// this file during every synchronization, or every 60 seconds if no
-// updates occur.
-// See: https://www.man7.org/linux/man-pages/man5/timesyncd.conf.5.html
-func forceTimeSynchronizationPersistence() {
-	clockFile := "/var/lib/systemd/timesync/clock"
-	if !paths.New(clockFile).Exist() {
-		feedback.Warnf("Clock time synchronization service file %s not found", clockFile)
-		return
-	}
-	cmd := exec.Command("touch", clockFile)
-	if err := cmd.Run(); err != nil {
-		feedback.Warnf("Error touch clock time synchronization service file %s", clockFile)
-	}
 }
 
 func getCurrentBootID() (string, error) {

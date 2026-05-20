@@ -61,12 +61,12 @@ func TestUpdateStatusStructure(t *testing.T) {
 				},
 			}
 
-			currentBootId, _ := getCurrentBootID()
+			currentBootId := "001"
 			mediaCarrier, exist := registry.New().FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
-			updateStatusStructure(status, mediaCarrier, CarrierStatus{}, tt.statusUpdate)
+			updateStatusStructure(status, mediaCarrier, CarrierStatus{}, tt.statusUpdate, currentBootId)
 			carrierDeviceLenght := len(mediaCarrier.Devices)
 			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
