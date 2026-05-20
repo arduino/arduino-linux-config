@@ -6,16 +6,13 @@
 package status
 
 import (
+	"bytes"
 	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"os/exec"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/arduino/go-paths-helper"
 
@@ -30,15 +27,15 @@ type StatusFile struct {
 }
 
 type StatusCarrier struct {
-	Status    bool      `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	Status    bool   `json:"status"`
+	CreatedAt string `json:"created_at"`
 
 	Devices map[registry.CarrierDeviceName]StatusInfo `json:"devices"`
 }
 
 type StatusInfo struct {
-	Option    string    `json:"option"`
-	CreatedAt time.Time `json:"created_at"`
+	Option    string `json:"option"`
+	CreatedAt string `json:"created_at"`
 }
 
 type CarrierStatus struct {
@@ -58,12 +55,11 @@ func Update(cfg config.Configuration, carrier registry.Carrier, statusUpdate Car
 		return fmt.Errorf("failed to load status file %w", err)
 	}
 
-	// save current state if reboot occurred
-	bootTime, err := getBootTime()
+	currentBootId, err := getCurrentBootID()
 	if err != nil {
-		return fmt.Errorf("failed to get boot time: %w", err)
+		return fmt.Errorf("failed to get boot-id: %w", err)
 	}
-	currentStatus, _ := getStatusStructure(status, carrier, bootTime)
+	currentStatus, _ := getStatusStructure(status, carrier, currentBootId)
 	updateStatusStructure(status, carrier, currentStatus, statusUpdate)
 
 	if err := saveStatusFile(getStatusFile(cfg, carrier.Name), *status); err != nil {
@@ -80,16 +76,16 @@ func Get(cfg config.Configuration, carrier registry.Carrier) (CarrierStatus, Car
 		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to load status file %v", err)
 	}
 
-	bootTime, err := getBootTime()
+	currentBootId, err := getCurrentBootID()
 	if err != nil {
-		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to get boot time: %v", err)
+		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to get boot-id: %v", err)
 	}
 
-	current, next := getStatusStructure(status, carrier, bootTime)
+	current, next := getStatusStructure(status, carrier, currentBootId)
 	return current, next, nil
 }
 
-func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime time.Time) (CarrierStatus, CarrierStatus) {
+func getStatusStructure(status *StatusFile, carrier registry.Carrier, currentBootId string) (CarrierStatus, CarrierStatus) {
 	current := CarrierStatus{
 		Enable:        false,
 		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
@@ -101,7 +97,7 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime t
 
 	for _, device := range carrier.Devices {
 		// parse next structure, move in actual events happened before the boot
-		if status.NextStatus.Devices[device.Name].CreatedAt.Before(bootTime) {
+		if status.NextStatus.Devices[device.Name].CreatedAt != currentBootId {
 			status.CurrentStatus.Devices[device.Name] = status.NextStatus.Devices[device.Name]
 		}
 		current.StatusDevices = append(current.StatusDevices, StatusDevice{
@@ -114,7 +110,7 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime t
 		})
 	}
 
-	if status.NextStatus.CreatedAt.Before(bootTime) {
+	if status.NextStatus.CreatedAt != currentBootId {
 		status.CurrentStatus.Status = status.NextStatus.Status
 	}
 
@@ -125,7 +121,7 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, bootTime t
 }
 
 func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus) {
-	now := time.Now().UTC()
+	bootId, _ := getCurrentBootID()
 	// make sure system time is greater than or equal to the time used in the state file.
 	forceTimeSynchronizationPersistence()
 
@@ -133,12 +129,12 @@ func updateStatusStructure(status *StatusFile, carrier registry.Carrier, current
 	for _, dev := range currentStatus.StatusDevices {
 		currInfo := StatusInfo{
 			Option:    getOrDefault(dev.Option),
-			CreatedAt: now,
+			CreatedAt: bootId,
 		}
 		status.CurrentStatus.Devices[registry.CarrierDeviceName(dev.Device)] = currInfo
 	}
 	status.CurrentStatus.Status = currentStatus.Enable
-	status.CurrentStatus.CreatedAt = now
+	status.CurrentStatus.CreatedAt = bootId
 
 	findOption := func(deviceName registry.CarrierDeviceName) string {
 		for _, dev := range statusUpdate.StatusDevices {
@@ -153,41 +149,16 @@ func updateStatusStructure(status *StatusFile, carrier registry.Carrier, current
 	for _, device := range carrier.Devices {
 		status.NextStatus.Devices[device.Name] = StatusInfo{
 			Option:    findOption(device.Name),
-			CreatedAt: now,
+			CreatedAt: bootId,
 		}
 
 	}
 	status.NextStatus.Status = statusUpdate.Enable
-	status.NextStatus.CreatedAt = now
+	status.NextStatus.CreatedAt = bootId
 }
 
 func getOrDefault(option string) string {
 	return cmp.Or(option, string(registry.None))
-}
-
-// Compute the boot time by subtracting the uptime from the current time.
-// This will be compared with the timestamp stored in the configuration file.
-// An extra 5 seconds to account for the duration of the shutdown procedure.
-func getBootTime() (time.Time, error) {
-	data, err := os.ReadFile("/proc/uptime")
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to read /proc/uptime: %w", err)
-	}
-
-	fields := strings.Fields(string(data))
-	if len(fields) == 0 {
-		return time.Time{}, fmt.Errorf("unexpected /proc/uptime format")
-	}
-
-	uptimeSeconds, err := strconv.ParseFloat(fields[0], 64)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to parse uptime: %w", err)
-	}
-	uptimeSeconds -= 5 // take into account shutdown time
-	uptime := time.Duration(math.Round(uptimeSeconds)) * time.Second
-	bootTime := time.Now().UTC().Add(-uptime)
-
-	return bootTime, nil
 }
 
 func getStatusFile(cfg config.Configuration, carrierName registry.CarrierName) *paths.Path {
@@ -250,4 +221,14 @@ func forceTimeSynchronizationPersistence() {
 	if err := cmd.Run(); err != nil {
 		feedback.Warnf("Error touch clock time synchronization service file %s", clockFile)
 	}
+}
+
+func getCurrentBootID() (string, error) {
+	bootID, err := os.ReadFile("/proc/sys/kernel/random/boot_id")
+	if err != nil {
+		return "", err
+	}
+
+	cleanedBytes := bytes.TrimSpace(bootID)
+	return string(cleanedBytes), nil
 }

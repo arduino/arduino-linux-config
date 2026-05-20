@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/arduino/go-paths-helper"
 
@@ -62,7 +61,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 				},
 			}
 
-			startTime := time.Now().UTC().Truncate(time.Second)
+			currentBootId, _ := getCurrentBootID()
 			mediaCarrier, exist := registry.New().FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
@@ -84,7 +83,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 						t.Errorf("device %s: got option %s, want %s", device.Name, info.Option, tt.wantResult[device.Name])
 					}
 
-					if info.CreatedAt.Before(startTime) {
+					if info.CreatedAt != currentBootId {
 						t.Errorf("device %s: timestamp %v is too old", device.Name, info.CreatedAt)
 					}
 				}
@@ -94,10 +93,10 @@ func TestUpdateStatusStructure(t *testing.T) {
 }
 
 func TestGetStatusStructure(t *testing.T) {
-	// set boot times
-	bootTime := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	beforeBoot := bootTime.Add(-1 * time.Hour)
-	afterBoot := bootTime.Add(1 * time.Hour)
+	// set boot ids
+	currentBootId := "123"
+	prevCurrentBootId := "001"
+	afterConfigurationBootId := currentBootId
 
 	tests := []struct {
 		name            string
@@ -113,7 +112,7 @@ func TestGetStatusStructure(t *testing.T) {
 				},
 				NextStatus: StatusCarrier{
 					Devices: map[registry.CarrierDeviceName]StatusInfo{
-						registry.Camera0: {Option: "cam1", CreatedAt: beforeBoot},
+						registry.Camera0: {Option: "cam1", CreatedAt: prevCurrentBootId},
 					},
 				},
 			},
@@ -136,8 +135,8 @@ func TestGetStatusStructure(t *testing.T) {
 				},
 				NextStatus: StatusCarrier{
 					Devices: map[registry.CarrierDeviceName]StatusInfo{
-						registry.Camera0: {Option: "cam1", CreatedAt: afterBoot},    // fresh
-						registry.Display: {Option: "display", CreatedAt: afterBoot}, // fresh
+						registry.Camera0: {Option: "cam1", CreatedAt: afterConfigurationBootId},    // fresh
+						registry.Display: {Option: "display", CreatedAt: afterConfigurationBootId}, // fresh
 					},
 				},
 			},
@@ -160,7 +159,7 @@ func TestGetStatusStructure(t *testing.T) {
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
-			current, next := getStatusStructure(tt.initialStatus, mediaCarrier, bootTime)
+			current, next := getStatusStructure(tt.initialStatus, mediaCarrier, currentBootId)
 
 			// Validate Current Slice
 			for i, want := range tt.expectedCurrent {
