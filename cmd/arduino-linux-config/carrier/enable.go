@@ -58,10 +58,10 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
 // we must track both the current and next states.
 //
 // State management is handled via a status file updated on device configurations.
-// This file stores the device name, configuration options, and a metadata timestamp.
+// This file stores the device name, configuration options, and a string, the boot-id
 //
-// When a status request occurs, the system compares the last boot time with
-// the configuration timestamp to update the current and next states.
+// When a status request occurs, the system compares the boot-id stored in the
+// the configuration abd update the current values.
 func enableHandler(ctx context.Context, reg registry.CarrierRegistry, cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
