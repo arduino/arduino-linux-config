@@ -11,12 +11,7 @@ env:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04]
-        arch: [arm64]
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Set env vars
@@ -40,7 +35,7 @@ jobs:
 
       - name: Build deb
         run: |
-          go tool task build-deb VERSION=${TAG_VERSION} ARCH=${{ matrix.arch }} RELEASE="true"
+          go tool task build-deb VERSION=${TAG_VERSION} ARCH=arm64 RELEASE="true"
 
       - name: Create Github Release and upload artifacts
         uses: ncipollo/release-action@v1
