@@ -26,6 +26,10 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    cooldown:
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 7
   # Maintain dependencies for gomod
   - package-ecosystem: "gomod"
     directory: "/"
@@ -37,6 +41,10 @@ updates:
     labels:
       - "dependencies"
       - "gomod"
+    cooldown:
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 7
   # Maintain dependencies for docker
   - package-ecosystem: "docker"
     directory: "/debian"
@@ -48,3 +56,7 @@ updates:
     labels:
       - "dependencies"
       - "docker"
+    cooldown:
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 7
