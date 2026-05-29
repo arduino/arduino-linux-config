@@ -27,9 +27,7 @@ updates:
       - "dependencies"
       - "github-actions"
     cooldown:
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 7
+      default-days: 7
   # Maintain dependencies for gomod
   - package-ecosystem: "gomod"
     directory: "/"
@@ -57,6 +55,4 @@ updates:
       - "dependencies"
       - "docker"
     cooldown:
-      semver-major-days: 30
-      semver-minor-days: 7
-      semver-patch-days: 7
+      default-days: 7
