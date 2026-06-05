@@ -18,6 +18,9 @@ updates:
   # Maintain dependencies for github-actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    exclude-paths:
+      - ".github/workflows/scheduled-security-scans.yml"
+      - ".github/workflows/security-pr.yml"
     registries:
       - bcmi-labs-github-actions
     schedule:
