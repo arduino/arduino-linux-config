@@ -5,10 +5,6 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+*"
 
-env:
-  GITHUB_TOKEN: ${{ secrets.ARDUINOBOT_TOKEN }}
-  GITHUB_USERNAME: ArduinoBot
-
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -24,10 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure Git for private repo cloning
-        run: |
-          git config --global url."https://${{ env.GITHUB_USERNAME }}:${{ env.GITHUB_TOKEN }}@github.com".insteadOf "https://github.com"
-
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -40,7 +32,7 @@ jobs:
       - name: Create Github Release and upload artifacts
         uses: ncipollo/release-action@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token:  ${{ secrets.ARDUINOBOT_TOKEN }}
           draft: false
           prerelease: true
           artifacts: build/*.deb
