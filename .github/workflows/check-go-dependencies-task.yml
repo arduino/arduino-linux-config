@@ -51,7 +51,6 @@ jobs:
       - name: Install licensed
         uses: licensee/setup-licensed@v1.3.2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           version: 5.x
 
       - name: Install Go
@@ -111,7 +110,6 @@ jobs:
       - name: Install licensed
         uses: licensee/setup-licensed@v1.3.2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           version: 5.x
 
       - name: Install Go
