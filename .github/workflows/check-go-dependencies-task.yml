@@ -53,7 +53,7 @@ jobs:
           version: 5.x
 
       - name: Install Go
-        uses: actions/setup-go@v6.4.0
+        uses: actions/setup-go@v6.5.0
         with:
           go-version-file: go.mod
 
@@ -112,7 +112,7 @@ jobs:
           version: 5.x
 
       - name: Install Go
-        uses: actions/setup-go@v6.4.0
+        uses: actions/setup-go@v6.5.0
         with:
           go-version-file: go.mod
 
