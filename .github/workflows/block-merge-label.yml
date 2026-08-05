@@ -8,6 +8,9 @@ on:
       - unlabeled
       - synchronize # important for when new commits are pushed
 
+permissions:
+  contents: read
+
 jobs:
   check-do-not-merge-label:
     runs-on: ubuntu-latest
