@@ -12,11 +12,11 @@ const (
 	DeviceTypeDisplay DeviceType = "display"
 )
 
-type CarrierRegistry struct {
+type Registry struct {
 	Carriers []Carrier
 }
 
-func (r CarrierRegistry) FindByName(carrier string) (Carrier, bool) {
+func (r Registry) FindByName(carrier string) (Carrier, bool) {
 	for _, c := range r.Carriers {
 		if string(c.Name) == carrier {
 			return c, true
@@ -70,8 +70,8 @@ type DeviceOption struct {
 	IncompatibleDtbo []string
 }
 
-func New() CarrierRegistry {
-	return CarrierRegistry{
+func New() Registry {
+	return Registry{
 		Carriers: []Carrier{{
 			Name: MediaCarrier,
 			EnabledDtbos: []string{

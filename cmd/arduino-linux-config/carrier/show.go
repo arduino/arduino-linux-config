@@ -19,7 +19,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newShowCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.Command {
+func newShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show [carrier-name]",
 		Short: "Show the current configuration",
@@ -37,7 +37,7 @@ func newShowCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.C
 	}
 }
 
-func showHandler(reg registry.CarrierRegistry, cfg config.Configuration, carrierName string) {
+func showHandler(reg registry.Registry, cfg config.Configuration, carrierName string) {
 	found := false
 	result := showResult{Carriers: make([]showCarrierResult, 0, len(reg.Carriers))}
 

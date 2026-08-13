@@ -12,7 +12,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
-func NewCarrierCmd() *cobra.Command {
+func NewCarrierCmd(reg registry.Registry) *cobra.Command {
 	carrierCmd := &cobra.Command{
 		Use:   "carrier",
 		Short: "Manage Arduino Carriers",
@@ -20,7 +20,6 @@ func NewCarrierCmd() *cobra.Command {
 	}
 
 	cfg := config.New()
-	reg := registry.New()
 
 	carrierCmd.AddCommand(newListCmd(reg))
 	carrierCmd.AddCommand(newEnableCmd(reg, cfg))

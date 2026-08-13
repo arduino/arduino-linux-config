@@ -22,7 +22,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.Command {
+func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "enable <carrier-name> [device=option...]",
 		Short: "Enable and configure a carrier with the specified device options",
@@ -62,7 +62,7 @@ func newEnableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra
 //
 // When a status request occurs, the system compares the boot-id stored in the
 // the configuration abd update the current values.
-func enableHandler(ctx context.Context, reg registry.CarrierRegistry, cfg config.Configuration, carrierName string, deviceArgs []string) {
+func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, carrierName string, deviceArgs []string) {
 	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)

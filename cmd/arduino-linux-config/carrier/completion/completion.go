@@ -15,7 +15,7 @@ import (
 )
 
 // CompleteCarrierName provides completion for carrier names on the first argument.
-func CompleteCarrierName(registry registry.CarrierRegistry, args []string, partial string) ([]cobra.Completion, cobra.ShellCompDirective) {
+func CompleteCarrierName(registry registry.Registry, args []string, partial string) ([]cobra.Completion, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

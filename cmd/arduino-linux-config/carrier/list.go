@@ -16,7 +16,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
-func newListCmd(reg registry.CarrierRegistry) *cobra.Command {
+func newListCmd(reg registry.Registry) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "Lists the available carriers and devices for the current hardware",
@@ -27,7 +27,7 @@ func newListCmd(reg registry.CarrierRegistry) *cobra.Command {
 	}
 }
 
-func listHandler(reg registry.CarrierRegistry) {
+func listHandler(reg registry.Registry) {
 	carriersResult := extractCarriersResult(reg)
 	feedback.PrintResult(carriersResult)
 }
@@ -47,7 +47,7 @@ type DeviceResult struct {
 	AvailableDevices []string `json:"available_devices"`
 }
 
-func extractCarriersResult(reg registry.CarrierRegistry) CarriersResult {
+func extractCarriersResult(reg registry.Registry) CarriersResult {
 	carriersResult := CarriersResult{
 		Carriers: make([]CarrierResult, 0, len(reg.Carriers)),
 	}

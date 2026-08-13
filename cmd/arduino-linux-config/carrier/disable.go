@@ -20,7 +20,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newDisableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobra.Command {
+func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "disable <carrier-name>",
 		Short: "Disable a carrier and restore the base DTB",
@@ -40,7 +40,7 @@ func newDisableCmd(reg registry.CarrierRegistry, cfg config.Configuration) *cobr
 	}
 }
 
-func disableHandler(ctx context.Context, reg registry.CarrierRegistry, cfg config.Configuration, carrierName string) {
+func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, carrierName string) {
 	carrier, exist := reg.FindByName(carrierName)
 	if !exist {
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
