@@ -3,6 +3,7 @@ module github.com/arduino/arduino-linux-config
 go 1.26.4
 
 require (
+	github.com/arduino/arduino-app-cli v0.13.1-0.20260813093559-d8f96004cd78
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.bug.st/cleanup v1.0.0
