@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	appboard "github.com/arduino/arduino-app-cli/pkg/board"
+
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/registry"
@@ -60,15 +61,15 @@ func run() error {
 	if board == "unoq" {
 		rootCmd.AddCommand(
 			carrier.NewCarrierCmd(registry),
+			NewVersionCmd(),
 		)
 	}
 
 	if board == "ventunoq" {
+		rootCmd.AddCommand(
+			NewVersionCmd(),
+		)
 	}
-
-	rootCmd.AddCommand(
-		NewVersionCmd(),
-	)
 
 	ctx := context.Background()
 	ctx, _ = cleanup.InterruptableContext(ctx)
