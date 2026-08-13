@@ -193,7 +193,7 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 	}
 
 	// nolint:gosec // G306: Status file must be readable
-	err = os.WriteFile(statusFile.String(), data, 0644)
+	err = os.WriteFile(statusFile.String(), data, 0600)
 	if err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}

@@ -10,10 +10,11 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 	"github.com/arduino/arduino-linux-config/internal/testutil"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_parseArguments(t *testing.T) {

@@ -20,7 +20,7 @@ func SetupCompatUnoq() func() {
 	if err := os.MkdirAll(compatPath, 0755); err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile(filepath.Join(compatPath, "compatible"), []byte("arduino,imola\x00"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(compatPath, "compatible"), []byte("arduino,imola\x00"), 0600); err != nil {
 		panic(err)
 	}
 	os.Setenv("COMPATIBLE_FS_DIR", compatDir)
@@ -39,7 +39,7 @@ func SetupCompatVentunoq() func() {
 	if err := os.MkdirAll(compatPath, 0755); err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile(filepath.Join(compatPath, "compatible"), []byte("arduino,monza\x00"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(compatPath, "compatible"), []byte("arduino,monza\x00"), 0600); err != nil {
 		panic(err)
 	}
 	os.Setenv("COMPATIBLE_FS_DIR", compatDir)
