@@ -82,10 +82,7 @@ func New() (Registry, error) {
 		return Registry{}, fmt.Errorf("failed to detect board type: %w", err)
 	}
 
-	os, err := config.GetLinuxDistribution()
-	if err != nil {
-		return Registry{}, fmt.Errorf("failed to detect board os: %w", err)
-	}
+	os := config.GetLinuxDistribution()
 
 	if board == "unoq" {
 		return Registry{
@@ -98,6 +95,7 @@ func New() (Registry, error) {
 			Carriers: []Carrier{unoqUbuntuMediaCarrier},
 		}, nil
 	}
+
 	return Registry{}, fmt.Errorf("unsupported board %s on %s", board, os)
 }
 

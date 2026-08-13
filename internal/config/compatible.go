@@ -14,8 +14,6 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-
-	"github.com/arduino/go-paths-helper"
 )
 
 type Compatible []string
@@ -55,22 +53,27 @@ func getCompatibleFromFS(fs fs.FS) Compatible {
 	return compatibles
 }
 
-func GetLinuxDistribution() (string, error) {
-	f, err := paths.New("/etc/os-release").ReadFile()
-	if err != nil {
-		return "", fmt.Errorf("failed to read os-release file: %w", err)
-	}
-
-	s := bufio.NewScanner(bytes.NewReader(f))
-	for s.Scan() {
-		line := s.Text()
-		if strings.HasPrefix(line, "ID=") {
-			prettyName := strings.TrimPrefix(line, "ID=")
-			return strings.Trim(prettyName, "\n\t\" "), nil
+func getLinuxDistributionFromFS(fs fs.FS) string {
+	if f, err := fs.Open("etc/os-release"); err == nil {
+		defer f.Close()
+		s := bufio.NewScanner(f)
+		for s.Scan() {
+			line := s.Text()
+			if strings.HasPrefix(line, "ID=") {
+				prettyName := strings.TrimPrefix(line, "ID=")
+				return strings.Trim(prettyName, "\n\t\" ")
+			}
 		}
 	}
+	return ""
+}
 
-	return "", fmt.Errorf("ID not found in os-release file")
+func GetLinuxDistribution() string {
+	root := "/"
+	if dir := os.Getenv("OS_RELEASE_FS_DIR"); dir != "" {
+		root = dir
+	}
+	return getLinuxDistributionFromFS(os.DirFS(root))
 }
 
 func GetBoardID() (string, error) {

@@ -14,7 +14,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/arduino/arduino-linux-config/internal/registry"
+	"github.com/arduino/arduino-linux-config/internal/testutil"
 )
+
+func TestMain(m *testing.M) {
+	cleanup := testutil.SetupCompatUnoq()
+	defer cleanup()
+	cleanupOS := testutil.SetupOs("debian")
+	defer cleanupOS()
+	os.Exit(m.Run())
+}
 
 func TestUpdateStatusStructure(t *testing.T) {
 	tests := []struct {

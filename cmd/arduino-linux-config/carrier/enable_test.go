@@ -12,6 +12,8 @@ import (
 
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
+	"github.com/arduino/arduino-linux-config/internal/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_parseArguments(t *testing.T) {
@@ -90,6 +92,11 @@ func Test_parseArguments(t *testing.T) {
 }
 
 func TestCollectDtboFiles(t *testing.T) {
+	cleanup := testutil.SetupCompatUnoq()
+	defer cleanup()
+	cleanupOs := testutil.SetupOs("ubuntu")
+	defer cleanupOs()
+
 	reg, _ := registry.New()
 	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
 	if !exists {
@@ -166,6 +173,55 @@ func TestCollectDtboFiles(t *testing.T) {
 			want: []string{
 				"qrb2210-arduino-imola-carrier-media-panel-10in_touch_a-dsi.dtbo",
 				"qrb2210-arduino-imola-carrier-media.dtbo",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			overlays := collectDtboFiles(carrier, tt.userSelection)
+
+			slices.Sort(overlays)
+			overlays = slices.Compact(overlays)
+			if !slices.Equal(overlays, tt.want) {
+				t.Errorf("\nGot:  %v\nWant: %v", overlays, tt.want)
+			}
+		})
+	}
+}
+
+func TestCollectDtboFilesVentunoqCarrier(t *testing.T) {
+	cleanup := testutil.SetupCompatVentunoq()
+	defer cleanup()
+	cleanupOs := testutil.SetupOs("ubuntu")
+	defer cleanupOs()
+
+	reg, err := registry.New()
+	require.NoError(t, err)
+	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
+	if !exists {
+		t.Fatalf("Failed to initialize production test: MediaCarrier registry not found")
+	}
+
+	tests := []struct {
+		name          string
+		userSelection []status.StatusDevice
+		want          []string
+	}{
+		{
+			name: "Camera0 device not exists",
+			userSelection: []status.StatusDevice{
+				{Device: "camera0", Option: "type1-2lanes"},
+			},
+			want: []string{},
+		},
+		{
+			name: "Incompatible Selection - All devices",
+			userSelection: []status.StatusDevice{
+				{Device: "display", Option: "8-dsi-touch-a"},
+			},
+			want: []string{
+				"arduino-ventunoq-dsi-panel-fake.dtbo",
 			},
 		},
 	}
