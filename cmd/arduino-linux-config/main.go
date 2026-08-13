@@ -10,10 +10,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	appboard "github.com/arduino/arduino-app-cli/pkg/board"
-
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 
 	"github.com/spf13/cobra"
@@ -48,7 +47,8 @@ func run() error {
 	rootCmd.PersistentFlags().StringVar(&logLevelStr, "log-level", "error", "Set the log level (debug, info, warn, error)")
 
 	/* resolve registry */
-	board, err := appboard.GetBoardID()
+
+	board, err := getBoardID()
 	if err != nil {
 		return fmt.Errorf("failed to detect board: %w", err)
 	}
@@ -96,6 +96,20 @@ func getRegistry(board string) (registry.Registry, error) {
 	}
 
 	return registry.Registry{}, fmt.Errorf("board registry not found")
+}
+
+func getBoardID() (string, error) {
+	compatible := config.LoadCompatible()
+	slog.Debug("detected platform", "compatible", compatible)
+	switch {
+	case compatible.IsCompatibleWith("arduino,imola"):
+		return "unoq", nil
+	case compatible.IsCompatibleWith("arduino,monza"):
+		return "ventunoq", nil
+	default:
+		slog.Warn("not supported platform", "compatible", compatible)
+	}
+	return "", fmt.Errorf("failed to identify board id")
 }
 
 func ParseLogLevel(level string) (slog.Level, error) {
