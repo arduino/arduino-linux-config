@@ -58,7 +58,7 @@ func SetupOs(osId string) func() {
 	if err := os.MkdirAll(etcPath, 0755); err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile(filepath.Join(etcPath, "os-release"), []byte(fmt.Sprintf("ID=%s\n", osId)), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(etcPath, "os-release"), []byte(fmt.Sprintf("ID=%s\n", osId)), 0600); err != nil {
 		panic(err)
 	}
 	os.Setenv("OS_RELEASE_FS_DIR", etcDir)
