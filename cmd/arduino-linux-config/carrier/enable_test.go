@@ -90,7 +90,7 @@ func Test_parseArguments(t *testing.T) {
 }
 
 func TestCollectDtboFiles(t *testing.T) {
-	reg := registry.New()
+	reg, _ := registry.New()
 	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
 	if !exists {
 		t.Fatalf("Failed to initialize production test: MediaCarrier registry not found")

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/arduino/go-paths-helper"
+	"github.com/stretchr/testify/require"
 
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
@@ -62,7 +63,9 @@ func TestUpdateStatusStructure(t *testing.T) {
 			}
 
 			currentBootId := "001"
-			mediaCarrier, exist := registry.New().FindByName("media-carrier")
+			reg, err := registry.New()
+			require.NoError(t, err)
+			mediaCarrier, exist := reg.FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
@@ -155,7 +158,9 @@ func TestGetStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mediaCarrier, exist := registry.New().FindByName("media-carrier")
+			reg, err := registry.New()
+			require.NoError(t, err)
+			mediaCarrier, exist := reg.FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}

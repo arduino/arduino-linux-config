@@ -6,17 +6,28 @@
 package config
 
 import (
+	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/arduino/go-paths-helper"
 )
 
 type Compatible []string
 
-func LoadCompatible() Compatible {
-	return getCompatibleFromFS(os.DirFS("/"))
+// loadCompatible reads the device-tree compatible strings from the root FS,
+// or from COMPATIBLE_FS_DIR if set (used in integration tests).
+func loadCompatible() Compatible {
+	root := "/"
+	if dir := os.Getenv("COMPATIBLE_FS_DIR"); dir != "" {
+		root = dir
+	}
+	return getCompatibleFromFS(os.DirFS(root))
 }
 
 func (c Compatible) IsCompatibleWith(prefix string) bool {
@@ -42,4 +53,36 @@ func getCompatibleFromFS(fs fs.FS) Compatible {
 		}
 	}
 	return compatibles
+}
+
+func GetLinuxDistribution() (string, error) {
+	f, err := paths.New("/etc/os-release").ReadFile()
+	if err != nil {
+		return "", fmt.Errorf("failed to read os-release file: %w", err)
+	}
+
+	s := bufio.NewScanner(bytes.NewReader(f))
+	for s.Scan() {
+		line := s.Text()
+		if strings.HasPrefix(line, "ID=") {
+			prettyName := strings.TrimPrefix(line, "ID=")
+			return strings.Trim(prettyName, "\n\t\" "), nil
+		}
+	}
+
+	return "", fmt.Errorf("ID not found in os-release file")
+}
+
+func GetBoardID() (string, error) {
+	compatible := loadCompatible()
+	slog.Debug("detected platform", "compatible", compatible)
+	switch {
+	case compatible.IsCompatibleWith("arduino,imola"):
+		return "unoq", nil
+	case compatible.IsCompatibleWith("arduino,monza"):
+		return "ventunoq", nil
+	default:
+		slog.Warn("not supported platform", "compatible", compatible)
+	}
+	return "", fmt.Errorf("failed to identify board id")
 }
