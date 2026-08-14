@@ -6,8 +6,6 @@
 package registry
 
 import (
-	"fmt"
-
 	"github.com/arduino/arduino-linux-config/internal/config"
 )
 
@@ -76,23 +74,23 @@ type DeviceOption struct {
 	IncompatibleDtbo []string
 }
 
-func New() (Registry, error) {
+func New() Registry {
 	board := config.GetBoardID()
-	os := config.GetLinuxDistribution()
+	boardOs := config.GetLinuxDistribution()
 
 	if board == "unoq" {
 		return Registry{
 			Carriers: []Carrier{unoqMediaCarrier},
-		}, nil
+		}
 	}
 
-	if board == "ventunoq" && os == "ubuntu" {
+	if board == "ventunoq" && boardOs == "ubuntu" {
 		return Registry{
-			Carriers: []Carrier{unoqUbuntuMediaCarrier},
-		}, nil
+			Carriers: []Carrier{ventunoqUbuntuMediaCarrier},
+		}
 	}
 
-	return Registry{}, fmt.Errorf("unsupported board %s on %s", board, os)
+	return Registry{}
 }
 
 var unoqMediaCarrier = Carrier{
@@ -200,7 +198,7 @@ var unoqMediaCarrier = Carrier{
 	},
 }
 
-var unoqUbuntuMediaCarrier = Carrier{
+var ventunoqUbuntuMediaCarrier = Carrier{
 	Name: MediaCarrier,
 	Devices: []Device{
 		{

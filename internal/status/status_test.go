@@ -69,8 +69,8 @@ func TestUpdateStatusStructure(t *testing.T) {
 			}
 
 			currentBootId := "001"
-			reg, err := registry.New()
-			require.NoError(t, err)
+			reg := registry.New()
+			require.NotEmpty(t, reg)
 			mediaCarrier, exist := reg.FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
@@ -169,8 +169,8 @@ func TestGetStatusStructure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reg, err := registry.New()
-			require.NoError(t, err)
+			reg := registry.New()
+			require.NotEmpty(t, reg)
 			mediaCarrier, exist := reg.FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")

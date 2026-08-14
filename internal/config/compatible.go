@@ -1,4 +1,4 @@
-// This file is part of arduino-app-cli.
+// This file is part of arduino-linux-config.
 //
 // SPDX-FileCopyrightText: Arduino s.r.l. and/or its affiliated companies
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -64,8 +64,8 @@ func getLinuxDistributionFromFS(fs fs.FS) string {
 		for s.Scan() {
 			line := s.Text()
 			if strings.HasPrefix(line, "ID=") {
-				prettyName := strings.TrimPrefix(line, "ID=")
-				return strings.Trim(prettyName, "\n\t\" ")
+				osId := strings.TrimPrefix(line, "ID=")
+				return strings.Trim(osId, "\n\t\" ")
 			}
 		}
 	}

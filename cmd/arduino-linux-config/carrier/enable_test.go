@@ -98,7 +98,7 @@ func TestCollectDtboFiles(t *testing.T) {
 	cleanupOs := testutil.SetupUbuntu()
 	defer cleanupOs()
 
-	reg, _ := registry.New()
+	reg := registry.New()
 	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
 	if !exists {
 		t.Fatalf("Failed to initialize production test: MediaCarrier registry not found")
@@ -197,8 +197,8 @@ func TestCollectDtboFilesVentunoqCarrier(t *testing.T) {
 	cleanupOs := testutil.SetupUbuntu()
 	defer cleanupOs()
 
-	reg, err := registry.New()
-	require.NoError(t, err)
+	reg := registry.New()
+	require.NotEmpty(t, reg)
 	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
 	if !exists {
 		t.Fatalf("Failed to initialize production test: MediaCarrier registry not found")

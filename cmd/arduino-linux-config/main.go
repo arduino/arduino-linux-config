@@ -50,18 +50,16 @@ func run() error {
 	if board == "unoq" {
 		rootCmd.AddCommand(
 			carrier.NewCarrierCmd(),
+			NewVersionCmd(),
 		)
 	}
 
 	if board == "ventunoq" {
 		rootCmd.AddCommand(
-			carrier.NewCarrierCmd(),
+			NewVersionCmd(),
 		)
 	}
 
-	rootCmd.AddCommand(
-		NewVersionCmd(),
-	)
 	ctx := context.Background()
 	ctx, _ = cleanup.InterruptableContext(ctx)
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
