@@ -45,19 +45,18 @@ func run() error {
 	rootCmd.PersistentFlags().StringVar(&format, "format", "text", "Output format (text, json)")
 	rootCmd.PersistentFlags().StringVar(&logLevelStr, "log-level", "error", "Set the log level (debug, info, warn, error)")
 
-	board := config.GetBoardID()
-
-	if board == "unoq" {
+	switch config.GetBoardID() {
+	case "unoq":
 		rootCmd.AddCommand(
 			carrier.NewCarrierCmd(),
 			NewVersionCmd(),
 		)
-	}
-
-	if board == "ventunoq" {
+	case "ventunoq":
 		rootCmd.AddCommand(
 			NewVersionCmd(),
 		)
+	default:
+		feedback.Fatal("unsupported board/os", feedback.ErrBadArgument)
 	}
 
 	ctx := context.Background()
