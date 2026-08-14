@@ -93,10 +93,8 @@ func Test_parseArguments(t *testing.T) {
 }
 
 func TestCollectDtboFiles(t *testing.T) {
-	cleanup := testutil.SetupCompatUnoq()
-	defer cleanup()
-	cleanupOs := testutil.SetupUbuntu()
-	defer cleanupOs()
+	t.Cleanup(testutil.SetupCompatUnoq())
+	t.Cleanup(testutil.SetupUbuntu())
 
 	reg := registry.New()
 	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
