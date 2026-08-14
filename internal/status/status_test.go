@@ -20,7 +20,7 @@ import (
 func TestUpdateStatusStructure(t *testing.T) {
 	cleanup := testutil.SetupCompatUnoq()
 	defer cleanup()
-	cleanupOS := testutil.SetupOs("debian")
+	cleanupOS := testutil.SetupDebian()
 	defer cleanupOS()
 
 	tests := []struct {
@@ -104,7 +104,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 func TestGetStatusStructure(t *testing.T) {
 	cleanup := testutil.SetupCompatUnoq()
 	defer cleanup()
-	cleanupOS := testutil.SetupOs("debian")
+	cleanupOS := testutil.SetupDebian()
 	defer cleanupOS()
 
 	// set boot ids

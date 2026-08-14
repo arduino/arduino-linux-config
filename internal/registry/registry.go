@@ -77,11 +77,7 @@ type DeviceOption struct {
 }
 
 func New() (Registry, error) {
-	board, err := config.GetBoardID()
-	if err != nil {
-		return Registry{}, fmt.Errorf("failed to detect board type: %w", err)
-	}
-
+	board := config.GetBoardID()
 	os := config.GetLinuxDistribution()
 
 	if board == "unoq" {

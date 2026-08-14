@@ -95,7 +95,7 @@ func Test_parseArguments(t *testing.T) {
 func TestCollectDtboFiles(t *testing.T) {
 	cleanup := testutil.SetupCompatUnoq()
 	defer cleanup()
-	cleanupOs := testutil.SetupOs("ubuntu")
+	cleanupOs := testutil.SetupUbuntu()
 	defer cleanupOs()
 
 	reg, _ := registry.New()
@@ -194,7 +194,7 @@ func TestCollectDtboFiles(t *testing.T) {
 func TestCollectDtboFilesVentunoqCarrier(t *testing.T) {
 	cleanup := testutil.SetupCompatVentunoq()
 	defer cleanup()
-	cleanupOs := testutil.SetupOs("ubuntu")
+	cleanupOs := testutil.SetupUbuntu()
 	defer cleanupOs()
 
 	reg, err := registry.New()

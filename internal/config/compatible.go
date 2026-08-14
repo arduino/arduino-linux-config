@@ -8,7 +8,6 @@ package config
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -18,23 +17,28 @@ import (
 
 type Compatible []string
 
-// loadCompatible reads the device-tree compatible strings from the root FS,
-// or from COMPATIBLE_FS_DIR if set (used in integration tests).
-func loadCompatible() Compatible {
-	root := "/"
-	if dir := os.Getenv("COMPATIBLE_FS_DIR"); dir != "" {
-		root = dir
+func GetBoardID() string {
+	compatible := loadCompatible()
+	slog.Debug("detected platform", "compatible", compatible)
+	switch {
+	case compatible.IsCompatibleWith("arduino,imola"):
+		return "unoq"
+	case compatible.IsCompatibleWith("arduino,monza"):
+		return "ventunoq"
+	default:
+		slog.Warn("not supported platform", "compatible", compatible)
 	}
-	return getCompatibleFromFS(os.DirFS(root))
+	return ""
 }
 
-func (c Compatible) IsCompatibleWith(prefix string) bool {
-	for _, comp := range c {
-		if strings.HasPrefix(comp, prefix) {
-			return true
-		}
+// reads the os from the root FS,
+// or from OS_RELEASE_FS_DIR if set (used in integration tests).
+func GetLinuxDistribution() string {
+	root := "/"
+	if dir := os.Getenv("OS_RELEASE_FS_DIR"); dir != "" {
+		root = dir
 	}
-	return false
+	return getLinuxDistributionFromFS(os.DirFS(root))
 }
 
 func getCompatibleFromFS(fs fs.FS) Compatible {
@@ -68,24 +72,21 @@ func getLinuxDistributionFromFS(fs fs.FS) string {
 	return ""
 }
 
-func GetLinuxDistribution() string {
+// loadCompatible reads the device-tree compatible strings from the root FS,
+// or from COMPATIBLE_FS_DIR if set (used in integration tests).
+func loadCompatible() Compatible {
 	root := "/"
-	if dir := os.Getenv("OS_RELEASE_FS_DIR"); dir != "" {
+	if dir := os.Getenv("COMPATIBLE_FS_DIR"); dir != "" {
 		root = dir
 	}
-	return getLinuxDistributionFromFS(os.DirFS(root))
+	return getCompatibleFromFS(os.DirFS(root))
 }
 
-func GetBoardID() (string, error) {
-	compatible := loadCompatible()
-	slog.Debug("detected platform", "compatible", compatible)
-	switch {
-	case compatible.IsCompatibleWith("arduino,imola"):
-		return "unoq", nil
-	case compatible.IsCompatibleWith("arduino,monza"):
-		return "ventunoq", nil
-	default:
-		slog.Warn("not supported platform", "compatible", compatible)
+func (c Compatible) IsCompatibleWith(prefix string) bool {
+	for _, comp := range c {
+		if strings.HasPrefix(comp, prefix) {
+			return true
+		}
 	}
-	return "", fmt.Errorf("failed to identify board id")
+	return false
 }

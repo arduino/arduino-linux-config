@@ -45,10 +45,7 @@ func run() error {
 	rootCmd.PersistentFlags().StringVar(&format, "format", "text", "Output format (text, json)")
 	rootCmd.PersistentFlags().StringVar(&logLevelStr, "log-level", "error", "Set the log level (debug, info, warn, error)")
 
-	board, err := config.GetBoardID()
-	if err != nil {
-		return fmt.Errorf("failed to detect board type: %w", err)
-	}
+	board := config.GetBoardID()
 
 	if board == "unoq" {
 		rootCmd.AddCommand(
