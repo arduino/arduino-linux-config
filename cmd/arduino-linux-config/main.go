@@ -12,6 +12,7 @@ import (
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/config"
 
 	"github.com/spf13/cobra"
 	"go.bug.st/cleanup"
@@ -44,10 +45,19 @@ func run() error {
 	rootCmd.PersistentFlags().StringVar(&format, "format", "text", "Output format (text, json)")
 	rootCmd.PersistentFlags().StringVar(&logLevelStr, "log-level", "error", "Set the log level (debug, info, warn, error)")
 
-	rootCmd.AddCommand(
-		carrier.NewCarrierCmd(),
-		NewVersionCmd(),
-	)
+	switch config.GetBoardID() {
+	case "unoq":
+		rootCmd.AddCommand(
+			carrier.NewCarrierCmd(),
+			NewVersionCmd(),
+		)
+	case "ventunoq":
+		rootCmd.AddCommand(
+			NewVersionCmd(),
+		)
+	default:
+		feedback.Fatal("unsupported board/os", feedback.ErrBadArgument)
+	}
 
 	ctx := context.Background()
 	ctx, _ = cleanup.InterruptableContext(ctx)

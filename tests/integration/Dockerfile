@@ -3,6 +3,11 @@ COPY build/arduino-linux-config_*.deb /tmp/arduino-linux-config.deb
 
 RUN apt-get update && apt-get install -y /tmp/arduino-linux-config.deb && rm /tmp/arduino-linux-config.deb
 
+# Create fake device-tree compatible file for board detection
+RUN mkdir -p /tmp/compat-root/sys/firmware/devicetree/base && \
+    printf 'arduino,imola\0' > /tmp/compat-root/sys/firmware/devicetree/base/compatible
+ENV COMPATIBLE_ROOT_DIR=/tmp/compat-root
+
 # Create fake dtb directory and files
 RUN mkdir -p /boot/efi/dtb/qcom
 
