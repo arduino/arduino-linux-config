@@ -93,7 +93,7 @@ func Test_parseArguments(t *testing.T) {
 }
 
 func TestCollectDtboFiles(t *testing.T) {
-	t.Cleanup(testutil.SetupVentunoQUbuntu())
+	t.Cleanup(testutil.SetupUnoQDebian())
 
 	reg := registry.New()
 	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
