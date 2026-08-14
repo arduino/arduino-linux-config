@@ -17,15 +17,12 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/testutil"
 )
 
-func TestMain(m *testing.M) {
+func TestUpdateStatusStructure(t *testing.T) {
 	cleanup := testutil.SetupCompatUnoq()
 	defer cleanup()
 	cleanupOS := testutil.SetupOs("debian")
 	defer cleanupOS()
-	os.Exit(m.Run())
-}
 
-func TestUpdateStatusStructure(t *testing.T) {
 	tests := []struct {
 		name         string
 		statusUpdate CarrierStatus
@@ -105,6 +102,11 @@ func TestUpdateStatusStructure(t *testing.T) {
 }
 
 func TestGetStatusStructure(t *testing.T) {
+	cleanup := testutil.SetupCompatUnoq()
+	defer cleanup()
+	cleanupOS := testutil.SetupOs("debian")
+	defer cleanupOS()
+
 	// set boot ids
 	currentBootId := "123"
 	prevCurrentBootId := "001"
