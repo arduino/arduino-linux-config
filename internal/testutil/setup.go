@@ -11,55 +11,42 @@ import (
 	"path/filepath"
 )
 
-func SetupDebian() func() {
-	return setupOs("debian")
+func SetupUnoQDebian() func() {
+	return envRootSetup("arduino,imola\x00", "debian")
 }
 
-func SetupUbuntu() func() {
-	return setupOs("ubuntu")
+func SetupVentunoQDebian() func() {
+	return envRootSetup("arduino,monza\x00", "debian")
 }
 
-func SetupCompatUnoq() func() {
-	return setupCompat("arduino,imola\x00")
-}
-func SetupCompatVentunoq() func() {
-	return setupCompat("arduino,monza\x00")
+func SetupVentunoQUbuntu() func() {
+	return envRootSetup("arduino,monza\x00", "ubuntu")
 }
 
-func setupOs(osId string) func() {
-	etcDir, err := os.MkdirTemp("", "etc-root")
+func envRootSetup(board, osId string) func() {
+	compatRootDir, err := os.MkdirTemp("", "compat-root")
 	if err != nil {
 		panic(err)
 	}
-	etcPath := filepath.Join(etcDir, "etc")
-	if err := os.MkdirAll(etcPath, 0755); err != nil {
-		panic(err)
-	}
-	if err := os.WriteFile(filepath.Join(etcPath, "os-release"), []byte(fmt.Sprintf("ID=%s\n", osId)), 0600); err != nil {
-		panic(err)
-	}
-	os.Setenv("OS_RELEASE_FS_DIR", etcDir)
-	return func() {
-		os.Unsetenv("OS_RELEASE_FS_DIR")
-		os.RemoveAll(etcDir)
-	}
-}
-
-func setupCompat(board string) func() {
-	compatDir, err := os.MkdirTemp("", "compat-root")
-	if err != nil {
-		panic(err)
-	}
-	compatPath := filepath.Join(compatDir, "sys", "firmware", "devicetree", "base")
+	compatPath := filepath.Join(compatRootDir, "sys", "firmware", "devicetree", "base")
 	if err := os.MkdirAll(compatPath, 0755); err != nil {
 		panic(err)
 	}
 	if err := os.WriteFile(filepath.Join(compatPath, "compatible"), []byte(board), 0600); err != nil {
 		panic(err)
 	}
-	os.Setenv("COMPATIBLE_FS_DIR", compatDir)
+
+	etcPath := filepath.Join(compatRootDir, "etc")
+	if err := os.MkdirAll(etcPath, 0755); err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile(filepath.Join(etcPath, "os-release"), []byte(fmt.Sprintf("ID=%s\n", osId)), 0600); err != nil {
+		panic(err)
+	}
+
+	os.Setenv("COMPATIBLE_ROOT_DIR", compatRootDir)
 	return func() {
-		os.Unsetenv("COMPATIBLE_FS_DIR")
-		os.RemoveAll(compatDir)
+		os.Unsetenv("COMPATIBLE_ROOT_DIR")
+		os.RemoveAll(compatRootDir)
 	}
 }

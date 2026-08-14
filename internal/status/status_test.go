@@ -18,10 +18,7 @@ import (
 )
 
 func TestUpdateStatusStructure(t *testing.T) {
-	cleanup := testutil.SetupCompatUnoq()
-	defer cleanup()
-	cleanupOS := testutil.SetupDebian()
-	defer cleanupOS()
+	t.Cleanup(testutil.SetupUnoQDebian())
 
 	tests := []struct {
 		name         string
@@ -102,10 +99,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 }
 
 func TestGetStatusStructure(t *testing.T) {
-	cleanup := testutil.SetupCompatUnoq()
-	defer cleanup()
-	cleanupOS := testutil.SetupDebian()
-	defer cleanupOS()
+	t.Cleanup(testutil.SetupUnoQDebian())
 
 	// set boot ids
 	currentBootId := "123"

@@ -32,10 +32,10 @@ func GetBoardID() string {
 }
 
 // reads the os from the root FS,
-// or from OS_RELEASE_FS_DIR if set (used in integration tests).
+// or from COMPATIBLE_ROOT_DIR if set (used in integration tests).
 func GetLinuxDistribution() string {
 	root := "/"
-	if dir := os.Getenv("OS_RELEASE_FS_DIR"); dir != "" {
+	if dir := os.Getenv("COMPATIBLE_ROOT_DIR"); dir != "" {
 		root = dir
 	}
 	return getLinuxDistributionFromFS(os.DirFS(root))
@@ -73,10 +73,10 @@ func getLinuxDistributionFromFS(fs fs.FS) string {
 }
 
 // loadCompatible reads the device-tree compatible strings from the root FS,
-// or from COMPATIBLE_FS_DIR if set (used in integration tests).
+// or from COMPATIBLE_ROOT_DIR if set (used in integration tests).
 func loadCompatible() Compatible {
 	root := "/"
-	if dir := os.Getenv("COMPATIBLE_FS_DIR"); dir != "" {
+	if dir := os.Getenv("COMPATIBLE_ROOT_DIR"); dir != "" {
 		root = dir
 	}
 	return getCompatibleFromFS(os.DirFS(root))

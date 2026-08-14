@@ -75,23 +75,22 @@ type DeviceOption struct {
 }
 
 func New() Registry {
-board := config.GetBoardID()
-boardOs := config.GetLinuxDistribution()
+	board := config.GetBoardID()
+	boardOs := config.GetLinuxDistribution()
 
-switch {
-case board == "unoq":
-	return Registry{
-		Carriers: []Carrier{unoqMediaCarrier},
+	switch {
+	case board == "unoq":
+		return Registry{
+			Carriers: []Carrier{unoqMediaCarrier},
+		}
+	case board == "ventunoq" && boardOs == "ubuntu":
+		return Registry{
+			Carriers: []Carrier{ventunoqUbuntuMediaCarrier},
+		}
+	default:
+		return Registry{}
 	}
-case board == "ventunoq" && boardOs == "ubuntu":
-	return Registry{
-		Carriers: []Carrier{ventunoqUbuntuMediaCarrier},
-	}
-default:
-    return Registry{}
-}
 
-	return Registry{}
 }
 
 var unoqMediaCarrier = Carrier{

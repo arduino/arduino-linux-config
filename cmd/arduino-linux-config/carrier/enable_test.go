@@ -93,8 +93,7 @@ func Test_parseArguments(t *testing.T) {
 }
 
 func TestCollectDtboFiles(t *testing.T) {
-	t.Cleanup(testutil.SetupCompatUnoq())
-	t.Cleanup(testutil.SetupUbuntu())
+	t.Cleanup(testutil.SetupVentunoQUbuntu())
 
 	reg := registry.New()
 	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
@@ -190,10 +189,7 @@ func TestCollectDtboFiles(t *testing.T) {
 }
 
 func TestCollectDtboFilesVentunoqCarrier(t *testing.T) {
-	cleanup := testutil.SetupCompatVentunoq()
-	defer cleanup()
-	cleanupOs := testutil.SetupUbuntu()
-	defer cleanupOs()
+	t.Cleanup(testutil.SetupVentunoQUbuntu())
 
 	reg := registry.New()
 	require.NotEmpty(t, reg)
