@@ -6,6 +6,9 @@
 package config
 
 import (
+	"fmt"
+
+	"github.com/arduino/arduino-linux-config/internal/dto"
 	"github.com/arduino/go-paths-helper"
 )
 
@@ -21,4 +24,15 @@ func New() Configuration {
 
 func (c *Configuration) StatusDir() *paths.Path {
 	return c.statusDir
+}
+
+func GetBoard() (dto.Board, error) {
+	switch GetBoardID() {
+	case "unoq":
+		return dto.UnoQ{}, nil
+	case "ventunoq":
+		return dto.VentunoQ{}, nil
+	default:
+		return nil, fmt.Errorf("unsupported board/os")
+	}
 }

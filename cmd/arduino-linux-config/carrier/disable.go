@@ -15,7 +15,6 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
-	"github.com/arduino/arduino-linux-config/internal/dto"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -74,7 +73,11 @@ func disable(ctx context.Context, cfg config.Configuration, carrier registry.Car
 	// Add disable dtbs to restore original board configuration.
 	baseFiles = append(baseFiles, carrier.DisabledDtbos...)
 
-	err := dto.Apply(ctx, baseFiles)
+	board, err := config.GetBoard()
+	if err != nil {
+		return err
+	}
+	err = board.Apply(ctx, baseFiles)
 	if err != nil {
 		return err
 	}
