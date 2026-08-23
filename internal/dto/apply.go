@@ -87,7 +87,7 @@ func (b UnoQ) Apply(ctx context.Context, overlays []string) error {
 }
 
 func (b VentunoQ) buildOverlayCommand(overlaysDir *paths.Path, overlays []string, now time.Time) ([]string, *paths.Path) {
-	slog.Error("buildOverlayCommand not yet implemented on this platform.")
+	slog.Error("buildOverlayCommand not yet implemented on this platform")
 	// This should be the same, to be refactored
 	// Check the amount of available space in the destination partition
 	return nil, nil
@@ -97,11 +97,11 @@ func (b VentunoQ) Apply(ctx context.Context, overlays []string) error {
 	// mount
 	// the same of unoQ apply
 	// umount the dir after moving
-	return fmt.Errorf("feature not yet implemented on this platform.")
+	return fmt.Errorf("feature not yet implemented on this platform")
 }
 
 func (b VentunoQ) moveDeviceTree(temporaryDtb *paths.Path, destinationDtb *paths.Path) error {
-	slog.Error("moveDeviceTree not yet implemented on this platform.")
+	slog.Error("moveDeviceTree not yet implemented on this platform")
 	// do the same of the move in the mounted dir
 	return nil
 }
