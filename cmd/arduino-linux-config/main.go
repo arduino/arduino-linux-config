@@ -53,6 +53,7 @@ func run() error {
 		)
 	case "ventunoq":
 		rootCmd.AddCommand(
+			carrier.NewCarrierCmd(),
 			NewVersionCmd(),
 		)
 	default:

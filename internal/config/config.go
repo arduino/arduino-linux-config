@@ -8,8 +8,9 @@ package config
 import (
 	"fmt"
 
-	"github.com/arduino/arduino-linux-config/internal/dto"
 	"github.com/arduino/go-paths-helper"
+
+	"github.com/arduino/arduino-linux-config/internal/dto"
 )
 
 type Configuration struct {

@@ -22,7 +22,8 @@ import (
 )
 
 func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
-	return &cobra.Command{
+	var dryRun bool
+	cmd := &cobra.Command{
 		Use:   "enable <carrier-name> [device=option...]",
 		Short: "Enable and configure a carrier with the specified device options",
 		Example: `  # To configure a media-carrier with two cameras attached, one type1:
@@ -36,7 +37,7 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 			carrierName := args[0]
 			deviceOptions := args[1:]
 
-			enableHandler(cmd.Context(), reg, cfg, carrierName, deviceOptions)
+			enableHandler(cmd.Context(), reg, cfg, carrierName, deviceOptions, dryRun)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
@@ -51,6 +52,8 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 			return completion.CompleteDeviceOption(carrier, args[1:], toComplete)
 		},
 	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
+	return cmd
 }
 
 // Since a board reboot can occur asynchronously with the carrier configuration,
@@ -61,7 +64,7 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 //
 // When a status request occurs, the system compares the boot-id stored in the
 // the configuration abd update the current values.
-func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, carrierName string, deviceArgs []string) {
+func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, carrierName string, deviceArgs []string, dryRun bool) {
 	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -79,19 +82,22 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 
 	overlayList := collectDtboFiles(carrier, nextDevicesConfiguration)
 
-	err = disable(ctx, cfg, carrier)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
-	}
-
 	board, err := config.GetBoard()
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
-	err = board.Apply(ctx, overlayList)
+
+	command, err := board.Apply(ctx, overlayList, dryRun)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
+
+	if dryRun {
+		feedback.Printf("Dry-run: no changes applied for carrier '%s'", carrier.Name)
+		feedback.Print(command)
+		return
+	}
+	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
 
 	err = status.Update(cfg, carrier, status.CarrierStatus{
 		Enable:        true,
@@ -100,8 +106,6 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
-
-	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
 
 	current, next, err := status.Get(cfg, carrier)
 	if err != nil {

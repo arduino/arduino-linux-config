@@ -8,21 +8,18 @@ package dto
 import (
 	"context"
 	"fmt"
-	"log/slog"
+	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/arduino/go-paths-helper"
-
-	"github.com/arduino/arduino-linux-config/internal/sync"
 )
 
 var fdtBinary = paths.New("/usr/bin/fdtoverlay")
 
 type Board interface {
-	Apply(ctx context.Context, overlays []string) error
-	buildOverlayCommand(overlaysDir *paths.Path, overlays []string, now time.Time) ([]string, *paths.Path)
-	moveDeviceTree(temporaryDtb *paths.Path, destinationDtb *paths.Path) error
+	Apply(ctx context.Context, overlays []string, dryRun bool) (string, error)
 }
 
 type UnoQ struct {
@@ -31,77 +28,86 @@ type UnoQ struct {
 type VentunoQ struct {
 }
 
-func (b UnoQ) moveDeviceTree(temporaryDtb *paths.Path, destinationDtb *paths.Path) error {
-	if err := temporaryDtb.Rename(destinationDtb); err != nil {
-		return fmt.Errorf("failed to move %s to %s: %w", temporaryDtb, destinationDtb, err)
-	}
-
-	// Flush kernel buffers to disk to ensure the DTB is persisted
-	// before the system potentially reboots or loses power.
-	sync.SyncToDisk()
-	return nil
-}
-
-func (b UnoQ) buildOverlayCommand(overlaysDir *paths.Path, overlays []string, now time.Time) ([]string, *paths.Path) {
-	// Generate unique temp file name using nanosecond timestamp to prevent
-	// race conditions when multiple instances run concurrently
-	tempFileName := fmt.Sprintf("temporaryDeviceTree.%d.temp", now.UnixNano())
-	temporaryDtb := overlaysDir.Join(tempFileName)
-
-	overlayFullPaths := make([]string, len(overlays))
-	for i, overlay := range overlays {
-		overlayFullPaths[i] = overlaysDir.Join(overlay).String()
-	}
-
-	var baseDTB = overlaysDir.Join("qrb2210-arduino-imola-base.dtb")
-	args := append([]string{fdtBinary.String(), "-i", baseDTB.String(), "-o", temporaryDtb.String()}, overlayFullPaths...)
-
-	return args, temporaryDtb
-}
-
-func (b UnoQ) Apply(ctx context.Context, overlays []string) error {
-	if len(overlays) == 0 {
-		return nil
-	}
-
+func (b UnoQ) Apply(ctx context.Context, overlays []string, dryRun bool) (string, error) {
 	slices.Sort(overlays)
 	overlays = slices.Compact(overlays)
 
 	var overlaysDir = paths.New("/boot/efi/dtb/qcom/")
-	args, tempFile := b.buildOverlayCommand(overlaysDir, overlays, time.Now())
+	var baseDtbFile = "qrb2210-arduino-imola-base.dtb"
+
+	// Generate unique temp file name using nanosecond timestamp to prevent
+	// race conditions when multiple instances run concurrently
+	tempFileName := fmt.Sprintf("temporaryDeviceTree.%d.temp", time.Now().UnixNano())
+	temporaryDtb := overlaysDir.Join(tempFileName)
+
+	args := buildOverlayCommand(overlaysDir, baseDtbFile, temporaryDtb, overlays)
+	command := strings.Join(args, " ")
+
+	if dryRun {
+		return command, nil
+	}
 
 	cmd, err := paths.NewProcess(nil, args...)
 	if err != nil {
-		return fmt.Errorf("failed to create process: %w", err)
+		return command, fmt.Errorf("failed to create process: %w", err)
 	}
 
-	defer func() { _ = tempFile.Remove() }()
+	defer func() { _ = temporaryDtb.Remove() }()
 
 	_, stderr, err := cmd.RunAndCaptureOutput(ctx)
 	if err != nil {
-		return fmt.Errorf("fdtoverlay failed with command %v: %w (stderr: %s)", args, err, stderr)
+		return command, fmt.Errorf("fdtoverlay failed with command %v: %w (stderr: %s)", args, err, stderr)
 	}
 
 	var destinationDtb = overlaysDir.Join("qrb2210-arduino-imola.dtb")
-	return b.moveDeviceTree(tempFile, destinationDtb)
+	return command, moveDeviceTree(temporaryDtb, destinationDtb)
 }
 
-func (b VentunoQ) buildOverlayCommand(overlaysDir *paths.Path, overlays []string, now time.Time) ([]string, *paths.Path) {
-	slog.Error("buildOverlayCommand not yet implemented on this platform.")
-	// This should be the same, to be refactored
-	// Check the amount of available space in the destination partition
-	return nil, nil
-}
+func (b VentunoQ) Apply(ctx context.Context, overlays []string, dryRun bool) (string, error) {
+	// mount the device tree partition dtb_a
+	mountPoint, err := os.MkdirTemp("/tmp", "dtb_")
+	if err != nil {
+		return "", fmt.Errorf("failed to create mountPoint: %w", err)
+	}
 
-func (b VentunoQ) Apply(ctx context.Context, overlays []string) error {
-	// mount
-	// the same of unoQ apply
-	// umount the dir after moving
-	return fmt.Errorf("feature not yet implemented on this platform.")
-}
+	dtbA := "/dev/disk/by-partlabel/dtb_a"
+	deferFunc, mountCmd, err := mountDeviceTree(dtbA, mountPoint, dryRun)
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(mountPoint)
+	defer deferFunc()
 
-func (b VentunoQ) moveDeviceTree(temporaryDtb *paths.Path, destinationDtb *paths.Path) error {
-	slog.Error("moveDeviceTree not yet implemented on this platform.")
-	// do the same of the move in the mounted dir
-	return nil
+	slices.Sort(overlays)
+	overlays = slices.Compact(overlays)
+
+	var overlaysDir = paths.New("/var/lib/arduino-linux-config/overlays/ventunoq/jmedia-carrier/")
+	var baseDtbFile = "qualcomm_technologies_inc._monaco_monza_addons.bin"
+
+	// Generate unique temp file name using nanosecond timestamp to prevent
+	// race conditions when multiple instances run concurrently
+	tempFileName := fmt.Sprintf("temporaryDeviceTree.%d.temp", time.Now().UnixNano())
+	temporaryDtb := paths.New(mountPoint).Join(tempFileName)
+
+	args := buildOverlayCommand(overlaysDir, baseDtbFile, temporaryDtb, overlays)
+	command := strings.Join(args, " ")
+
+	if dryRun {
+		return fmt.Sprintf("%s\n%s", mountCmd, command), nil
+	}
+
+	cmd, err := paths.NewProcess(nil, args...)
+	if err != nil {
+		return command, fmt.Errorf("failed to create process: %w", err)
+	}
+
+	defer func() { _ = temporaryDtb.Remove() }()
+
+	_, stderr, err := cmd.RunAndCaptureOutput(ctx)
+	if err != nil {
+		return command, fmt.Errorf("fdtoverlay failed with command %v: %w (stderr: %s)", args, err, stderr)
+	}
+
+	var destinationDtb = paths.New(mountPoint).Join("combined-dtb.dtb")
+	return command, moveDeviceTree(temporaryDtb, destinationDtb)
 }

@@ -212,7 +212,7 @@ var ventunoqUbuntuMediaCarrier = Carrier{
 				{
 					Name: "8-dsi-touch-a",
 					DtboFiles: []string{
-						"arduino-ventunoq-dsi-panel-fake.dtbo",
+						"monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo",
 					},
 				},
 			},
