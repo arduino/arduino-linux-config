@@ -6,9 +6,9 @@
 package dto
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
-	"os/exec"
 	"strings"
 
 	"github.com/arduino/go-paths-helper"
@@ -17,22 +17,34 @@ import (
 )
 
 func mountDeviceTree(source, mountPoint string, dryRun bool) (func(), string, error) {
-	cmd := exec.Command("mount", "-t", "vfat", source, mountPoint)
-	dryRunStr := strings.Join(cmd.Args, " ")
+	mountArgs := []string{"mount", "-t", "vfat", source, mountPoint}
+	dryRunStr := strings.Join(mountArgs, " ")
 
 	if dryRun {
 		return func() {}, dryRunStr, nil
 	}
 
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return nil, dryRunStr, fmt.Errorf("failed to mount %s to %s: %w: %s", source, mountPoint, err, string(output))
+	cmd, err := paths.NewProcess(nil, mountArgs...)
+	if err != nil {
+		return nil, dryRunStr, fmt.Errorf("failed to create mount process: %w", err)
+	}
+
+	if _, stderr, err := cmd.RunAndCaptureOutput(context.Background()); err != nil {
+		return nil, dryRunStr, fmt.Errorf("failed to mount %s to %s: %w: %s", source, mountPoint, err, stderr)
 	}
 
 	return func() {
 		sync.SyncToDisk()
 
-		if output, unmountErr := exec.Command("umount", "-l", mountPoint).CombinedOutput(); unmountErr != nil {
-			slog.Error("failed to unmount", "mountPoint", mountPoint, "error", unmountErr, "output", string(output))
+		unmountArgs := []string{"umount", "-l", mountPoint}
+		cmd, err := paths.NewProcess(nil, unmountArgs...)
+		if err != nil {
+			slog.Error("failed to create unmount process", "mountPoint", mountPoint, "error", err)
+			return
+		}
+
+		if _, stderr, unmountErr := cmd.RunAndCaptureOutput(context.Background()); unmountErr != nil {
+			slog.Error("failed to unmount", "mountPoint", mountPoint, "error", unmountErr, "output", stderr)
 		}
 	}, dryRunStr, nil
 }

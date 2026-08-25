@@ -26,7 +26,7 @@ func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comma
 		Short: "Disable a carrier and restore the base DTB",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if os.Geteuid() != 0 {
+			if os.Geteuid() != 0 && !dryRun {
 				feedback.Fatal("Command 'disable' must be run as root", feedback.ErrPermissionDenied)
 			}
 

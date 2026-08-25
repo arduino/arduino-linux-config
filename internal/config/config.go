@@ -30,9 +30,17 @@ func (c *Configuration) StatusDir() *paths.Path {
 func GetBoard() (dto.Board, error) {
 	switch GetBoardID() {
 	case "unoq":
-		return dto.UnoQ{}, nil
+		return dto.UnoQ{
+			BaseDtbFile: "qrb2210-arduino-imola-base.dtb",
+			OverlaysDir: paths.New("/boot/efi/dtb/qcom/"),
+			DtbFileName: "qrb2210-arduino-imola.dtb",
+		}, nil
 	case "ventunoq":
-		return dto.VentunoQ{}, nil
+		return dto.VentunoQ{
+			BaseDtbFile: "qualcomm_technologies_inc._monaco_monza_addons.bin",
+			OverlaysDir: paths.New("/var/lib/arduino-linux-config/overlays/ventunoq/media-carrier/"),
+			DtbFileName: "combined-dtb.dtb",
+		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported board/os")
 	}

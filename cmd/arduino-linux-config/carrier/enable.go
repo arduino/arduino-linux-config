@@ -30,7 +30,7 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
   arduino-linux-config carrier enable media-carrier camera0=type1-2lanes camera1=type1-4lanes`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if os.Geteuid() != 0 {
+			if os.Geteuid() != 0 && !dryRun {
 				feedback.Fatal("Command 'enable' must be run as root", feedback.ErrPermissionDenied)
 			}
 
@@ -97,7 +97,6 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		feedback.Print(command)
 		return
 	}
-	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
 
 	err = status.Update(cfg, carrier, status.CarrierStatus{
 		Enable:        true,
@@ -111,6 +110,7 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
+	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
