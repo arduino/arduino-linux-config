@@ -15,6 +15,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -68,18 +69,7 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 }
 
 func disable(ctx context.Context, cfg config.Configuration, carrier registry.Carrier, dryRun bool) (string, error) {
-	baseFiles := make([]string, 0)
-
-	for _, device := range carrier.Devices {
-		for _, option := range device.Options {
-			if option.Name == string(registry.None) {
-				baseFiles = append(baseFiles, option.DtboFiles...)
-			}
-		}
-	}
-
-	// Add disable dtbs to restore original board configuration.
-	baseFiles = append(baseFiles, carrier.DisabledDtbos...)
+	baseFiles := overlay.CollectDisabled(carrier)
 
 	board, err := config.GetBoard()
 	if err != nil {
