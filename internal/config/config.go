@@ -27,7 +27,7 @@ func (c *Configuration) StatusDir() *paths.Path {
 	return c.statusDir
 }
 
-func GetBoard() (dto.Board, error) {
+func GetBoard() (dto.DeviceTreeApplier, error) {
 	switch GetBoardID() {
 	case "unoq":
 		return dto.UnoQ{

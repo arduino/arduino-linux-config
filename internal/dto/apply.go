@@ -18,7 +18,9 @@ import (
 
 var fdtBinary = paths.New("/usr/bin/fdtoverlay")
 
-type Board interface {
+type DeviceTreeApplier interface {
+	// Builds and optionally applies device tree overlay commands.
+	// Returns the command string used to configure the device tree.
 	Apply(ctx context.Context, overlays []string, dryRun bool) (string, error)
 }
 
