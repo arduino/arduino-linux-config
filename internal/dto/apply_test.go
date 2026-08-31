@@ -7,12 +7,15 @@ package dto
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/arduino/go-paths-helper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/arduino/arduino-linux-config/internal/executor"
 )
 
 func TestBuildFdtoverlayCommand(t *testing.T) {
@@ -55,4 +58,33 @@ func TestBuildFdtoverlayCommand(t *testing.T) {
 			require.Equal(t, tt.wantCommand, strings.Join(args, " "))
 		})
 	}
+}
+
+func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
+	recorder := executor.NewRecorder()
+
+	board := VentunoQ{
+		BaseDtbPath: paths.New("/var/lib/base/"),
+		BaseDtbFile: "base.bin",
+		OverlaysDir: paths.New("/var/lib/overlays/"),
+		DtbFileName: "combined-dtb.dtb",
+	}
+	require.NoError(t, board.Apply(t.Context(), recorder, []string{"b.dtbo", "a.dtbo", "a.dtbo"}))
+
+	temp := regexp.MustCompile(`temporaryDeviceTree\.\d+\.temp`)
+	effects := recorder.Effects()
+	for i, effect := range effects {
+		effects[i] = temp.ReplaceAllString(effect, "TEMP")
+	}
+
+	require.Equal(t, []string{
+		"mkdir -p /run/arduino-linux-config/dtb",
+		"mount -t vfat /dev/disk/by-partlabel/dtb_a /run/arduino-linux-config/dtb",
+		"fdtoverlay -i /var/lib/base/base.bin -o /run/arduino-linux-config/dtb/TEMP /var/lib/overlays/a.dtbo /var/lib/overlays/b.dtbo",
+		"mv /run/arduino-linux-config/dtb/TEMP /run/arduino-linux-config/dtb/combined-dtb.dtb",
+		"sync",
+		"rm -f /run/arduino-linux-config/dtb/TEMP",
+		"sync",
+		"umount -l /run/arduino-linux-config/dtb",
+	}, effects)
 }

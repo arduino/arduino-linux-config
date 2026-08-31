@@ -9,45 +9,29 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/arduino/go-paths-helper"
 
-	"github.com/arduino/arduino-linux-config/internal/sync"
+	"github.com/arduino/arduino-linux-config/internal/executor"
 )
 
-func mountDeviceTree(source, mountPoint string, dryRun bool) (func(), string, error) {
-	mountArgs := []string{"mount", "-t", "vfat", source, mountPoint}
-	dryRunStr := strings.Join(mountArgs, " ")
-
-	if dryRun {
-		return func() {}, dryRunStr, nil
-	}
-
-	cmd, err := paths.NewProcess(nil, mountArgs...)
-	if err != nil {
-		return nil, dryRunStr, fmt.Errorf("failed to create mount process: %w", err)
-	}
-
-	if _, stderr, err := cmd.RunAndCaptureOutput(context.Background()); err != nil {
-		return nil, dryRunStr, fmt.Errorf("failed to mount %s to %s: %w: %s", source, mountPoint, err, stderr)
+// Returns the function that unmounts the partition.
+func mountDeviceTree(ctx context.Context, exec executor.Executor, source, mountPoint string) (func(), error) {
+	if err := exec.Run(ctx, "mount", "-t", "vfat", source, mountPoint); err != nil {
+		return nil, fmt.Errorf("failed to mount %s to %s: %w", source, mountPoint, err)
 	}
 
 	return func() {
-		sync.SyncToDisk()
+		exec.Sync()
 
-		unmountArgs := []string{"umount", "-l", mountPoint}
-		cmd, err := paths.NewProcess(nil, unmountArgs...)
-		if err != nil {
-			slog.Error("failed to create unmount process", "mountPoint", mountPoint, "error", err)
-			return
+		// Not the caller context: the unmount must run even after a cancellation.
+		if err := exec.Run(context.Background(), "umount", "-l", mountPoint); err != nil {
+			slog.Error("failed to unmount", "mountPoint", mountPoint, "error", err)
 		}
-
-		if _, stderr, unmountErr := cmd.RunAndCaptureOutput(context.Background()); unmountErr != nil {
-			slog.Error("failed to unmount", "mountPoint", mountPoint, "error", unmountErr, "output", stderr)
-		}
-	}, dryRunStr, nil
+	}, nil
 }
+
+var fdtCmdName = "fdtoverlay"
 
 func buildOverlayCommand(overlaysDir *paths.Path, baseDtbFile string, temporaryDtb *paths.Path, overlays []string) []string {
 	if len(overlays) == 0 {
@@ -64,13 +48,13 @@ func buildOverlayCommand(overlaysDir *paths.Path, baseDtbFile string, temporaryD
 	return args
 }
 
-func moveDeviceTree(temporaryDtb *paths.Path, destinationDtb *paths.Path) error {
-	if err := temporaryDtb.Rename(destinationDtb); err != nil {
+func moveDeviceTree(exec executor.Executor, temporaryDtb *paths.Path, destinationDtb *paths.Path) error {
+	if err := exec.Rename(temporaryDtb, destinationDtb); err != nil {
 		return fmt.Errorf("failed to move %s to %s: %w", temporaryDtb, destinationDtb, err)
 	}
 
 	// Flush kernel buffers to disk to ensure the DTB is persisted
 	// before the system potentially reboots or loses power.
-	sync.SyncToDisk()
+	exec.Sync()
 	return nil
 }

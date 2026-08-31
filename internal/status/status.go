@@ -16,6 +16,7 @@ import (
 	"github.com/arduino/go-paths-helper"
 
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
@@ -47,7 +48,7 @@ type StatusDevice struct {
 }
 
 // Called by config and reset
-func Update(cfg config.Configuration, carrier registry.Carrier, statusUpdate CarrierStatus) error {
+func Update(exec executor.Executor, cfg config.Configuration, carrier registry.Carrier, statusUpdate CarrierStatus) error {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return fmt.Errorf("failed to load status file %w", err)
@@ -60,7 +61,7 @@ func Update(cfg config.Configuration, carrier registry.Carrier, statusUpdate Car
 	currentStatus, _ := getStatusStructure(status, carrier, currentBootId)
 	updateStatusStructure(status, carrier, currentStatus, statusUpdate, currentBootId)
 
-	if err := saveStatusFile(getStatusFile(cfg, carrier.Name), *status); err != nil {
+	if err := saveStatusFile(exec, getStatusFile(cfg, carrier.Name), *status); err != nil {
 		return fmt.Errorf("failed to save status file: %w", err)
 	}
 	return nil
@@ -193,14 +194,14 @@ func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
 	return &status, nil
 }
 
-func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
+func saveStatusFile(exec executor.Executor, statusFile *paths.Path, status StatusFile) error {
 	data, err := json.MarshalIndent(status, "", "    ")
 	if err != nil {
 		return fmt.Errorf("marshal error: %w", err)
 	}
 
 	// nolint:gosec // G306: Status file must be readable
-	err = os.WriteFile(statusFile.String(), data, 0644)
+	err = exec.WriteFile(statusFile, data, 0644)
 	if err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}

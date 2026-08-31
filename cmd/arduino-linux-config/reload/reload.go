@@ -16,6 +16,7 @@ import (
 
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
@@ -78,15 +79,16 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		result.Reloaded = append(result.Reloaded, string(carrier.Name))
 	}
 
-	command, err := board.Apply(ctx, overlays, dryRun)
-	if err != nil {
+	exec, recorder := executor.Real(), executor.NewRecorder()
+	if dryRun {
+		exec = recorder
+	}
+
+	if err := board.Apply(ctx, exec, overlays); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	if dryRun {
-		feedback.Print("Dry-run: no changes applied")
-		feedback.Print(command)
-	}
+	result.Effects = recorder.Effects()
 	feedback.PrintResult(result)
 }
 
@@ -94,6 +96,7 @@ type reloadResult struct {
 	BoardID  string   `json:"board_id"`
 	DryRun   bool     `json:"dry_run"`
 	Reloaded []string `json:"reloaded"`
+	Effects  []string `json:"effects,omitempty"`
 }
 
 func (r reloadResult) String() string {
@@ -106,6 +109,13 @@ func (r reloadResult) String() string {
 	}
 	for _, name := range r.Reloaded {
 		fmt.Fprintf(w, "Reloaded carrier:\t%s\n", name)
+	}
+
+	if r.DryRun {
+		fmt.Fprintln(w, "Dry-run: no changes applied")
+		for _, effect := range r.Effects {
+			fmt.Fprintln(w, effect)
+		}
 	}
 
 	w.Flush()
