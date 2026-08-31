@@ -14,9 +14,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-// Collect returns the overlay files required to enable a carrier according to the user selection.
-// It also returns the base overlays that were removed because they were incompatible with the
-// selected options.
+// Collect returns the overlay files required to enable a carrier according to the user selection and the base overlays that should be removed because they are incompatible with the selected options.
 func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]string, []string) {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
