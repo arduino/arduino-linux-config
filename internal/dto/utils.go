@@ -50,9 +50,8 @@ func mountDeviceTree(source, mountPoint string, dryRun bool) (func(), string, er
 }
 
 func buildOverlayCommand(overlaysDir *paths.Path, baseDtbFile string, temporaryDtb *paths.Path, overlays []string) []string {
-	var baseDTB = overlaysDir.Join(baseDtbFile)
 	if len(overlays) == 0 {
-		return []string{"cp", baseDTB.String(), temporaryDtb.String()}
+		return []string{"cp", baseDtbFile, temporaryDtb.String()}
 	}
 
 	overlayFullPaths := make([]string, len(overlays))
@@ -60,7 +59,7 @@ func buildOverlayCommand(overlaysDir *paths.Path, baseDtbFile string, temporaryD
 		overlayFullPaths[i] = overlaysDir.Join(overlay).String()
 	}
 
-	args := append([]string{fdtCmdName, "-i", baseDTB.String(), "-o", temporaryDtb.String()}, overlayFullPaths...)
+	args := append([]string{fdtCmdName, "-i", baseDtbFile, "-o", temporaryDtb.String()}, overlayFullPaths...)
 
 	return args
 }
