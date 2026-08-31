@@ -60,7 +60,7 @@ func buildOverlayCommand(overlaysDir *paths.Path, baseDtbFile string, temporaryD
 		overlayFullPaths[i] = overlaysDir.Join(overlay).String()
 	}
 
-	args := append([]string{fdtBinary.String(), "-i", baseDTB.String(), "-o", temporaryDtb.String()}, overlayFullPaths...)
+	args := append([]string{fdtCmdName, "-i", baseDTB.String(), "-o", temporaryDtb.String()}, overlayFullPaths...)
 
 	return args
 }

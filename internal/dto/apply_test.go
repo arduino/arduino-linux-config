@@ -26,12 +26,12 @@ func TestBuildFdtoverlayCommand(t *testing.T) {
 		{
 			name:        "single overlay",
 			overlays:    []string{"overlay1.dtbo"},
-			wantCommand: "/usr/bin/fdtoverlay -i /boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb -o /boot/efi/dtb/qcom/temporaryDeviceTree.1777291200000000000.temp /boot/efi/dtb/qcom/overlay1.dtbo",
+			wantCommand: "fdtoverlay -i /boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb -o /boot/efi/dtb/qcom/temporaryDeviceTree.1777291200000000000.temp /boot/efi/dtb/qcom/overlay1.dtbo",
 		},
 		{
 			name:        "multiple overlays",
 			overlays:    []string{"overlay1.dtbo", "overlay2.dtbo", "overlay3.dtbo"},
-			wantCommand: "/usr/bin/fdtoverlay -i /boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb -o /boot/efi/dtb/qcom/temporaryDeviceTree.1777291200000000000.temp /boot/efi/dtb/qcom/overlay1.dtbo /boot/efi/dtb/qcom/overlay2.dtbo /boot/efi/dtb/qcom/overlay3.dtbo",
+			wantCommand: "fdtoverlay -i /boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb -o /boot/efi/dtb/qcom/temporaryDeviceTree.1777291200000000000.temp /boot/efi/dtb/qcom/overlay1.dtbo /boot/efi/dtb/qcom/overlay2.dtbo /boot/efi/dtb/qcom/overlay3.dtbo",
 		},
 		{
 			name:        "empty overlays",
