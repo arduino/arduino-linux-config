@@ -55,7 +55,7 @@ func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]s
 
 // Returns the overlay files needed to restore a carrier to its disabled state.
 func CollectDisabled(carrier registry.Carrier) []string {
-	baseFiles := make([]string, 0)
+	var baseFiles []string
 
 	for _, device := range carrier.Devices {
 		for _, option := range device.Options {
