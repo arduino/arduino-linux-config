@@ -14,9 +14,9 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-// Collect returns the overlay files required to enable a carrier according to
-// the user selection and the base overlays that should be removed
-// because they are incompatible with the selected options.
+// Collect returns the overlay files required to enable a carrier according to the user selection.
+// It also returns the base overlays that were removed because they were incompatible with the
+// selected options.
 func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]string, []string) {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
@@ -57,7 +57,7 @@ func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]s
 
 // Returns the overlay files needed to restore a carrier to its disabled state.
 func CollectDisabled(carrier registry.Carrier) []string {
-	var baseFiles []string
+	baseFiles := make([]string, 0)
 
 	for _, device := range carrier.Devices {
 		for _, option := range device.Options {
@@ -90,4 +90,13 @@ func getIntersection(a, b []string) []string {
 	}
 	slices.Sort(result)
 	return slices.Compact(result)
+}
+
+func GetDtboForAddon(addons []registry.Addon, addonName registry.AddonName) []string {
+	for _, addon := range addons {
+		if addon.Name == addonName {
+			return addon.EnabledDtbos
+		}
+	}
+	return []string{}
 }

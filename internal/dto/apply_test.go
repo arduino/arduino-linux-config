@@ -47,10 +47,11 @@ func TestBuildFdtoverlayCommand(t *testing.T) {
 	// race conditions when multiple instances run concurrently
 	tempFileName := fmt.Sprintf("temporaryDeviceTree.%d.temp", fixedTime.UnixNano())
 	temporaryDtb := overlaysDir.Join(tempFileName)
+	fullPathBaseDtbFile := overlaysDir.Join(baseDtbFile)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			args := buildOverlayCommand(overlaysDir, baseDtbFile, temporaryDtb, tt.overlays)
+			args := buildOverlayCommand(overlaysDir, fullPathBaseDtbFile.String(), temporaryDtb, tt.overlays)
 			require.Equal(t, tt.wantCommand, strings.Join(args, " "))
 		})
 	}

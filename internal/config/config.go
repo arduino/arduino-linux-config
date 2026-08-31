@@ -37,6 +37,7 @@ func GetBoard() (dto.DeviceTreeApplier, error) {
 		}, nil
 	case "ventunoq":
 		return dto.VentunoQ{
+			BaseDtbPath: paths.New("/var/lib/arduino-linux-config/overlays/ventunoq/"),
 			BaseDtbFile: "qualcomm_technologies_inc._monaco_monza_addons.bin",
 			OverlaysDir: paths.New("/var/lib/arduino-linux-config/overlays/"),
 			DtbFileName: "combined-dtb.dtb",

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/addons"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/reload"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
@@ -56,6 +57,7 @@ func run() error {
 	case "ventunoq":
 		rootCmd.AddCommand(
 			carrier.NewCarrierCmd(),
+			addons.NewAddonsCmd(),
 			reload.NewReloadCmd(),
 			NewVersionCmd(),
 		)
