@@ -15,8 +15,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/dryrun"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
@@ -88,23 +90,26 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	command, err := board.Apply(ctx, overlayList, dryRun)
-	if err != nil {
+	exec, recorder := executor.Real(), executor.NewRecorder()
+	if dryRun {
+		exec = recorder
+	}
+
+	if err := board.Apply(ctx, exec, overlayList); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	if dryRun {
-		feedback.Printf("Dry-run: no changes applied for carrier '%s'", carrier.Name)
-		feedback.Print(command)
-		return
-	}
-
-	err = status.Update(cfg, carrier, status.CarrierStatus{
+	err = status.Update(exec, cfg, carrier, status.CarrierStatus{
 		Enable:        true,
 		StatusDevices: nextDevicesConfiguration,
 	})
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+	}
+
+	if dryRun {
+		feedback.PrintResult(dryrun.Result{Subject: fmt.Sprintf("carrier '%s'", carrier.Name), Effects: recorder.Effects()})
+		return
 	}
 
 	current, next, err := status.Get(cfg, carrier)

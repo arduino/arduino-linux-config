@@ -13,6 +13,7 @@ import (
 	"github.com/arduino/go-paths-helper"
 	"github.com/stretchr/testify/require"
 
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
@@ -124,7 +125,7 @@ func TestAddonsStatusFileRoundTrip(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, saveAddonsStatusFile(p, want))
+	require.NoError(t, saveAddonsStatusFile(executor.Real(), p, want))
 
 	got, err := loadAddonsStatusFile(p)
 	require.NoError(t, err)

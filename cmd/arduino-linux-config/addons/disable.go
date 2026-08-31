@@ -12,8 +12,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/dryrun"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -58,19 +60,22 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 		feedback.Fatal("board not supported", feedback.ErrBadArgument)
 	}
 
-	command, err := board.Apply(ctx, []string{}, dryRun)
-	if err != nil {
+	exec, recorder := executor.Real(), executor.NewRecorder()
+	if dryRun {
+		exec = recorder
+	}
+
+	if err := board.Apply(ctx, exec, []string{}); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to disable addons %v", err), feedback.ErrGeneric)
 	}
 
-	if dryRun {
-		feedback.Printf("Dry-run: no changes applied")
-		feedback.Print(command)
-		return
+	if err := status.UpdateAddons(exec, cfg, reg, changes); err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to update addons status: %v", err), feedback.ErrGeneric)
 	}
 
-	if err := status.UpdateAddons(cfg, reg, changes); err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to update addons status: %v", err), feedback.ErrGeneric)
+	if dryRun {
+		feedback.PrintResult(dryrun.Result{Effects: recorder.Effects()})
+		return
 	}
 	feedback.Warnf("Addons disabled (will take effect on next boot)")
 	printAllAddons(reg, cfg)
