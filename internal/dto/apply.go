@@ -16,7 +16,7 @@ import (
 	"github.com/arduino/go-paths-helper"
 )
 
-var fdtBinary = paths.New("/usr/bin/fdtoverlay")
+var fdtCmdName = "fdtoverlay"
 
 type DeviceTreeApplier interface {
 	// Builds and optionally applies device tree overlay commands.
