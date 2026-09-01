@@ -69,14 +69,16 @@ func deviceTreeDiscover() (string, error) {
 		return "", err
 	}
 
-	return baseDtbFullPath, nil
+	return filepath.Join(root, baseDtbFullPath), nil
 }
 
 var kernelVersionPattern = regexp.MustCompile(`^[1-9]\.[0-9]\.[0-9]-`)
 
-// implement the same behaviour of /etc/kernel/postinst.d/zzz-update-dtb
+// implement the same behavior of /etc/kernel/postinst.d/zzz-update-dtb
 func kernelVersionDiscover(root string) (string, error) {
 	grubConfig := filepath.Join(root, "boot/grub/grub.cfg")
+	// #nosec G702 -- no shell or user input involved
+	//nolint:forbidigo // grep only reads, no side effect for --dry-run to report.
 	output, err := exec.Command("grep", "-m", "1", "/boot/vmlinuz-", grubConfig).Output()
 	if err != nil {
 		return "", err
@@ -84,20 +86,20 @@ func kernelVersionDiscover(root string) (string, error) {
 
 	fields := strings.Fields(string(output))
 	if len(fields) < 2 {
-		return "", fmt.Errorf("Error getting kernel version")
+		return "", fmt.Errorf("error getting kernel version")
 	}
 
 	return strings.TrimPrefix(fields[1], "/boot/vmlinuz-"), nil
 }
 
-// implement the same behaviour of /etc/kernel/postinst.d/zzz-update-dtb
+// implement the same behavior of /etc/kernel/postinst.d/zzz-update-dtb
 func deviceTreeDiscoverFromFS(root fs.FS, version string) (string, error) {
 	if getLinuxDistributionFromFS(root) != "ubuntu" {
-		return "", fmt.Errorf("Unsupported distribution")
+		return "", fmt.Errorf("unsupported distribution")
 	}
 
 	if !kernelVersionPattern.MatchString(version) {
-		return "", fmt.Errorf("Error getting kernel version")
+		return "", fmt.Errorf("error getting kernel version")
 	}
 
 	for _, dtbPath := range []string{
@@ -109,5 +111,5 @@ func deviceTreeDiscoverFromFS(root fs.FS, version string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("No valid device tree found")
+	return "", fmt.Errorf("no valid device tree found")
 }

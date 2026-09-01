@@ -6,6 +6,7 @@
 package dto
 
 import (
+	"encoding/binary"
 	"fmt"
 	"regexp"
 	"strings"
@@ -60,11 +61,27 @@ func TestBuildFdtoverlayCommand(t *testing.T) {
 	}
 }
 
+func TestSplitDeviceTrees(t *testing.T) {
+	first := fakeDeviceTree("qcom,other")
+	second := fakeDeviceTree("arduino,monza")
+	combined := append(append([]byte{}, first...), second...)
+
+	deviceTrees, err := splitDeviceTrees(combined)
+	require.NoError(t, err)
+	require.Equal(t, [][]byte{first, second}, deviceTrees)
+
+	_, err = splitDeviceTrees([]byte("not a device tree"))
+	require.Error(t, err)
+}
+
 func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	recorder := executor.NewRecorder()
 
+	combinedDtb := paths.New(t.TempDir(), "combined-dtb.dtb")
+	require.NoError(t, combinedDtb.WriteFile(append(fakeDeviceTree("qcom,other"), fakeDeviceTree("arduino,monza")...)))
+
 	board := VentunoQ{
-		BaseDtbFullPath: "/var/lib/base/base.bin",
+		BaseDtbFullPath: combinedDtb.String(),
 		OverlaysDir:     paths.New("/var/lib/overlays/"),
 		DtbFileName:     "combined-dtb.dtb",
 	}
@@ -79,11 +96,23 @@ func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	require.Equal(t, []string{
 		"mkdir -p /run/arduino-linux-config/dtb",
 		"mount -t vfat /dev/disk/by-partlabel/dtb_a /run/arduino-linux-config/dtb",
-		"fdtoverlay -i /var/lib/base/base.bin -o /run/arduino-linux-config/dtb/TEMP /var/lib/overlays/a.dtbo /var/lib/overlays/b.dtbo",
+		"# write /run/arduino-linux-config/dtb/monza.dtb (24 bytes)",
+		"fdtoverlay -i /run/arduino-linux-config/dtb/monza.dtb -o /run/arduino-linux-config/dtb/TEMP /var/lib/overlays/a.dtbo /var/lib/overlays/b.dtbo",
+		"# write /run/arduino-linux-config/dtb/TEMP (48 bytes)",
 		"mv /run/arduino-linux-config/dtb/TEMP /run/arduino-linux-config/dtb/combined-dtb.dtb",
 		"sync",
 		"rm -f /run/arduino-linux-config/dtb/TEMP",
+		"rm -f /run/arduino-linux-config/dtb/monza.dtb",
 		"sync",
 		"umount -l /run/arduino-linux-config/dtb",
 	}, effects)
+}
+
+// A minimal flattened device tree: magic, total size and the compatible string.
+func fakeDeviceTree(compatible string) []byte {
+	payload := make([]byte, 24)
+	binary.BigEndian.PutUint32(payload, 0xd00dfeed)
+	binary.BigEndian.PutUint32(payload[4:], uint32(len(payload))) //nolint:gosec
+	copy(payload[8:], compatible)
+	return payload
 }

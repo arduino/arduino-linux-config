@@ -56,7 +56,7 @@ func TestDeviceTreeDiscoverFromFS(t *testing.T) {
 				"boot/grub/grub.cfg": {Data: []byte("linux /boot/vmlinuz-" + version + " root=UUID=test\n")},
 				"lib/firmware/6.8.0-test/device-tree/qcom/combined-dtb.dtb": {Data: []byte("dtb")},
 			},
-			expectedErr: "Unsupported distribution",
+			expectedErr: "unsupported distribution",
 		},
 		{
 			name: "device tree not found",
@@ -64,7 +64,7 @@ func TestDeviceTreeDiscoverFromFS(t *testing.T) {
 				"etc/os-release":     {Data: []byte("ID=ubuntu\n")},
 				"boot/grub/grub.cfg": {Data: []byte("linux /boot/vmlinuz-" + version + " root=UUID=test\n")},
 			},
-			expectedErr: "No valid device tree found",
+			expectedErr: "no valid device tree found",
 		},
 	}
 

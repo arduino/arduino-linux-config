@@ -6,6 +6,7 @@
 package testutil
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -57,7 +58,7 @@ func envRootSetup(board, osId string) func() {
 		if err := os.MkdirAll(dtbPath, 0755); err != nil {
 			panic(err)
 		}
-		if err := os.WriteFile(filepath.Join(dtbPath, "combined-dtb.dtb"), []byte("dtb"), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(dtbPath, "combined-dtb.dtb"), combinedDeviceTree(), 0600); err != nil {
 			panic(err)
 		}
 	}
@@ -67,4 +68,17 @@ func envRootSetup(board, osId string) func() {
 		os.Unsetenv("COMPATIBLE_ROOT_DIR")
 		os.RemoveAll(compatRootDir)
 	}
+}
+
+// A combined dtb holding two minimal flattened device trees, the second one being the Monza board.
+func combinedDeviceTree() []byte {
+	var combined []byte //nolint:prealloc
+	for _, compatible := range []string{"qcom,other", "arduino,monza"} {
+		deviceTree := make([]byte, 32)
+		binary.BigEndian.PutUint32(deviceTree, 0xd00dfeed)
+		binary.BigEndian.PutUint32(deviceTree[4:], uint32(len(deviceTree))) //nolint:gosec // only 2 dtb
+		copy(deviceTree[8:], compatible)
+		combined = append(combined, deviceTree...)
+	}
+	return combined
 }
