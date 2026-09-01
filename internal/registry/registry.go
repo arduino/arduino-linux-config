@@ -226,7 +226,7 @@ var ventunoqUbuntuAddons = []Addon{
 	{ // TODO update
 		Name: AudioCodecZero,
 		EnabledDtbos: []string{
-			"monaco-monza-automation-hat.dtbo",
+			"monaco-addons-iqaudio-codeczero-monza.dtso",
 		},
 	},
 	{
@@ -238,7 +238,7 @@ var ventunoqUbuntuAddons = []Addon{
 	{ // TODO update
 		Name: HighPrecision,
 		EnabledDtbos: []string{
-			"monaco-monza-automation-hat.dtbo",
+			"monaco-monza-hight-precision-hat.dtbo",
 		},
 	},
 }

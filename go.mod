@@ -8,6 +8,8 @@ require (
 	go.bug.st/cleanup v1.0.0
 )
 
+require go.bug.st/f v0.5.0
+
 require (
 	cel.dev/expr v0.25.1 // indirect
 	charm.land/bubbles/v2 v2.0.0-rc.1 // indirect

@@ -28,10 +28,9 @@ type UnoQ struct {
 }
 
 type VentunoQ struct {
-	BaseDtbPath *paths.Path
-	BaseDtbFile string
-	OverlaysDir *paths.Path
-	DtbFileName string
+	BaseDtbFullPath string
+	OverlaysDir     *paths.Path
+	DtbFileName     string
 }
 
 func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
@@ -63,8 +62,7 @@ func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []
 	temporaryDtb := paths.New(mountPoint).Join(temporaryDtbName())
 	defer func() { _ = exec.Remove(temporaryDtb) }()
 
-	baseDtb := b.BaseDtbPath.Join(b.BaseDtbFile)
-	args := buildOverlayCommand(b.OverlaysDir, baseDtb.String(), temporaryDtb, uniqueOverlays(overlays))
+	args := buildOverlayCommand(b.OverlaysDir, b.BaseDtbFullPath, temporaryDtb, uniqueOverlays(overlays))
 	if err := exec.Run(ctx, args...); err != nil {
 		return err
 	}

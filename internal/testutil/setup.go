@@ -43,6 +43,24 @@ func envRootSetup(board, osId string) func() {
 	if err := os.WriteFile(filepath.Join(etcPath, "os-release"), []byte(fmt.Sprintf("ID=%s\n", osId)), 0600); err != nil {
 		panic(err)
 	}
+	if osId == "ubuntu" {
+		const kernelVersion = "6.8.0-test"
+		grubPath := filepath.Join(compatRootDir, "boot", "grub")
+		if err := os.MkdirAll(grubPath, 0755); err != nil {
+			panic(err)
+		}
+		if err := os.WriteFile(filepath.Join(grubPath, "grub.cfg"), []byte("linux /boot/vmlinuz-"+kernelVersion+" root=UUID=test\n"), 0600); err != nil {
+			panic(err)
+		}
+
+		dtbPath := filepath.Join(compatRootDir, "lib", "firmware", kernelVersion, "device-tree", "qcom")
+		if err := os.MkdirAll(dtbPath, 0755); err != nil {
+			panic(err)
+		}
+		if err := os.WriteFile(filepath.Join(dtbPath, "combined-dtb.dtb"), []byte("dtb"), 0600); err != nil {
+			panic(err)
+		}
+	}
 
 	os.Setenv("COMPATIBLE_ROOT_DIR", compatRootDir)
 	return func() {

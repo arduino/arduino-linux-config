@@ -64,10 +64,9 @@ func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	recorder := executor.NewRecorder()
 
 	board := VentunoQ{
-		BaseDtbPath: paths.New("/var/lib/base/"),
-		BaseDtbFile: "base.bin",
-		OverlaysDir: paths.New("/var/lib/overlays/"),
-		DtbFileName: "combined-dtb.dtb",
+		BaseDtbFullPath: "/var/lib/base/base.bin",
+		OverlaysDir:     paths.New("/var/lib/overlays/"),
+		DtbFileName:     "combined-dtb.dtb",
 	}
 	require.NoError(t, board.Apply(t.Context(), recorder, []string{"b.dtbo", "a.dtbo", "a.dtbo"}))
 
