@@ -62,7 +62,7 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		Reloaded: make([]string, 0, len(carriers)),
 	}
 
-	overlays := make([]string, 0)
+	overlays := make([]string, 0, len(carriers))
 	for _, carrier := range carriers {
 		// A carrier without a persisted status is reported as disabled
 		_, next, err := status.Get(cfg, carrier)
