@@ -74,6 +74,12 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		result.Reloaded = append(result.Reloaded, string(carrier.Name))
 	}
 
+	next, err := status.GetNextConfiguredAddon(cfg, reg)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get addons status: %v", err), feedback.ErrGeneric)
+	}
+	overlays = append(overlays, overlay.GetDtboForAddon(reg.Addons, next)...)
+
 	exec, recorder := executor.Real(), executor.NewRecorder()
 	if dryRun {
 		exec = recorder
