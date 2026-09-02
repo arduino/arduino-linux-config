@@ -159,13 +159,6 @@ func getStatusFile(cfg config.Configuration, carrierName registry.CarrierName) *
 	return cfg.StatusDir().Join(string(carrierName) + ".json")
 }
 
-// Exists reports whether a status file has been persisted for the carrier.
-// When it returns false the carrier has never been configured and must be
-// treated as disabled.
-func Exists(cfg config.Configuration, carrier registry.Carrier) bool {
-	return getStatusFile(cfg, carrier.Name).Exist()
-}
-
 func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
 	data, err := statusFile.ReadFile()
 	if err != nil {

@@ -64,17 +64,12 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 
 	overlays := make([]string, 0)
 	for _, carrier := range carriers {
-		if status.Exists(cfg, carrier) {
-			// The carrier has been configured: collect all the next overlays
-			_, next, err := status.Get(cfg, carrier)
-			if err != nil {
-				feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
-			}
-			overlays = append(overlays, overlay.CollectForStatus(carrier, next)...)
-		} else {
-			// No persisted status: carrier disabled
-			overlays = append(overlays, overlay.CollectDisabled(carrier)...)
+		// A carrier without a persisted status is reported as disabled
+		_, next, err := status.Get(cfg, carrier)
+		if err != nil {
+			feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
 		}
+		overlays = append(overlays, overlay.CollectForStatus(carrier, next)...)
 		result.Reloaded = append(result.Reloaded, string(carrier.Name))
 	}
 
