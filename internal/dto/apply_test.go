@@ -8,6 +8,7 @@ package dto
 import (
 	"encoding/binary"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -95,9 +96,33 @@ func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	}, effects)
 }
 
+func TestPackUnchangedDeviceTreePreservesCombinedDtb(t *testing.T) {
+	mountPoint := paths.New(t.TempDir())
+	other := fakeDeviceTree("qcom,other")
+	monza := fakeDeviceTreeWithSize("arduino,monza", 23)
+	combined := append(append([]byte{}, other...), monza...)
+	temporaryDtb := mountPoint.Join("temporary.dtb")
+	require.NoError(t, temporaryDtb.WriteFile(monza))
+
+	packedDtb, err := pack(executor.Real(), temporaryDtb, &unpackedDeviceTree{
+		mountPoint:  mountPoint,
+		monzaIndex:  1,
+		deviceTrees: [][]byte{other, monza},
+	})
+	require.NoError(t, err)
+
+	packed, err := os.ReadFile(packedDtb.String())
+	require.NoError(t, err)
+	require.Equal(t, combined, packed)
+}
+
 // A minimal flattened device tree: magic, total size and the compatible string.
 func fakeDeviceTree(compatible string) []byte {
-	payload := make([]byte, 24)
+	return fakeDeviceTreeWithSize(compatible, 24)
+}
+
+func fakeDeviceTreeWithSize(compatible string, size int) []byte {
+	payload := make([]byte, size)
 	binary.BigEndian.PutUint32(payload, 0xd00dfeed)
 	binary.BigEndian.PutUint32(payload[4:], uint32(len(payload))) //nolint:gosec
 	copy(payload[8:], compatible)

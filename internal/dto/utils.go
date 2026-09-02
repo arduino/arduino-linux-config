@@ -128,7 +128,15 @@ func pack(exec executor.Executor, temporaryDtb *paths.Path, unpacked *unpackedDe
 		// Dry run: no device tree was actually customized, so the original one is used.
 		customized = unpacked.deviceTrees[unpacked.monzaIndex]
 	}
-	unpacked.deviceTrees[unpacked.monzaIndex] = pad(customized)
+	original := unpacked.deviceTrees[unpacked.monzaIndex]
+	if bytes.Equal(customized, original) {
+		// padding will change the resulting device tree file
+		// when no overlays are present we want the same dtb
+		// provided by the linux-image package
+		unpacked.deviceTrees[unpacked.monzaIndex] = original
+	} else {
+		unpacked.deviceTrees[unpacked.monzaIndex] = pad(customized)
+	}
 
 	packedDtb := unpacked.mountPoint.Join(temporaryDtbName())
 	if err := exec.WriteFile(packedDtb, bytes.Join(unpacked.deviceTrees, nil), 0600); err != nil {
