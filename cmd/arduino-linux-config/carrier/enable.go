@@ -17,27 +17,27 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
-	"github.com/arduino/arduino-linux-config/internal/dto"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
 func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
-	return &cobra.Command{
+	var dryRun bool
+	cmd := &cobra.Command{
 		Use:   "enable <carrier-name> [device=option...]",
 		Short: "Enable and configure a carrier with the specified device options",
 		Example: `  # To configure a media-carrier with two cameras attached, one type1:
   arduino-linux-config carrier enable media-carrier camera0=type1-2lanes camera1=type1-4lanes`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if os.Geteuid() != 0 {
+			if os.Geteuid() != 0 && !dryRun {
 				feedback.Fatal("Command 'enable' must be run as root", feedback.ErrPermissionDenied)
 			}
 
 			carrierName := args[0]
 			deviceOptions := args[1:]
 
-			enableHandler(cmd.Context(), reg, cfg, carrierName, deviceOptions)
+			enableHandler(cmd.Context(), reg, cfg, carrierName, deviceOptions, dryRun)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
@@ -52,6 +52,8 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 			return completion.CompleteDeviceOption(carrier, args[1:], toComplete)
 		},
 	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
+	return cmd
 }
 
 // Since a board reboot can occur asynchronously with the carrier configuration,
@@ -62,7 +64,7 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 //
 // When a status request occurs, the system compares the boot-id stored in the
 // the configuration abd update the current values.
-func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, carrierName string, deviceArgs []string) {
+func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, carrierName string, deviceArgs []string, dryRun bool) {
 	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
@@ -80,13 +82,20 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 
 	overlayList := collectDtboFiles(carrier, nextDevicesConfiguration)
 
-	err = disable(ctx, cfg, carrier)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to reset carrier %s: %v", carrierName, err), feedback.ErrGeneric)
-	}
-	err = dto.Apply(ctx, overlayList)
+	board, err := config.GetBoard()
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+
+	command, err := board.Apply(ctx, overlayList, dryRun)
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+
+	if dryRun {
+		feedback.Printf("Dry-run: no changes applied for carrier '%s'", carrier.Name)
+		feedback.Print(command)
+		return
 	}
 
 	err = status.Update(cfg, carrier, status.CarrierStatus{
@@ -97,12 +106,11 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
-	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
-
 	current, next, err := status.Get(cfg, carrier)
 	if err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
+	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
