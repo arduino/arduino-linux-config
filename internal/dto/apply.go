@@ -28,10 +28,9 @@ type UnoQ struct {
 }
 
 type VentunoQ struct {
-	BaseDtbPath *paths.Path
-	BaseDtbFile string
-	OverlaysDir *paths.Path
-	DtbFileName string
+	BaseDtbFullPath string
+	OverlaysDir     *paths.Path
+	DtbFileName     string
 }
 
 func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
@@ -60,16 +59,23 @@ func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []
 	}
 	defer unmount()
 
+	monzaBaseDeviceTree, unpacked, err := unpack(exec, b.BaseDtbFullPath, mountPoint)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = exec.Remove(unpacked.monza) }()
+
 	temporaryDtb := paths.New(mountPoint).Join(temporaryDtbName())
 	defer func() { _ = exec.Remove(temporaryDtb) }()
 
-	baseDtb := b.BaseDtbPath.Join(b.BaseDtbFile)
-	args := buildOverlayCommand(b.OverlaysDir, baseDtb.String(), temporaryDtb, uniqueOverlays(overlays))
+	args := buildOverlayCommand(b.OverlaysDir, monzaBaseDeviceTree, temporaryDtb, uniqueOverlays(overlays))
 	if err := exec.Run(ctx, args...); err != nil {
 		return err
 	}
 
-	return moveDeviceTree(exec, temporaryDtb, paths.New(mountPoint).Join(b.DtbFileName))
+	packedDtb, err := pack(exec, temporaryDtb, unpacked)
+
+	return moveDeviceTree(exec, packedDtb, paths.New(mountPoint).Join(b.DtbFileName))
 }
 
 func uniqueOverlays(overlays []string) []string {
