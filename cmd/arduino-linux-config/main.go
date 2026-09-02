@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/reload"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 
@@ -49,11 +50,13 @@ func run() error {
 	case "unoq":
 		rootCmd.AddCommand(
 			carrier.NewCarrierCmd(),
+			reload.NewReloadCmd(),
 			NewVersionCmd(),
 		)
 	case "ventunoq":
 		rootCmd.AddCommand(
 			carrier.NewCarrierCmd(),
+			reload.NewReloadCmd(),
 			NewVersionCmd(),
 		)
 	default:
