@@ -95,7 +95,6 @@ type AddonName string
 const (
 	AudioCodecZero AddonName = "audio-codec-zero"
 	Automation     AddonName = "automation"
-	HighPrecision  AddonName = "high-precision"
 )
 
 func New() Registry {

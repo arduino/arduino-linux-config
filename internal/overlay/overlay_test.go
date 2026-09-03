@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/testutil"
 )
@@ -35,4 +36,34 @@ func TestCollectDisabled(t *testing.T) {
 	got := sorted(CollectDisabled(mediaCarrier(t)))
 	want := []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"}
 	require.Equal(t, want, got)
+}
+
+func TestGetDtboForAddon(t *testing.T) {
+	addons := []registry.Addon{
+		{Name: "audio-codec-zero", EnabledDtbos: []string{"audio-codec-zero.dtbo"}},
+		{Name: "automation", EnabledDtbos: []string{"automation.dtbo"}},
+	}
+
+	require.Equal(t, []string{"automation.dtbo"}, GetDtboForAddon(addons, "automation"))
+	require.Equal(t, []string{}, GetDtboForAddon(addons, "unknown"))
+}
+
+func TestGetConfiguredCarriersOverlay(t *testing.T) {
+	t.Cleanup(testutil.SetupUnoQDebian())
+
+	// No status file is persisted, so every carrier is reported as disabled.
+	overlays, carriers := GetConfiguredCarriersOverlay(config.New(), registry.New())
+
+	require.Equal(t, []string{"media-carrier"}, carriers)
+	require.Equal(t, CollectDisabled(mediaCarrier(t)), overlays)
+}
+
+func TestGetConfiguredAddonsOverlay(t *testing.T) {
+	t.Cleanup(testutil.SetupVentunoQUbuntu())
+
+	// No status file is persisted, so no addon is configured for the next boot.
+	overlays, addonName := GetConfiguredAddonsOverlay(config.New(), registry.New())
+
+	require.Equal(t, "", addonName)
+	require.Equal(t, []string{}, overlays)
 }

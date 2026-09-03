@@ -62,6 +62,30 @@ func TestBuildFdtoverlayCommand(t *testing.T) {
 	}
 }
 
+func TestUnoQApplyRecordsEveryEffect(t *testing.T) {
+	recorder := executor.NewRecorder()
+
+	board := UnoQ{
+		BaseDtbFile: "qrb2210-arduino-imola-base.dtb",
+		OverlaysDir: paths.New("/boot/efi/dtb/qcom/"),
+		DtbFileName: "qrb2210-arduino-imola.dtb",
+	}
+	require.NoError(t, board.Apply(t.Context(), recorder, []string{"b.dtbo", "a.dtbo", "a.dtbo"}))
+
+	temp := regexp.MustCompile(`temporaryDeviceTree\.\d+\.temp`)
+	effects := recorder.Effects()
+	for i, effect := range effects {
+		effects[i] = temp.ReplaceAllString(effect, "TEMP")
+	}
+
+	require.Equal(t, []string{
+		"fdtoverlay -i /boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb -o /boot/efi/dtb/qcom/TEMP /boot/efi/dtb/qcom/a.dtbo /boot/efi/dtb/qcom/b.dtbo",
+		"mv /boot/efi/dtb/qcom/TEMP /boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb",
+		"sync",
+		"rm -f /boot/efi/dtb/qcom/TEMP",
+	}, effects)
+}
+
 func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	recorder := executor.NewRecorder()
 

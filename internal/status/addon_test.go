@@ -22,7 +22,6 @@ func addonReg() registry.Registry {
 		Addons: []registry.Addon{
 			{Name: registry.AudioCodecZero},
 			{Name: registry.Automation},
-			{Name: registry.HighPrecision},
 		},
 	}
 }
@@ -48,7 +47,6 @@ func TestResolveAddons(t *testing.T) {
 			want: map[registry.AddonName]AddonState{
 				registry.AudioCodecZero: {Name: registry.AudioCodecZero, Current: false, Next: false},
 				registry.Automation:     {Name: registry.Automation, Current: true, Next: true},
-				registry.HighPrecision:  {Name: registry.HighPrecision, Current: false, Next: false},
 			},
 		},
 		{
@@ -62,7 +60,6 @@ func TestResolveAddons(t *testing.T) {
 			want: map[registry.AddonName]AddonState{
 				registry.AudioCodecZero: {Name: registry.AudioCodecZero, Current: false, Next: false},
 				registry.Automation:     {Name: registry.Automation, Current: false, Next: true},
-				registry.HighPrecision:  {Name: registry.HighPrecision, Current: false, Next: false},
 			},
 		},
 	}
@@ -94,7 +91,6 @@ func TestApplyAddonChangesProducesSingleFileWithAllAddons(t *testing.T) {
 	require.True(t, status.NextStatus.Addons[registry.Automation].Enabled)
 	// Untouched addons are present and disabled.
 	require.False(t, status.NextStatus.Addons[registry.AudioCodecZero].Enabled)
-	require.False(t, status.NextStatus.Addons[registry.HighPrecision].Enabled)
 
 	data, err := json.MarshalIndent(status, "", "    ")
 	require.NoError(t, err)
