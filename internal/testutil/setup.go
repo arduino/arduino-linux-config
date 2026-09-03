@@ -44,6 +44,14 @@ func envRootSetup(board, osId string) func() {
 		panic(err)
 	}
 
+	bootIdPath := filepath.Join(compatRootDir, "proc", "sys", "kernel", "random")
+	if err := os.MkdirAll(bootIdPath, 0755); err != nil {
+		panic(err)
+	}
+	if err := os.WriteFile(filepath.Join(bootIdPath, "boot_id"), []byte("test-boot-id\n"), 0600); err != nil {
+		panic(err)
+	}
+
 	os.Setenv("COMPATIBLE_ROOT_DIR", compatRootDir)
 	return func() {
 		os.Unsetenv("COMPATIBLE_ROOT_DIR")

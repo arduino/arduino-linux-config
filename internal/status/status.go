@@ -202,7 +202,12 @@ func saveStatusFile(exec executor.Executor, statusFile *paths.Path, status Statu
 }
 
 func getCurrentBootID() (string, error) {
-	bootID, err := os.ReadFile("/proc/sys/kernel/random/boot_id")
+	root := "/"
+	if dir := os.Getenv("COMPATIBLE_ROOT_DIR"); dir != "" {
+		root = dir
+	}
+
+	bootID, err := paths.New(root).Join("proc/sys/kernel/random/boot_id").ReadFile()
 	if err != nil {
 		return "", err
 	}

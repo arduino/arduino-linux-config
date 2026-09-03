@@ -49,7 +49,7 @@ tasks:
       - task: build-deb
         vars:
           ARCH: "{{ARCH}}"
-      - go test -v -tags integration ./tests/integration/...
+      - go tool gotest.tools/gotestsum -- -tags integration ./tests/integration/...
 
   test:unit:
     desc: Run unit tests

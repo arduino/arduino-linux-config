@@ -6,6 +6,11 @@ RUN apt-get update && apt-get install -y /tmp/arduino-linux-config.deb && rm /tm
 # Create fake device-tree compatible file for board detection
 RUN mkdir -p /tmp/compat-root/sys/firmware/devicetree/base && \
     printf 'arduino,imola\0' > /tmp/compat-root/sys/firmware/devicetree/base/compatible
+
+# COMPATIBLE_ROOT_DIR is also used to resolve the boot-id, so it must be provided too
+RUN mkdir -p /tmp/compat-root/proc/sys/kernel/random && \
+    printf 'test-boot-id\n' > /tmp/compat-root/proc/sys/kernel/random/boot_id
+
 ENV COMPATIBLE_ROOT_DIR=/tmp/compat-root
 
 # Create fake dtb directory and files
