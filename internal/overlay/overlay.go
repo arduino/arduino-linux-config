@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Arduino s.r.l. and/or its affiliated companies
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package overlay centralizes the logic that translates a carrier configuration
+// Package overlay centralizes the logic that translates a mount configuration
 // into the list of device tree overlay (dtbo) files that must be applied
 package overlay
 
@@ -14,14 +14,14 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-// Collect returns the overlay files required to enable a carrier according to
-// the user selection and the base overlays that should be removed
-// because they are incompatible with the selected options.
-func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]string, []string) {
+// Collect returns the overlay files required to enable a mount according to the user selection.
+// It also returns the base overlays that were removed because they were incompatible with the
+// selected options.
+func Collect(mount registry.Mount, userSelection []status.StatusDevice) ([]string, []string) {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for _, selection := range userSelection {
-		device, exist := carrier.FindDeviceByName(registry.CarrierDeviceName(selection.Device))
+		device, exist := mount.FindDeviceByName(registry.DeviceName(selection.Device))
 		if !exist {
 			continue
 		}
@@ -35,8 +35,8 @@ func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]s
 		}
 	}
 
-	// collect base dtbo files for the media carrier.
-	baseFiles = append(baseFiles, carrier.EnabledDtbos...)
+	// collect base dtbo files for the media mount.
+	baseFiles = append(baseFiles, mount.EnabledDtbos...)
 
 	// check for incompatible overlays in the basic configuration
 	// in this case, the basic overlay can be removed in favor of the device overlays
@@ -55,11 +55,11 @@ func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]s
 	return append(dtboFiles, baseFiles...), incompatibleOverlays
 }
 
-// Returns the overlay files needed to restore a carrier to its disabled state.
-func CollectDisabled(carrier registry.Carrier) []string {
-	var baseFiles []string
+// Returns the overlay files needed to restore a mount to its disabled state.
+func CollectDisabled(mount registry.Mount) []string {
+	baseFiles := make([]string, 0)
 
-	for _, device := range carrier.Devices {
+	for _, device := range mount.Devices {
 		for _, option := range device.Options {
 			if option.Name == string(registry.None) {
 				baseFiles = append(baseFiles, option.DtboFiles...)
@@ -68,17 +68,17 @@ func CollectDisabled(carrier registry.Carrier) []string {
 	}
 
 	// Add disable dtbs to restore original board configuration.
-	baseFiles = append(baseFiles, carrier.DisabledDtbos...)
+	baseFiles = append(baseFiles, mount.DisabledDtbos...)
 	return baseFiles
 }
 
-// Resolves the overlays for a carrier from its persisted status.
-func CollectForStatus(carrier registry.Carrier, current status.CarrierStatus) []string {
+// Resolves the overlays for a mount from its persisted status, with the base
+// overlays removed because they were incompatible with the selection.
+func CollectForStatus(mount registry.Mount, current status.MountStatus) ([]string, []string) {
 	if !current.Enable {
-		return CollectDisabled(carrier)
+		return CollectDisabled(mount), nil
 	}
-	files, _ := Collect(carrier, current.StatusDevices)
-	return files
+	return Collect(mount, current.StatusDevices)
 }
 
 func getIntersection(a, b []string) []string {

@@ -17,7 +17,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/hw/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
-	"github.com/arduino/arduino-linux-config/internal/overlay"
+	"github.com/arduino/arduino-linux-config/internal/devicetree"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -25,94 +25,78 @@ import (
 func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
-		Use:   "enable <carrier-name> [device=option...]",
-		Short: "Enable and configure a carrier with the specified device options",
-		Example: `  # To configure a media-carrier with two cameras attached, one type1:
-  arduino-linux-config carrier enable media-carrier camera0=type1-2lanes camera1=type1-4lanes`,
+		Use:   "enable <name> [device=option...]",
+		Short: "Enable a carrier or an addon, with its device options",
+		Example: `  # Configure a media-carrier with an 8 inch display:
+  arduino-linux-config hw enable media-carrier display=8-dsi-touch-a
+
+  # Connect the automation addon on the hat connector:
+  arduino-linux-config hw enable automation`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if os.Geteuid() != 0 && !dryRun {
 				feedback.Fatal("Command 'enable' must be run as root", feedback.ErrPermissionDenied)
 			}
-
-			carrierName := args[0]
-			deviceOptions := args[1:]
-
-			enableHandler(cmd.Context(), reg, cfg, carrierName, deviceOptions, dryRun)
+			enableHandler(cmd.Context(), reg, cfg, args[0], args[1:], dryRun)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				return completion.CompleteCarrierName(reg, args, toComplete)
+				return completion.CompleteMountName(reg, toComplete)
 			}
-
-			carrier, exist := reg.FindByName(args[0])
+			mount, exist := reg.FindByName(args[0])
 			if !exist {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-
-			return completion.CompleteDeviceOption(carrier, args[1:], toComplete)
+			return completion.CompleteDeviceOption(mount, args[1:], toComplete)
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
 	return cmd
 }
 
-// Since a board reboot can occur asynchronously with the carrier configuration,
-// we must track both the current and next states.
-//
-// State management is handled via a status file updated on device configurations.
-// This file stores the device name, configuration options, and a string, the boot-id
-//
-// When a status request occurs, the system compares the boot-id stored in the
-// the configuration abd update the current values.
-func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, carrierName string, deviceArgs []string, dryRun bool) {
-	nextDevicesConfiguration, err := parseUserArgs(deviceArgs)
+// Since a board reboot can occur asynchronously with the configuration, we must
+// track both the current and next states.
+func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, deviceArgs []string, dryRun bool) {
+	mount := findMount(reg, name)
+
+	selection, err := parseUserArgs(deviceArgs)
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrBadArgument)
+	}
+	if err := validateUserConfiguration(mount, selection); err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrBadArgument)
+	}
+
+	// The tool keeps one mount of a kind enabled, so the others are disabled.
+	// Only the parts that change are reported back to the user.
+	desired := devicetree.Desired{mount.Name: {Enable: true, StatusDevices: selection}}
+	changed := []registry.Mount{mount}
+	for _, other := range reg.ByKind(mount.Kind) {
+		if other.Name == mount.Name {
+			continue
+		}
+		desired[other.Name] = status.MountStatus{Enable: false}
+		if _, next, err := status.Get(cfg, other); err == nil && next.Enable {
+			changed = append(changed, other)
+		}
+	}
+
+	command, incompatible, err := devicetree.Rebuild(ctx, reg, cfg, desired, dryRun)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
-
-	carrier, exist := reg.FindByName(carrierName)
-	if !exist {
-		feedback.Fatal(fmt.Sprintf("carrier %q not supported", carrierName), feedback.ErrGeneric)
-	}
-
-	err = validateUserConfiguration(carrier, nextDevicesConfiguration)
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-
-	overlayList := collectDtboFiles(carrier, nextDevicesConfiguration)
-
-	board, err := config.GetBoard()
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-
-	command, err := board.Apply(ctx, overlayList, dryRun)
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	if len(incompatible) > 0 {
+		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
 	}
 
 	if dryRun {
-		feedback.Printf("Dry-run: no changes applied for carrier '%s'", carrier.Name)
+		feedback.Printf("Dry-run: no changes applied for %s '%s'", mount.Kind.Label(), mount.Name)
 		feedback.Print(command)
 		return
 	}
 
-	err = status.Update(cfg, carrier, status.CarrierStatus{
-		Enable:        true,
-		StatusDevices: nextDevicesConfiguration,
-	})
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to update status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
-	}
-
-	current, next, err := status.Get(cfg, carrier)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
-	}
-	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", carrier.Name)
-	feedback.PrintResult(populateShowResult(carrier, current, next))
+	feedback.Warnf("%s '%s' enabled (will take effect on next boot)", mount.Kind.Label(), mount.Name)
+	showHandler(reg, cfg, changed)
 }
 
 func parseUserArgs(args []string) ([]status.StatusDevice, error) {
@@ -151,33 +135,15 @@ func parseUserArgs(args []string) ([]status.StatusDevice, error) {
 	return selection, nil
 }
 
-// collectDtboFiles returns the overlay files required to enable the carrier with
-// the given per-device option selection, warning about any base overlays removed
-// because they were incompatible with the selection.
-func collectDtboFiles(carrier registry.Carrier, userSelection []status.StatusDevice) []string {
-	files, removedIncompatible := overlay.Collect(carrier, userSelection)
-	// TODO This should not happens because we are reading from a consistent status
-	if len(removedIncompatible) > 0 {
-		feedback.Warnf("Incompatible overlays, removing %v", removedIncompatible)
-	}
-	return files
-}
-
-func validateUserConfiguration(carrier registry.Carrier, nextDevicesConfiguration []status.StatusDevice) error {
-	for _, selection := range nextDevicesConfiguration {
-		device, exist := carrier.FindDeviceByName(registry.CarrierDeviceName(selection.Device))
+func validateUserConfiguration(mount registry.Mount, selection []status.StatusDevice) error {
+	for _, s := range selection {
+		device, exist := mount.FindDeviceByName(registry.DeviceName(s.Device))
 		if !exist {
-			return fmt.Errorf("unknown device for carrier %s: %q", carrier.Name, selection.Device)
+			return fmt.Errorf("unknown device for %s: %q", mount.Name, s.Device)
 		}
-		if !isOptionValid(selection.Option, device) {
-			return fmt.Errorf("device %q does not support option %q", selection.Device, selection.Option)
+		if !slices.ContainsFunc(device.Options, func(o registry.DeviceOption) bool { return o.Name == s.Option }) {
+			return fmt.Errorf("device %q does not support option %q", s.Device, s.Option)
 		}
 	}
 	return nil
-}
-
-func isOptionValid(optionName string, device registry.Device) bool {
-	return slices.ContainsFunc(device.Options, func(o registry.DeviceOption) bool {
-		return o.Name == optionName
-	})
 }

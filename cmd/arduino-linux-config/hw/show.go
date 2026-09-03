@@ -21,167 +21,111 @@ import (
 
 func newShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
-		Use:   "show [carrier-name]",
-		Short: "Show the current configuration",
+		Use:   "show [name]",
+		Short: "Show the configuration of the board, or of one part of it",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			carrierName := ""
+			mounts := reg.Mounts
 			if len(args) > 0 {
-				carrierName = args[0]
+				mounts = []registry.Mount{findMount(reg, args[0])}
 			}
-			showHandler(reg, cfg, carrierName)
+			showHandler(reg, cfg, mounts)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteCarrierName(reg, args, toComplete)
+			return completion.CompleteMountName(reg, toComplete)
 		},
 	}
 }
 
-func showHandler(reg registry.Registry, cfg config.Configuration, carrierName string) {
-	found := false
-	result := showResult{Carriers: make([]showCarrierResult, 0, len(reg.Carriers))}
-
-	for _, carrier := range reg.Carriers {
-		// No carrier specified - Show everything
-		if carrierName == "" {
-			result.Carriers = append(result.Carriers, buildShowCarrierResult(cfg, carrier))
-			continue
+func showHandler(reg registry.Registry, cfg config.Configuration, mounts []registry.Mount) {
+	result := showResult{Mounts: make([]showMount, 0, len(mounts))}
+	for _, mount := range mounts {
+		current, next, err := status.Get(cfg, mount)
+		if err != nil {
+			feedback.Fatal(fmt.Sprintf("failed to get status for %s: %v", mount.Name, err), feedback.ErrGeneric)
 		}
-		if string(carrier.Name) == carrierName {
-			result.Carriers = append(result.Carriers, buildShowCarrierResult(cfg, carrier))
-			found = true
-			break
-		}
-	}
-
-	if carrierName != "" && !found {
-		feedback.Warnf("carrier %s not found", carrierName)
+		result.Mounts = append(result.Mounts, showMount{
+			Name:           string(mount.Name),
+			Kind:           mount.Kind.Label(),
+			CurrentEnabled: current.Enable,
+			NextEnabled:    next.Enable,
+			CurrentDevices: withDeviceType(mount, current.StatusDevices),
+			NextDevices:    withDeviceType(mount, next.StatusDevices),
+		})
 	}
 	feedback.PrintResult(result)
 }
 
-func buildShowCarrierResult(cfg config.Configuration, carrier registry.Carrier) showCarrierResult {
-	current, next, err := status.Get(cfg, carrier)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
+// findMount resolves a name over every kind, because the name alone tells the
+// tool where the part plugs in.
+func findMount(reg registry.Registry, name string) registry.Mount {
+	mount, exist := reg.FindByName(name)
+	if !exist {
+		feedback.Fatal(fmt.Sprintf("%q not supported by this board", name), feedback.ErrBadArgument)
 	}
-
-	return populateShowResult(carrier, current, next)
-}
-
-func populateShowResult(carrier registry.Carrier, current status.CarrierStatus, next status.CarrierStatus) showCarrierResult {
-	currentResult := make([]StatusDeviceResult, 0, len(current.StatusDevices))
-	for _, device := range current.StatusDevices {
-		registerDevice, _ := carrier.FindDeviceByName(registry.CarrierDeviceName(device.Device))
-		currentResult = append(currentResult, StatusDeviceResult{
-			Device:     device.Device,
-			Option:     device.Option,
-			DeviceType: string(registerDevice.DeviceType),
-		})
-	}
-	nextResult := make([]StatusDeviceResult, 0, len(next.StatusDevices))
-	for _, device := range next.StatusDevices {
-		registerDevice, _ := carrier.FindDeviceByName(registry.CarrierDeviceName(device.Device))
-		nextResult = append(nextResult, StatusDeviceResult{
-			Device:     device.Device,
-			Option:     device.Option,
-			DeviceType: string(registerDevice.DeviceType),
-		})
-	}
-	return showCarrierResult{
-		CarrierName:    string(carrier.Name),
-		CurrentEnabled: current.Enable,
-		NextEnabled:    next.Enable,
-		CurrentDevices: currentResult,
-		NextDevices:    nextResult,
-		carrier:        carrier,
-	}
+	return mount
 }
 
 type showResult struct {
-	Carriers []showCarrierResult `json:"carriers"`
+	Mounts []showMount `json:"mounts"`
 }
 
-type showCarrierResult struct {
-	CarrierName    string               `json:"carrier_name"`
-	CurrentEnabled bool                 `json:"current_enabled"`
-	NextEnabled    bool                 `json:"next_enabled"`
-	CurrentDevices []StatusDeviceResult `json:"current"`
-	NextDevices    []StatusDeviceResult `json:"next"`
-
-	carrier registry.Carrier `json:"-"`
+type showMount struct {
+	Name           string         `json:"name"`
+	Kind           string         `json:"kind"`
+	CurrentEnabled bool           `json:"current_enabled"`
+	NextEnabled    bool           `json:"next_enabled"`
+	CurrentDevices []deviceResult `json:"current"`
+	NextDevices    []deviceResult `json:"next"`
 }
 
-type StatusDeviceResult struct {
+type deviceResult struct {
 	Device     string `json:"device"`
 	Option     string `json:"option"`
 	DeviceType string `json:"device_type"`
 }
 
-func (r showCarrierResult) String() string {
-	var sb strings.Builder
-	w := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
-
-	statusNext := "disabled"
-	if r.NextEnabled {
-		statusNext = "enabled"
+func withDeviceType(mount registry.Mount, devices []status.StatusDevice) []deviceResult {
+	result := make([]deviceResult, 0, len(devices))
+	for _, device := range devices {
+		registered, _ := mount.FindDeviceByName(registry.DeviceName(device.Device))
+		result = append(result, deviceResult{
+			Device:     device.Device,
+			Option:     device.Option,
+			DeviceType: string(registered.DeviceType),
+		})
 	}
-	statusCurrent := "disabled"
-	if r.CurrentEnabled {
-		statusCurrent = "enabled"
-	}
+	return result
+}
 
-	// Write the header
-	fmt.Fprintf(w, "%s\t[current: %s]\t[next: %s]\n", r.CarrierName, statusCurrent, statusNext)
+func (r showResult) String() string {
+	var b strings.Builder
+	w := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
 
-	nextMap := make(map[registry.CarrierDeviceName]string)
-	if len(r.NextDevices) > 0 {
-		for _, d := range r.carrier.Devices {
-			if device, found := hasDevice(r.NextDevices, d.Name); found {
-				nextMap[d.Name] = device.Option
+	for _, mount := range r.Mounts {
+		fmt.Fprintf(w, "%s\t%s\t[current: %s]\t[next: %s]\n",
+			mount.Kind, mount.Name, enabledLabel(mount.CurrentEnabled), enabledLabel(mount.NextEnabled))
+
+		for i, device := range mount.CurrentDevices {
+			next := "none"
+			if i < len(mount.NextDevices) {
+				next = mount.NextDevices[i].Option
 			}
-		}
-	}
-
-	for _, device := range r.carrier.Devices {
-		c, _ := hasDevice(r.CurrentDevices, device.Name)
-
-		// Write column for curr and next
-		if len(r.NextDevices) > 0 {
-			nextOpt := nextMap[registry.CarrierDeviceName(c.Device)]
-			if nextOpt == "" {
-				nextOpt = "none" // Fallback for display clarity
-			}
-			fmt.Fprintf(w, "  %s:\t[current: %s]\t[next boot: %s]\n", c.Device, c.Option, nextOpt)
-		} else {
-			fmt.Fprintf(w, "  %s:\t[current: %s]\t\n", c.Device, c.Option)
+			fmt.Fprintf(w, "\t  %s:\t[current: %s]\t[next: %s]\n", device.Device, device.Option, next)
 		}
 	}
 
 	w.Flush()
-	return sb.String()
-}
-func (r showCarrierResult) Data() any {
-	return r
-}
-func (r showResult) String() string {
-	var sb strings.Builder
-	for _, carrier := range r.Carriers {
-		sb.WriteString(carrier.String())
-		sb.WriteString("\n")
-	}
-	return sb.String()
+	return b.String()
 }
 
 func (r showResult) Data() any {
 	return r
 }
 
-func hasDevice(devices []StatusDeviceResult, deviceName registry.CarrierDeviceName) (StatusDeviceResult, bool) {
-	for _, d := range devices {
-		if d.Device == string(deviceName) {
-			return d, true
-		}
+func enabledLabel(enabled bool) string {
+	if enabled {
+		return "enabled"
 	}
-	return StatusDeviceResult{}, false
+	return "disabled"
 }

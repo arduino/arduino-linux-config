@@ -19,97 +19,99 @@ import (
 func newListCmd(reg registry.Registry) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "Lists the available carriers and devices for the current hardware",
-		Args:  cobra.MaximumNArgs(0),
+		Short: "List the carriers and the addons available for this board",
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			listHandler(reg)
+			feedback.PrintResult(buildListResult(reg))
 		},
 	}
 }
 
-func listHandler(reg registry.Registry) {
-	carriersResult := extractCarriersResult(reg)
-	feedback.PrintResult(carriersResult)
-}
-
-type CarriersResult struct {
-	Carriers []CarrierResult `json:"carriers"`
-}
-
-type CarrierResult struct {
-	Name    string         `json:"name"`
-	Devices []DeviceResult `json:"devices"`
-}
-
-type DeviceResult struct {
-	Name             string   `json:"name"`
-	DeviceType       string   `json:"device_type"`
-	AvailableDevices []string `json:"available_devices"`
-}
-
-func extractCarriersResult(reg registry.Registry) CarriersResult {
-	carriersResult := CarriersResult{
-		Carriers: make([]CarrierResult, 0, len(reg.Carriers)),
-	}
-
-	for _, carrier := range reg.Carriers {
-		carriersResult.Carriers = append(carriersResult.Carriers, CarrierResult{
-			Name:    string(carrier.Name),
-			Devices: extractDeviceResult(carrier.Devices),
+func buildListResult(reg registry.Registry) listResult {
+	result := listResult{Mounts: make([]listMount, 0, len(reg.Mounts))}
+	for _, mount := range reg.Mounts {
+		devices := make([]listDevice, 0, len(mount.Devices))
+		for _, device := range mount.Devices {
+			options := make([]string, len(device.Options))
+			for i, option := range device.Options {
+				options[i] = option.Name
+			}
+			devices = append(devices, listDevice{
+				Name:       string(device.Name),
+				DeviceType: string(device.DeviceType),
+				Options:    options,
+			})
+		}
+		result.Mounts = append(result.Mounts, listMount{
+			Name:    string(mount.Name),
+			Kind:    string(mount.Kind),
+			Devices: devices,
 		})
 	}
-	return carriersResult
+	return result
 }
 
-func extractDeviceResult(devices []registry.Device) []DeviceResult {
-	devicesList := make([]DeviceResult, len(devices))
-
-	for i, d := range devices {
-		options := extractOptions(d.Options)
-		devicesList[i] = DeviceResult{
-			Name:             string(d.Name),
-			DeviceType:       string(d.DeviceType),
-			AvailableDevices: options,
-		}
-	}
-	return devicesList
+type listResult struct {
+	Mounts []listMount `json:"mounts"`
 }
 
-func extractOptions(options []registry.DeviceOption) []string {
-	res := make([]string, len(options))
-	for i, opt := range options {
-		res[i] = opt.Name
-	}
-	return res
+type listMount struct {
+	Name    string       `json:"name"`
+	Kind    string       `json:"kind"`
+	Devices []listDevice `json:"devices"`
 }
-func (r CarriersResult) String() string {
+
+type listDevice struct {
+	Name       string   `json:"name"`
+	DeviceType string   `json:"device_type"`
+	Options    []string `json:"options"`
+}
+
+// The parts are grouped by connector, because a carrier and an addon plug into
+// different places on the board.
+func (r listResult) String() string {
 	var b strings.Builder
-	// minwidth: 0, tabwidth: 0, padding: 4, padchar: ' ', flags: 0
-	w := tabwriter.NewWriter(&b, 0, 0, 4, ' ', 0)
 
-	fmt.Fprintln(w, "CARRIER\tDEVICE\tOPTIONS")
-	fmt.Fprintln(w, "-------\t------\t-------")
-
-	for _, carrier := range r.Carriers {
-		for i, device := range carrier.Devices {
-			carrierName := ""
-			if i == 0 {
-				carrierName = carrier.Name
+	for _, group := range []struct {
+		kind    registry.Kind
+		title   string
+		comment string
+	}{
+		{registry.KindCarrier, "CARRIERS", "connect to the carrier connector"},
+		{registry.KindHat, "ADDONS", "connect to the 40-pin hat connector"},
+	} {
+		mounts := make([]listMount, 0, len(r.Mounts))
+		for _, mount := range r.Mounts {
+			if mount.Kind == string(group.kind) {
+				mounts = append(mounts, mount)
 			}
-
-			fmt.Fprintf(w, "%s\t%s\t%s\n",
-				carrierName,
-				device.Name,
-				strings.Join(device.AvailableDevices, ", "),
-			)
 		}
-		fmt.Fprintln(w, "\t\t")
+		if len(mounts) == 0 {
+			continue
+		}
+
+		fmt.Fprintf(&b, "%s (%s, one at a time)\n", group.title, group.comment)
+		w := tabwriter.NewWriter(&b, 0, 0, 4, ' ', 0)
+		for _, mount := range mounts {
+			if len(mount.Devices) == 0 {
+				fmt.Fprintf(w, "  %s\n", mount.Name)
+				continue
+			}
+			for i, device := range mount.Devices {
+				name := ""
+				if i == 0 {
+					name = mount.Name
+				}
+				fmt.Fprintf(w, "  %s\t%s\t%s\n", name, device.Name, strings.Join(device.Options, ", "))
+			}
+		}
+		w.Flush()
+		fmt.Fprintln(&b)
 	}
 
-	w.Flush()
 	return b.String()
 }
 
-func (r CarriersResult) Data() interface{} {
+func (r listResult) Data() interface{} {
 	return r
 }

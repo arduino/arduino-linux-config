@@ -46,22 +46,18 @@ func run() error {
 	rootCmd.PersistentFlags().StringVar(&format, "format", "text", "Output format (text, json)")
 	rootCmd.PersistentFlags().StringVar(&logLevelStr, "log-level", "error", "Set the log level (debug, info, warn, error)")
 
-	switch config.GetBoardID() {
-	case "unoq":
-		rootCmd.AddCommand(
-			hw.NewCarrierCmd(),
-			reload.NewReloadCmd(),
-			NewVersionCmd(),
-		)
-	case "ventunoq":
-		rootCmd.AddCommand(
-			hw.NewCarrierCmd(),
-			reload.NewReloadCmd(),
-			NewVersionCmd(),
-		)
-	default:
+	if config.GetBoardID() == "" {
 		feedback.Fatal("unsupported board/os", feedback.ErrBadArgument)
 	}
+
+	// Every board gets the same commands. The registry decides what each command
+	// can list, so a board without a hat connector shows no addon.
+	rootCmd.AddCommand(
+		hw.NewHwCmd(),
+		hw.NewCarrierCmd(),
+		reload.NewReloadCmd(),
+		NewVersionCmd(),
+	)
 
 	ctx := context.Background()
 	ctx, _ = cleanup.InterruptableContext(ctx)

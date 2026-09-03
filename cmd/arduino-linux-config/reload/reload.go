@@ -16,9 +16,8 @@ import (
 
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
-	"github.com/arduino/arduino-linux-config/internal/overlay"
+	"github.com/arduino/arduino-linux-config/internal/devicetree"
 	"github.com/arduino/arduino-linux-config/internal/registry"
-	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
 // Re-applies the currently persisted carrier configuration so the
@@ -47,35 +46,23 @@ func NewReloadCmd() *cobra.Command {
 	return cmd
 }
 
-// Re-applies to the device tree the persisted carrier configuration
+// Re-applies to the device tree the persisted configuration of every mount
 func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, dryRun bool) {
-	board, err := config.GetBoard()
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-
-	carriers := reg.Carriers
-
 	result := reloadResult{
 		BoardID:  config.GetBoardID(),
 		DryRun:   dryRun,
-		Reloaded: make([]string, 0, len(carriers)),
+		Reloaded: make([]string, 0, len(reg.Mounts)),
+	}
+	for _, mount := range reg.Mounts {
+		result.Reloaded = append(result.Reloaded, string(mount.Name))
 	}
 
-	overlays := make([]string, 0, len(carriers))
-	for _, carrier := range carriers {
-		// A carrier without a persisted status is reported as disabled
-		_, next, err := status.Get(cfg, carrier)
-		if err != nil {
-			feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
-		}
-		overlays = append(overlays, overlay.CollectForStatus(carrier, next)...)
-		result.Reloaded = append(result.Reloaded, string(carrier.Name))
-	}
-
-	command, err := board.Apply(ctx, overlays, dryRun)
+	command, incompatible, err := devicetree.Rebuild(ctx, reg, cfg, nil, dryRun)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+	if len(incompatible) > 0 {
+		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
 	}
 
 	if dryRun {
@@ -97,10 +84,10 @@ func (r reloadResult) String() string {
 
 	fmt.Fprintf(w, "Board:\t%s\n", r.BoardID)
 	if len(r.Reloaded) == 0 {
-		fmt.Fprintln(w, "No carriers to reload")
+		fmt.Fprintln(w, "Nothing to reload")
 	}
 	for _, name := range r.Reloaded {
-		fmt.Fprintf(w, "Reloaded carrier:\t%s\n", name)
+		fmt.Fprintf(w, "Reloaded:\t%s\n", name)
 	}
 
 	w.Flush()

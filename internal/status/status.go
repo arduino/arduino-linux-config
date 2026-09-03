@@ -21,15 +21,15 @@ import (
 )
 
 type StatusFile struct {
-	CurrentStatus StatusCarrier `json:"current_status"`
-	NextStatus    StatusCarrier `json:"next_status"`
+	CurrentStatus StatusMount `json:"current_status"`
+	NextStatus    StatusMount `json:"next_status"`
 }
 
-type StatusCarrier struct {
+type StatusMount struct {
 	Status    bool   `json:"status"`
 	CreatedAt string `json:"created_at"`
 
-	Devices map[registry.CarrierDeviceName]StatusInfo `json:"devices"`
+	Devices map[registry.DeviceName]StatusInfo `json:"devices"`
 }
 
 type StatusInfo struct {
@@ -37,7 +37,7 @@ type StatusInfo struct {
 	CreatedAt string `json:"created_at"`
 }
 
-type CarrierStatus struct {
+type MountStatus struct {
 	Enable        bool
 	StatusDevices []StatusDevice
 }
@@ -48,7 +48,7 @@ type StatusDevice struct {
 }
 
 // Called by config and reset
-func Update(cfg config.Configuration, carrier registry.Carrier, statusUpdate CarrierStatus) error {
+func Update(cfg config.Configuration, carrier registry.Mount, statusUpdate MountStatus) error {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return fmt.Errorf("failed to load status file %w", err)
@@ -69,27 +69,27 @@ func Update(cfg config.Configuration, carrier registry.Carrier, statusUpdate Car
 
 // Called by show, load the status structure and apply status fixes before returning
 // Do not update the status file on the disk because show is running as non-root user
-func Get(cfg config.Configuration, carrier registry.Carrier) (CarrierStatus, CarrierStatus, error) {
+func Get(cfg config.Configuration, carrier registry.Mount) (MountStatus, MountStatus, error) {
 	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
 	if err != nil {
-		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to load status file %v", err)
+		return MountStatus{}, MountStatus{}, fmt.Errorf("failed to load status file %v", err)
 	}
 
 	currentBootId, err := getCurrentBootID()
 	if err != nil {
-		return CarrierStatus{}, CarrierStatus{}, fmt.Errorf("failed to get boot-id: %v", err)
+		return MountStatus{}, MountStatus{}, fmt.Errorf("failed to get boot-id: %v", err)
 	}
 
 	current, next := getStatusStructure(status, carrier, currentBootId)
 	return current, next, nil
 }
 
-func getStatusStructure(status *StatusFile, carrier registry.Carrier, currentBootId string) (CarrierStatus, CarrierStatus) {
-	current := CarrierStatus{
+func getStatusStructure(status *StatusFile, carrier registry.Mount, currentBootId string) (MountStatus, MountStatus) {
+	current := MountStatus{
 		Enable:        false,
 		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
 	}
-	next := CarrierStatus{
+	next := MountStatus{
 		Enable:        false,
 		StatusDevices: make([]StatusDevice, 0, len(carrier.Devices)),
 	}
@@ -119,19 +119,19 @@ func getStatusStructure(status *StatusFile, carrier registry.Carrier, currentBoo
 	return current, next
 }
 
-func updateStatusStructure(status *StatusFile, carrier registry.Carrier, currentStatus CarrierStatus, statusUpdate CarrierStatus, bootId string) {
+func updateStatusStructure(status *StatusFile, carrier registry.Mount, currentStatus MountStatus, statusUpdate MountStatus, bootId string) {
 	// set curr
 	for _, dev := range currentStatus.StatusDevices {
 		currInfo := StatusInfo{
 			Option:    getOrDefault(dev.Option),
 			CreatedAt: bootId,
 		}
-		status.CurrentStatus.Devices[registry.CarrierDeviceName(dev.Device)] = currInfo
+		status.CurrentStatus.Devices[registry.DeviceName(dev.Device)] = currInfo
 	}
 	status.CurrentStatus.Status = currentStatus.Enable
 	status.CurrentStatus.CreatedAt = bootId
 
-	findOption := func(deviceName registry.CarrierDeviceName) string {
+	findOption := func(deviceName registry.DeviceName) string {
 		for _, dev := range statusUpdate.StatusDevices {
 			if dev.Device == string(deviceName) {
 				return dev.Option
@@ -156,7 +156,7 @@ func getOrDefault(option string) string {
 	return cmp.Or(option, string(registry.None))
 }
 
-func getStatusFile(cfg config.Configuration, carrierName registry.CarrierName) *paths.Path {
+func getStatusFile(cfg config.Configuration, carrierName registry.MountName) *paths.Path {
 	return cfg.StatusDir().Join(string(carrierName) + ".json")
 }
 
@@ -165,11 +165,11 @@ func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			newStatus := StatusFile{
-				CurrentStatus: StatusCarrier{
-					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
+				CurrentStatus: StatusMount{
+					Devices: make(map[registry.DeviceName]StatusInfo),
 				},
-				NextStatus: StatusCarrier{
-					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
+				NextStatus: StatusMount{
+					Devices: make(map[registry.DeviceName]StatusInfo),
 				},
 			}
 			return &newStatus, nil

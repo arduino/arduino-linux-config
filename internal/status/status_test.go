@@ -22,12 +22,12 @@ func TestUpdateStatusStructure(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		statusUpdate CarrierStatus
-		wantResult   map[registry.CarrierDeviceName]string
+		statusUpdate MountStatus
+		wantResult   map[registry.DeviceName]string
 	}{
 		{
 			name: "update all devices",
-			statusUpdate: CarrierStatus{
+			statusUpdate: MountStatus{
 				Enable: true,
 				StatusDevices: []StatusDevice{
 					{Device: string(registry.Camera0), Option: "cam1"},
@@ -35,7 +35,7 @@ func TestUpdateStatusStructure(t *testing.T) {
 					{Device: string(registry.Display), Option: "display"},
 				},
 			},
-			wantResult: map[registry.CarrierDeviceName]string{
+			wantResult: map[registry.DeviceName]string{
 				registry.Camera0: "cam1",
 				registry.Camera1: "none",
 				registry.Display: "display",
@@ -43,13 +43,13 @@ func TestUpdateStatusStructure(t *testing.T) {
 		},
 		{
 			name: "fill empty devices",
-			statusUpdate: CarrierStatus{
+			statusUpdate: MountStatus{
 				Enable: true,
 				StatusDevices: []StatusDevice{
 					{Device: string(registry.Display), Option: "display"},
 				},
 			},
-			wantResult: map[registry.CarrierDeviceName]string{
+			wantResult: map[registry.DeviceName]string{
 				registry.Camera0: "none",
 				registry.Camera1: "none",
 				registry.Display: "display",
@@ -60,27 +60,27 @@ func TestUpdateStatusStructure(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			status := &StatusFile{
-				NextStatus: StatusCarrier{
-					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
+				NextStatus: StatusMount{
+					Devices: make(map[registry.DeviceName]StatusInfo),
 				},
 			}
 
 			currentBootId := "001"
 			reg := registry.New()
 			require.NotEmpty(t, reg)
-			mediaCarrier, exist := reg.FindByName("media-carrier")
+			mediaMount, exist := reg.FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
-			updateStatusStructure(status, mediaCarrier, CarrierStatus{}, tt.statusUpdate, currentBootId)
-			carrierDeviceLenght := len(mediaCarrier.Devices)
+			updateStatusStructure(status, mediaMount, MountStatus{}, tt.statusUpdate, currentBootId)
+			carrierDeviceLenght := len(mediaMount.Devices)
 			if len(status.NextStatus.Devices) != carrierDeviceLenght {
 
 				if len(status.CurrentStatus.Devices) != 0 {
 					t.Errorf("got %d devices, want %d", len(status.CurrentStatus.Devices), carrierDeviceLenght)
 				}
 
-				for _, device := range mediaCarrier.Devices {
+				for _, device := range mediaMount.Devices {
 					info, exists := status.NextStatus.Devices[device.Name]
 					if !exists {
 						t.Fatalf("device %s missing from wanted status", device.Name)
@@ -115,11 +115,11 @@ func TestGetStatusStructure(t *testing.T) {
 		{
 			name: "Move outdated device to current, retain current status on show command",
 			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{
-					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
+				CurrentStatus: StatusMount{
+					Devices: make(map[registry.DeviceName]StatusInfo),
 				},
-				NextStatus: StatusCarrier{
-					Devices: map[registry.CarrierDeviceName]StatusInfo{
+				NextStatus: StatusMount{
+					Devices: map[registry.DeviceName]StatusInfo{
 						registry.Camera0: {Option: "cam1", CreatedAt: prevCurrentBootId},
 					},
 				},
@@ -138,11 +138,11 @@ func TestGetStatusStructure(t *testing.T) {
 		{
 			name: "Both devices after boot stay in next",
 			initialStatus: &StatusFile{
-				CurrentStatus: StatusCarrier{
-					Devices: make(map[registry.CarrierDeviceName]StatusInfo),
+				CurrentStatus: StatusMount{
+					Devices: make(map[registry.DeviceName]StatusInfo),
 				},
-				NextStatus: StatusCarrier{
-					Devices: map[registry.CarrierDeviceName]StatusInfo{
+				NextStatus: StatusMount{
+					Devices: map[registry.DeviceName]StatusInfo{
 						registry.Camera0: {Option: "cam1", CreatedAt: afterConfigurationBootId},    // fresh
 						registry.Display: {Option: "display", CreatedAt: afterConfigurationBootId}, // fresh
 					},
@@ -165,11 +165,11 @@ func TestGetStatusStructure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reg := registry.New()
 			require.NotEmpty(t, reg)
-			mediaCarrier, exist := reg.FindByName("media-carrier")
+			mediaMount, exist := reg.FindByName("media-carrier")
 			if !exist {
 				t.Fatal("media-carrier not found in registry")
 			}
-			current, next := getStatusStructure(tt.initialStatus, mediaCarrier, currentBootId)
+			current, next := getStatusStructure(tt.initialStatus, mediaMount, currentBootId)
 
 			// Validate Current Slice
 			for i, want := range tt.expectedCurrent {

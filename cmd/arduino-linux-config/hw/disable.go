@@ -7,7 +7,6 @@ package hw
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -15,7 +14,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/hw/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
-	"github.com/arduino/arduino-linux-config/internal/overlay"
+	"github.com/arduino/arduino-linux-config/internal/devicetree"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -23,70 +22,52 @@ import (
 func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
-		Use:   "disable <carrier-name>",
-		Short: "Disable a carrier and restore the base DTB",
-		Args:  cobra.ExactArgs(1),
+		Use:   "disable [name]",
+		Short: "Disable a carrier or an addon. With no name, disable everything",
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if os.Geteuid() != 0 && !dryRun {
 				feedback.Fatal("Command 'disable' must be run as root", feedback.ErrPermissionDenied)
 			}
-
-			carrierName := args[0]
-			disableHandler(cmd.Context(), reg, cfg, carrierName, dryRun)
+			name := ""
+			if len(args) > 0 {
+				name = args[0]
+			}
+			disableHandler(cmd.Context(), reg, cfg, name, dryRun)
 		},
-
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteCarrierName(reg, args, toComplete)
+			return completion.CompleteMountName(reg, toComplete)
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
 	return cmd
 }
 
-func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, carrierName string, dryRun bool) {
-	carrier, exist := reg.FindByName(carrierName)
-	if !exist {
-		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
+func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, dryRun bool) {
+	changed := reg.Mounts
+	if name != "" {
+		changed = []registry.Mount{findMount(reg, name)}
 	}
 
-	command, err := disable(ctx, cfg, carrier, dryRun)
+	desired := devicetree.Desired{}
+	for _, mount := range changed {
+		desired[mount.Name] = status.MountStatus{Enable: false}
+	}
+
+	command, incompatible, err := devicetree.Rebuild(ctx, reg, cfg, desired, dryRun)
 	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to disable carrier %s: %v", carrierName, err), feedback.ErrGeneric)
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+	if len(incompatible) > 0 {
+		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
 	}
 
 	if dryRun {
-		feedback.Printf("Dry-run: no changes applied for carrier '%s'", carrier.Name)
+		feedback.Print("Dry-run: no changes applied")
 		feedback.Print(command)
 		return
 	}
-	feedback.Warnf("Carrier '%s' disabled (will take effect on next boot)", carrier.Name)
 
-	current, next, err := status.Get(cfg, carrier)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrierName, err), feedback.ErrGeneric)
-	}
-	feedback.PrintResult(populateShowResult(carrier, current, next))
-}
-
-func disable(ctx context.Context, cfg config.Configuration, carrier registry.Carrier, dryRun bool) (string, error) {
-	baseFiles := overlay.CollectDisabled(carrier)
-
-	board, err := config.GetBoard()
-	if err != nil {
-		return "", err
-	}
-	command, err := board.Apply(ctx, baseFiles, dryRun)
-	if err != nil {
-		return command, err
-	}
-
-	if dryRun {
-		return command, nil
-	}
-
-	err = status.Update(cfg, carrier, status.CarrierStatus{Enable: false})
-	if err != nil {
-		return command, fmt.Errorf("cannot update status: %w", err)
-	}
-	return command, nil
+	feedback.Warnf("Disabled (will take effect on next boot)")
+	showHandler(reg, cfg, changed)
 }
