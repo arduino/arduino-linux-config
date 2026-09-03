@@ -16,6 +16,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/executor"
+	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -54,6 +55,8 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		exec = recorder
 	}
 
+	configuredCarrierOverlays, _ := overlay.GetConfiguredCarriersOverlay(cfg, reg)
+	overlayList = append(overlayList, configuredCarrierOverlays...)
 	if err := board.Apply(ctx, exec, overlayList); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}

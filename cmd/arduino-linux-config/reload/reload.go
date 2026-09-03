@@ -19,7 +19,6 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
-	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
 // Re-applies the currently persisted carrier configuration so the
@@ -55,30 +54,22 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
-	carriers := reg.Carriers
-
 	result := reloadResult{
-		BoardID:  config.GetBoardID(),
-		DryRun:   dryRun,
-		Reloaded: make([]string, 0, len(carriers)),
+		BoardID:          config.GetBoardID(),
+		DryRun:           dryRun,
+		ReloadedCarriers: make([]string, 0),
+		ReloadedAddons:   make([]string, 0),
 	}
 
-	overlays := make([]string, 0, len(carriers))
-	for _, carrier := range carriers {
-		// A carrier without a persisted status is reported as disabled
-		_, next, err := status.Get(cfg, carrier)
-		if err != nil {
-			feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
-		}
-		overlays = append(overlays, overlay.CollectForStatus(carrier, next)...)
-		result.Reloaded = append(result.Reloaded, string(carrier.Name))
-	}
+	carriersOverlay, carriers := overlay.GetConfiguredCarriersOverlay(cfg, reg)
+	addonOverlays, overlayName := overlay.GetConfiguredAddonsOverlay(cfg, reg)
 
-	next, err := status.GetNextConfiguredAddon(cfg, reg)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get addons status: %v", err), feedback.ErrGeneric)
-	}
-	overlays = append(overlays, overlay.GetDtboForAddon(reg.Addons, next)...)
+	overlays := make([]string, 0, len(carriersOverlay)+len(addonOverlays))
+	overlays = append(overlays, carriersOverlay...)
+	overlays = append(overlays, addonOverlays...)
+
+	result.ReloadedCarriers = append(result.ReloadedCarriers, carriers...)
+	result.ReloadedAddons = append(result.ReloadedAddons, overlayName)
 
 	exec, recorder := executor.Real(), executor.NewRecorder()
 	if dryRun {
@@ -94,10 +85,11 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 }
 
 type reloadResult struct {
-	BoardID  string   `json:"board_id"`
-	DryRun   bool     `json:"dry_run"`
-	Reloaded []string `json:"reloaded"`
-	Effects  []string `json:"effects,omitempty"`
+	BoardID          string   `json:"board_id"`
+	DryRun           bool     `json:"dry_run"`
+	ReloadedCarriers []string `json:"reloaded_carriers"`
+	ReloadedAddons   []string `json:"reloaded_addons"`
+	Effects          []string `json:"effects,omitempty"`
 }
 
 func (r reloadResult) String() string {
@@ -105,11 +97,14 @@ func (r reloadResult) String() string {
 	w := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
 
 	fmt.Fprintf(w, "Board:\t%s\n", r.BoardID)
-	if len(r.Reloaded) == 0 {
+	if len(r.ReloadedCarriers) == 0 {
 		fmt.Fprintln(w, "No carriers to reload")
 	}
-	for _, name := range r.Reloaded {
-		fmt.Fprintf(w, "Reloaded carrier:\t%s\n", name)
+	for _, name := range r.ReloadedCarriers {
+		fmt.Fprintf(w, "Reloaded carriers:\t%s\n", name)
+	}
+	for _, name := range r.ReloadedAddons {
+		fmt.Fprintf(w, "Reloaded addons:\t%s\n", name)
 	}
 
 	if r.DryRun {

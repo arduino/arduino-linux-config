@@ -8,8 +8,11 @@
 package overlay
 
 import (
+	"fmt"
 	"slices"
 
+	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -99,4 +102,31 @@ func GetDtboForAddon(addons []registry.Addon, addonName registry.AddonName) []st
 		}
 	}
 	return []string{}
+}
+
+// GetConfiguredCarriersOverlay returns the overlays required by the persisted
+// carrier configuration for the next boot and the reloaded carriers.
+func GetConfiguredCarriersOverlay(cfg config.Configuration, reg registry.Registry) ([]string, []string) {
+	overlays := make([]string, 0, len(reg.Carriers))
+	carriers := make([]string, 0, len(reg.Carriers))
+	for _, carrier := range reg.Carriers {
+		// A carrier without a persisted status is reported as disabled
+		_, next, err := status.Get(cfg, carrier)
+		if err != nil {
+			feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
+		}
+		overlays = append(overlays, CollectForStatus(carrier, next)...)
+		carriers = append(carriers, string(carrier.Name))
+	}
+	return overlays, carriers
+}
+
+// GetConfiguredAddonsOverlay returns the overlays required by the persisted
+// addon configuration for the current boot and its name
+func GetConfiguredAddonsOverlay(cfg config.Configuration, reg registry.Registry) ([]string, string) {
+	nextAddonName, err := status.GetNextConfiguredAddon(cfg, reg)
+	if err != nil {
+		feedback.Fatal(fmt.Sprintf("failed to get addons status: %v", err), feedback.ErrGeneric)
+	}
+	return GetDtboForAddon(reg.Addons, nextAddonName), string(nextAddonName)
 }

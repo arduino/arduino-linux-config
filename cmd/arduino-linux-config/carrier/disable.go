@@ -56,7 +56,7 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 		exec = recorder
 	}
 
-	if err := disable(ctx, exec, cfg, carrier); err != nil {
+	if err := disable(ctx, reg, exec, cfg, carrier); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to disable carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
@@ -73,15 +73,17 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func disable(ctx context.Context, exec executor.Executor, cfg config.Configuration, carrier registry.Carrier) error {
-	baseFiles := overlay.CollectDisabled(carrier)
+func disable(ctx context.Context, reg registry.Registry, exec executor.Executor, cfg config.Configuration, carrier registry.Carrier) error {
+	overlayList := overlay.CollectDisabled(carrier)
 
 	board, err := config.GetBoard()
 	if err != nil {
 		return err
 	}
 
-	if err := board.Apply(ctx, exec, baseFiles); err != nil {
+	configuredAddonOverlays, _ := overlay.GetConfiguredAddonsOverlay(cfg, reg)
+	overlayList = append(overlayList, configuredAddonOverlays...)
+	if err := board.Apply(ctx, exec, overlayList); err != nil {
 		return err
 	}
 

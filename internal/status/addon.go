@@ -76,7 +76,7 @@ func GetNextConfiguredAddon(cfg config.Configuration, reg registry.Registry) (re
 			return state.Name, nil
 		}
 	}
-	
+
 	return "", nil
 }
 
