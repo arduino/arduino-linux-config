@@ -18,6 +18,7 @@ const (
 
 type Registry struct {
 	Carriers []Carrier
+	Addons   []Addon
 }
 
 func (r Registry) FindByName(carrier string) (Carrier, bool) {
@@ -27,6 +28,15 @@ func (r Registry) FindByName(carrier string) (Carrier, bool) {
 		}
 	}
 	return Carrier{}, false
+}
+
+func (r Registry) FindAddonByName(addon string) (Addon, bool) {
+	for _, a := range r.Addons {
+		if string(a.Name) == addon {
+			return a, true
+		}
+	}
+	return Addon{}, false
 }
 
 type CarrierDeviceName string
@@ -74,6 +84,20 @@ type DeviceOption struct {
 	IncompatibleDtbo []string
 }
 
+// Start addon section
+type Addon struct {
+	Name         AddonName
+	EnabledDtbos []string
+}
+
+type AddonName string
+
+const (
+	AudioCodecZero AddonName = "audio-codec-zero"
+	Automation     AddonName = "automation"
+	HighPrecision  AddonName = "high-precision"
+)
+
 func New() Registry {
 	board := config.GetBoardID()
 	boardOs := config.GetLinuxDistribution()
@@ -86,11 +110,11 @@ func New() Registry {
 	case board == "ventunoq" && boardOs == "ubuntu":
 		return Registry{
 			Carriers: []Carrier{ventunoqUbuntuMediaCarrier},
+			Addons:   ventunoqUbuntuAddons,
 		}
 	default:
 		return Registry{}
 	}
-
 }
 
 var unoqMediaCarrier = Carrier{
@@ -194,6 +218,27 @@ var unoqMediaCarrier = Carrier{
 					},
 				},
 			},
+		},
+	},
+}
+
+var ventunoqUbuntuAddons = []Addon{
+	{ // TODO update
+		Name: AudioCodecZero,
+		EnabledDtbos: []string{
+			"monaco-monza-automation-hat.dtbo",
+		},
+	},
+	{
+		Name: Automation,
+		EnabledDtbos: []string{
+			"monaco-monza-automation-hat.dtbo",
+		},
+	},
+	{ // TODO update
+		Name: HighPrecision,
+		EnabledDtbos: []string{
+			"monaco-monza-automation-hat.dtbo",
 		},
 	},
 }

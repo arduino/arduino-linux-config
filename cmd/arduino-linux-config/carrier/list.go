@@ -20,7 +20,7 @@ func newListCmd(reg registry.Registry) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "Lists the available carriers and devices for the current hardware",
-		Args:  cobra.MaximumNArgs(0),
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			listHandler(reg)
 		},
