@@ -1,5 +1,5 @@
 # Fixture for the VentunoQ (arduino,monza) board.
-FROM debian:trixie
+FROM ubuntu:24.04
 COPY build/arduino-linux-config_*.deb /tmp/arduino-linux-config.deb
 
 RUN apt-get update && apt-get install -y \
