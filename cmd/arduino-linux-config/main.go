@@ -47,14 +47,16 @@ func run() error {
 	rootCmd.PersistentFlags().StringVar(&format, "format", "text", "Output format (text, json)")
 	rootCmd.PersistentFlags().StringVar(&logLevelStr, "log-level", "error", "Set the log level (debug, info, warn, error)")
 
-	switch config.GetBoardID() {
-	case "unoq":
+	board := config.GetBoardID()
+	boardOs := config.GetLinuxDistribution()
+	switch {
+	case board == "unoq":
 		rootCmd.AddCommand(
 			carrier.NewCarrierCmd(),
 			reload.NewReloadCmd(),
 			NewVersionCmd(),
 		)
-	case "ventunoq":
+	case board == "ventunoq" && boardOs == "ubuntu":
 		rootCmd.AddCommand(
 			carrier.NewCarrierCmd(),
 			addons.NewAddonsCmd(),

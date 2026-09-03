@@ -6,7 +6,9 @@
 package dto
 
 import (
+	"encoding/binary"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -63,11 +65,13 @@ func TestBuildFdtoverlayCommand(t *testing.T) {
 func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	recorder := executor.NewRecorder()
 
+	combinedDtb := paths.New(t.TempDir(), "combined-dtb.dtb")
+	require.NoError(t, combinedDtb.WriteFile(append(fakeDeviceTree("qcom,other"), fakeDeviceTree("arduino,monza")...)))
+
 	board := VentunoQ{
-		BaseDtbPath: paths.New("/var/lib/base/"),
-		BaseDtbFile: "base.bin",
-		OverlaysDir: paths.New("/var/lib/overlays/"),
-		DtbFileName: "combined-dtb.dtb",
+		BaseDtbFullPath: combinedDtb.String(),
+		OverlaysDir:     paths.New("/var/lib/overlays/"),
+		DtbFileName:     "combined-dtb.dtb",
 	}
 	require.NoError(t, board.Apply(t.Context(), recorder, []string{"b.dtbo", "a.dtbo", "a.dtbo"}))
 
@@ -80,11 +84,47 @@ func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	require.Equal(t, []string{
 		"mkdir -p /run/arduino-linux-config/dtb",
 		"mount -t vfat /dev/disk/by-partlabel/dtb_a /run/arduino-linux-config/dtb",
-		"fdtoverlay -i /var/lib/base/base.bin -o /run/arduino-linux-config/dtb/TEMP /var/lib/overlays/a.dtbo /var/lib/overlays/b.dtbo",
+		"# write /run/arduino-linux-config/dtb/monza.dtb (24 bytes)",
+		"fdtoverlay -i /run/arduino-linux-config/dtb/monza.dtb -o /run/arduino-linux-config/dtb/TEMP /var/lib/overlays/a.dtbo /var/lib/overlays/b.dtbo",
+		"# write /run/arduino-linux-config/dtb/TEMP (48 bytes)",
 		"mv /run/arduino-linux-config/dtb/TEMP /run/arduino-linux-config/dtb/combined-dtb.dtb",
 		"sync",
 		"rm -f /run/arduino-linux-config/dtb/TEMP",
+		"rm -f /run/arduino-linux-config/dtb/monza.dtb",
 		"sync",
 		"umount -l /run/arduino-linux-config/dtb",
 	}, effects)
+}
+
+func TestPackUnchangedDeviceTreePreservesCombinedDtb(t *testing.T) {
+	mountPoint := paths.New(t.TempDir())
+	other := fakeDeviceTree("qcom,other")
+	monza := fakeDeviceTreeWithSize("arduino,monza", 23)
+	combined := append(append([]byte{}, other...), monza...)
+	temporaryDtb := mountPoint.Join("temporary.dtb")
+	require.NoError(t, temporaryDtb.WriteFile(monza))
+
+	packedDtb, err := packCombinedDtb(executor.Real(), temporaryDtb, &unpackedDeviceTree{
+		mountPoint:  mountPoint,
+		monzaIndex:  1,
+		deviceTrees: [][]byte{other, monza},
+	})
+	require.NoError(t, err)
+
+	packed, err := os.ReadFile(packedDtb.String())
+	require.NoError(t, err)
+	require.Equal(t, combined, packed)
+}
+
+// A minimal flattened device tree: magic, total size and the compatible string.
+func fakeDeviceTree(compatible string) []byte {
+	return fakeDeviceTreeWithSize(compatible, 24)
+}
+
+func fakeDeviceTreeWithSize(compatible string, size int) []byte {
+	payload := make([]byte, size)
+	binary.BigEndian.PutUint32(payload, 0xd00dfeed)
+	binary.BigEndian.PutUint32(payload[4:], uint32(len(payload))) //nolint:gosec
+	copy(payload[8:], compatible)
+	return payload
 }

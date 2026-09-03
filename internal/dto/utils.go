@@ -6,9 +6,12 @@
 package dto
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/arduino/go-paths-helper"
 
@@ -50,6 +53,7 @@ func buildOverlayCommand(overlaysDir *paths.Path, baseDtbFile string, temporaryD
 
 func moveDeviceTree(exec executor.Executor, temporaryDtb *paths.Path, destinationDtb *paths.Path) error {
 	if err := exec.Rename(temporaryDtb, destinationDtb); err != nil {
+		_ = exec.Remove(temporaryDtb) // best effort cleanup
 		return fmt.Errorf("failed to move %s to %s: %w", temporaryDtb, destinationDtb, err)
 	}
 
@@ -57,4 +61,118 @@ func moveDeviceTree(exec executor.Executor, temporaryDtb *paths.Path, destinatio
 	// before the system potentially reboots or loses power.
 	exec.Sync()
 	return nil
+}
+
+// On VentunoQ with Ubuntu the device tree is shipped as a combined dtb:
+// it is unpacked, the overlays are applied, and it is packed back.
+const (
+	// Every flattened device tree starts with this magic, followed by its total size.
+	fdtMagic              = 0xd00dfeed
+	fdtHeaderSize         = 8
+	monzaCompatibleString = "arduino,monza"
+)
+
+// The device trees extracted from a combined dtb, in the order they are stored in it.
+type unpackedDeviceTree struct {
+	mountPoint  *paths.Path
+	monza       *paths.Path
+	monzaIndex  int
+	deviceTrees [][]byte
+}
+
+// Splits a combined dtb into its device trees and writes the one describing the Monza
+// board into the mount point, so that fdtoverlay can take it as input.
+func unpackCombinedDtb(exec executor.Executor, combinedDtb string, mountPoint *paths.Path) (*unpackedDeviceTree, error) {
+	data, err := os.ReadFile(combinedDtb)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %w", combinedDtb, err)
+	}
+
+	deviceTrees, err := splitDeviceTrees(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to split %s: %w", combinedDtb, err)
+	}
+
+	monzaIndex := -1
+	for i, deviceTree := range deviceTrees {
+		// TODO: we could improve this by decompiling the dtb and check that the compatible contains exactly
+		// the monza one, instead of searching on the whole binary.
+		if bytes.Contains(deviceTree, []byte(monzaCompatibleString)) {
+			monzaIndex = i
+			break
+		}
+	}
+
+	if monzaIndex < 0 {
+		return nil, fmt.Errorf("no %q device tree found in %s", monzaCompatibleString, combinedDtb)
+	}
+
+	monzaFileName := mountPoint.Join("monza.dtb")
+	if err := exec.WriteFile(monzaFileName, deviceTrees[monzaIndex], 0600); err != nil {
+		return nil, fmt.Errorf("failed to write %s: %w", monzaFileName, err)
+	}
+
+	return &unpackedDeviceTree{
+		mountPoint:  mountPoint,
+		monza:       monzaFileName,
+		monzaIndex:  monzaIndex,
+		deviceTrees: deviceTrees,
+	}, nil
+}
+
+// Puts the customized device tree back in place of the Monza one and rebuilds the
+// combined dtb, returning the path of the temporary file that holds it.
+func packCombinedDtb(exec executor.Executor, temporaryDtb *paths.Path, unpacked *unpackedDeviceTree) (*paths.Path, error) {
+	customized, err := os.ReadFile(temporaryDtb.String())
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to read %s: %w", temporaryDtb, err)
+		}
+		// Dry run: no device tree was actually customized, so the original one is used.
+		customized = unpacked.deviceTrees[unpacked.monzaIndex]
+	}
+	unpacked.deviceTrees[unpacked.monzaIndex] = customized
+
+	packedDtb := unpacked.mountPoint.Join(temporaryDtbName())
+	if err := exec.WriteFile(packedDtb, bytes.Join(unpacked.deviceTrees, nil), 0600); err != nil {
+		return nil, fmt.Errorf("failed to write %s: %w", packedDtb, err)
+	}
+
+	return packedDtb, nil
+}
+
+// Each device tree keeps the padding that follows it, so that the untouched ones
+// are written back byte by byte.
+func splitDeviceTrees(data []byte) ([][]byte, error) {
+	var deviceTrees [][]byte
+	for offset := 0; offset+fdtHeaderSize <= len(data); {
+		if !hasMagic(data, offset) {
+			return nil, fmt.Errorf("missing device tree magic at offset %d", offset)
+		}
+
+		size := int(binary.BigEndian.Uint32(data[offset+4:]))
+		if size < fdtHeaderSize || offset+size > len(data) {
+			return nil, fmt.Errorf("invalid device tree size %d at offset %d", size, offset)
+		}
+
+		end := offset + size
+		for end+fdtHeaderSize <= len(data) && !hasMagic(data, end) {
+			end++
+		}
+		if end+fdtHeaderSize > len(data) {
+			end = len(data)
+		}
+
+		deviceTrees = append(deviceTrees, data[offset:end])
+		offset = end
+	}
+
+	if len(deviceTrees) == 0 {
+		return nil, fmt.Errorf("no device tree found")
+	}
+	return deviceTrees, nil
+}
+
+func hasMagic(data []byte, offset int) bool {
+	return binary.BigEndian.Uint32(data[offset:]) == fdtMagic
 }

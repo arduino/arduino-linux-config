@@ -28,10 +28,9 @@ type UnoQ struct {
 }
 
 type VentunoQ struct {
-	BaseDtbPath *paths.Path
-	BaseDtbFile string
-	OverlaysDir *paths.Path
-	DtbFileName string
+	BaseDtbFullPath string
+	OverlaysDir     *paths.Path
+	DtbFileName     string
 }
 
 func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
@@ -48,28 +47,38 @@ func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []stri
 }
 
 func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
-	const mountPoint = "/run/arduino-linux-config/dtb"
-	if err := exec.MkdirAll(paths.New(mountPoint)); err != nil {
+	mountPoint := paths.New("/run/arduino-linux-config/dtb")
+	if err := exec.MkdirAll(mountPoint); err != nil {
 		return fmt.Errorf("failed to create mountPoint: %w", err)
 	}
 
 	// mount the device tree partition dtb_a
-	unmount, err := mountDeviceTree(ctx, exec, "/dev/disk/by-partlabel/dtb_a", mountPoint)
+	unmount, err := mountDeviceTree(ctx, exec, "/dev/disk/by-partlabel/dtb_a", mountPoint.String())
 	if err != nil {
 		return err
 	}
 	defer unmount()
 
-	temporaryDtb := paths.New(mountPoint).Join(temporaryDtbName())
+	unpacked, err := unpackCombinedDtb(exec, b.BaseDtbFullPath, mountPoint)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = exec.Remove(unpacked.monza) }()
+
+	temporaryDtb := mountPoint.Join(temporaryDtbName())
 	defer func() { _ = exec.Remove(temporaryDtb) }()
 
-	baseDtb := b.BaseDtbPath.Join(b.BaseDtbFile)
-	args := buildOverlayCommand(b.OverlaysDir, baseDtb.String(), temporaryDtb, uniqueOverlays(overlays))
+	args := buildOverlayCommand(b.OverlaysDir, unpacked.monza.String(), temporaryDtb, uniqueOverlays(overlays))
 	if err := exec.Run(ctx, args...); err != nil {
 		return err
 	}
 
-	return moveDeviceTree(exec, temporaryDtb, paths.New(mountPoint).Join(b.DtbFileName))
+	packedDtb, err := packCombinedDtb(exec, temporaryDtb, unpacked)
+	if err != nil {
+		return err
+	}
+
+	return moveDeviceTree(exec, packedDtb, mountPoint.Join(b.DtbFileName))
 }
 
 func uniqueOverlays(overlays []string) []string {
