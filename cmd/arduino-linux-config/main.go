@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/hw"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/reload"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
@@ -49,13 +49,13 @@ func run() error {
 	switch config.GetBoardID() {
 	case "unoq":
 		rootCmd.AddCommand(
-			carrier.NewCarrierCmd(),
+			hw.NewCarrierCmd(),
 			reload.NewReloadCmd(),
 			NewVersionCmd(),
 		)
 	case "ventunoq":
 		rootCmd.AddCommand(
-			carrier.NewCarrierCmd(),
+			hw.NewCarrierCmd(),
 			reload.NewReloadCmd(),
 			NewVersionCmd(),
 		)
