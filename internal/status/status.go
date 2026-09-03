@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/arduino/go-paths-helper"
 
@@ -208,7 +207,7 @@ func getCurrentBootID() (string, error) {
 		root = dir
 	}
 
-	bootID, err := os.ReadFile(filepath.Join(root, "proc/sys/kernel/random/boot_id"))
+	bootID, err := paths.New(root).Join("proc/sys/kernel/random/boot_id").ReadFile()
 	if err != nil {
 		return "", err
 	}

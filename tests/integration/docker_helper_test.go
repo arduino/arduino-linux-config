@@ -83,7 +83,7 @@ func stopDockerContainer(t *testing.T) {
 // privileges to set up a loop device and to mount it.
 func startVentunoqDockerContainer(t *testing.T) {
 	t.Helper()
-	buildDockerImage(t, ventunoqDockerImageName, "tests/integration/Dockerfile.ventunoq")
+	buildDockerImage(t, ventunoqDockerImageName, "tests/integration/ventunoq.Dockerfile")
 	runDockerContainer(t, ventunoqDockerImageName, ventunoqContainerName, "--privileged")
 
 	execInVentunoqContainer(t, "sh", "-c", strings.Join([]string{
@@ -99,7 +99,7 @@ func startVentunoqDockerContainer(t *testing.T) {
 // The image fakes an Ubuntu root, the only distribution supported on VentunoQ.
 func startVentunoqUbuntuDockerContainer(t *testing.T) {
 	t.Helper()
-	buildDockerImage(t, ventunoqDockerImageName, "tests/integration/Dockerfile.ventunoq")
+	buildDockerImage(t, ventunoqDockerImageName, "tests/integration/ventunoq.Dockerfile")
 	runDockerContainer(t, ventunoqDockerImageName, ventunoqContainerName)
 }
 

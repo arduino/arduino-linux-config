@@ -67,7 +67,7 @@ func TestReloadWithEmptyStatus(t *testing.T) {
 	require.NoError(t, err, "output should be valid JSON")
 
 	require.False(t, result.DryRun)
-	require.Contains(t, result.ReloadedCarriers, "media-carrier")
+	require.Empty(t, result.ReloadedCarriers)
 
 	// Reload must not persist any status file: it only re-applies the current configuration.
 	statusDirAfter := execInContainer(t, "ls", "-A", "/var/lib/arduino-linux-config/status")

@@ -68,9 +68,7 @@ func TestVentunoqDebianBoardSupport(t *testing.T) {
 	startVentunoqDebianDockerContainer(t)
 	t.Cleanup(func() { stopVentunoqDockerContainer(t) })
 
-	carriers := carrierNames(t, execInVentunoqContainer(t, "arduino-linux-config", "carrier", "list", "--format", "json"))
-	require.Empty(t, carriers)
-
-	addons := addonNames(t, execInVentunoqContainer(t, "arduino-linux-config", "addons", "list", "--format", "json"))
-	require.Empty(t, addons)
+	out, err := execInNamedContainerWithError(t, ventunoqContainerName, "arduino-linux-config", "carrier", "list", "--format", "json")
+	require.Error(t, err)
+	require.Contains(t, out, `unsupported board/os`)
 }

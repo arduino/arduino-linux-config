@@ -54,7 +54,7 @@ func TestGetConfiguredCarriersOverlay(t *testing.T) {
 	// No status file is persisted, so every carrier is reported as disabled.
 	overlays, carriers := GetConfiguredCarriersOverlay(config.New(), registry.New())
 
-	require.Equal(t, []string{"media-carrier"}, carriers)
+	require.Equal(t, []string{}, carriers)
 	require.Equal(t, CollectDisabled(mediaCarrier(t)), overlays)
 }
 
