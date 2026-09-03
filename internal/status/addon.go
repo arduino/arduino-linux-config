@@ -14,6 +14,7 @@ import (
 	"github.com/arduino/go-paths-helper"
 
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
@@ -65,7 +66,7 @@ func GetAllAddons(cfg config.Configuration, reg registry.Registry) ([]AddonState
 // UpdateAddons persists the enable/disable request described by changes. As for
 // carriers, the request is stored in next_status and only becomes current_status
 // after a reboot (tracked via the boot-id)
-func UpdateAddons(cfg config.Configuration, reg registry.Registry, changes map[registry.AddonName]bool) error {
+func UpdateAddons(exec executor.Executor, cfg config.Configuration, reg registry.Registry, changes map[registry.AddonName]bool) error {
 	status, err := loadAddonsStatusFile(getAddonsStatusFile(cfg))
 	if err != nil {
 		return fmt.Errorf("failed to load status file %w", err)
@@ -78,7 +79,7 @@ func UpdateAddons(cfg config.Configuration, reg registry.Registry, changes map[r
 
 	applyAddonChanges(status, reg, changes, currentBootId)
 
-	if err := saveAddonsStatusFile(getAddonsStatusFile(cfg), *status); err != nil {
+	if err := saveAddonsStatusFile(exec, getAddonsStatusFile(cfg), *status); err != nil {
 		return fmt.Errorf("failed to save status file: %w", err)
 	}
 	return nil
@@ -164,14 +165,14 @@ func newAddonsStatusFile() *AddonsStatusFile {
 	}
 }
 
-func saveAddonsStatusFile(statusFile *paths.Path, status AddonsStatusFile) error {
+func saveAddonsStatusFile(exec executor.Executor, statusFile *paths.Path, status AddonsStatusFile) error {
 	data, err := json.MarshalIndent(status, "", "    ")
 	if err != nil {
 		return fmt.Errorf("marshal error: %w", err)
 	}
 
 	// nolint:gosec // G306: Status file must be readable
-	if err := os.WriteFile(statusFile.String(), data, 0644); err != nil {
+	if err := exec.WriteFile(statusFile, data, 0644); err != nil {
 		return fmt.Errorf("write error: %w", err)
 	}
 	return nil

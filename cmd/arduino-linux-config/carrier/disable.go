@@ -13,8 +13,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier/completion"
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/dryrun"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
@@ -49,14 +51,17 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 		feedback.Fatal(fmt.Sprintf("carrier %s not supported", carrierName), feedback.ErrBadArgument)
 	}
 
-	command, err := disable(ctx, cfg, carrier, dryRun)
-	if err != nil {
+	exec, recorder := executor.Real(), executor.NewRecorder()
+	if dryRun {
+		exec = recorder
+	}
+
+	if err := disable(ctx, exec, cfg, carrier); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to disable carrier %s: %v", carrierName, err), feedback.ErrGeneric)
 	}
 
 	if dryRun {
-		feedback.Printf("Dry-run: no changes applied for carrier '%s'", carrier.Name)
-		feedback.Print(command)
+		feedback.PrintResult(dryrun.Result{Subject: fmt.Sprintf("carrier '%s'", carrier.Name), Effects: recorder.Effects()})
 		return
 	}
 	feedback.Warnf("Carrier '%s' disabled (will take effect on next boot)", carrier.Name)
@@ -68,25 +73,20 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 	feedback.PrintResult(populateShowResult(carrier, current, next))
 }
 
-func disable(ctx context.Context, cfg config.Configuration, carrier registry.Carrier, dryRun bool) (string, error) {
+func disable(ctx context.Context, exec executor.Executor, cfg config.Configuration, carrier registry.Carrier) error {
 	baseFiles := overlay.CollectDisabled(carrier)
 
 	board, err := config.GetBoard()
 	if err != nil {
-		return "", err
-	}
-	command, err := board.Apply(ctx, baseFiles, dryRun)
-	if err != nil {
-		return command, err
+		return err
 	}
 
-	if dryRun {
-		return command, nil
+	if err := board.Apply(ctx, exec, baseFiles); err != nil {
+		return err
 	}
 
-	err = status.Update(cfg, carrier, status.CarrierStatus{Enable: false})
-	if err != nil {
-		return command, fmt.Errorf("cannot update status: %w", err)
+	if err := status.Update(exec, cfg, carrier, status.CarrierStatus{Enable: false}); err != nil {
+		return fmt.Errorf("cannot update status: %w", err)
 	}
-	return command, nil
+	return nil
 }

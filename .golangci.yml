@@ -24,6 +24,16 @@ linters:
           msg: in cli package use `feedback.*` instead
         - pattern: (os\.(Stdout|Stderr|Stdin))(# )?
           msg: in cli package use `feedback.*` instead
+        - pattern: ^os\.(WriteFile|Create|OpenFile|Remove|RemoveAll|Mkdir|MkdirAll|Rename|Chmod|Chown|Symlink|Link|Truncate)$
+          msg: every side effect must go through internal/executor, otherwise --dry-run lies
+        - pattern: ^paths\.Path\.(WriteFile|Create|Append|Remove|RemoveAll|Mkdir|MkdirAll|Rename|Chmod|Chtimes|Truncate|CopyTo|CopyDirTo)$
+          msg: every side effect must go through internal/executor, otherwise --dry-run lies
+        - pattern: ^(exec\.Command(Context)?|paths\.NewProcess(FromPath)?)$
+          msg: run external commands through executor.Executor.Run, otherwise --dry-run lies
+        - pattern: ^paths\.Process\.(Run|RunWithinContext|RunAndCaptureOutput|RunAndCaptureCombinedOutput|Start|Wait|WaitWithinContext|Signal|Kill)$
+          msg: run external commands through executor.Executor.Run, otherwise --dry-run lies
+        - pattern: ^syscall\.
+          msg: wrap the syscall in internal/executor, otherwise --dry-run lies
       analyze-types: true
     misspell:
       locale: US
@@ -63,6 +73,13 @@ linters:
         linters:
           - forbidigo
       - path: internal/e2e
+        linters:
+          - forbidigo
+      # The executor is the only place allowed to touch the system.
+      - path: internal/(executor|sync|testutil)/
+        linters:
+          - forbidigo
+      - path: _test\.go$
         linters:
           - forbidigo
 formatters:
