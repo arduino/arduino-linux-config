@@ -61,15 +61,17 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		ReloadedAddons:   make([]string, 0),
 	}
 
-	carriersOverlay, carriers := overlay.GetConfiguredCarriersOverlay(cfg, reg)
-	addonOverlays, overlayName := overlay.GetConfiguredAddonsOverlay(cfg, reg)
+	carrierOverlays, carriers := overlay.GetConfiguredCarriersOverlay(cfg, reg)
+	addonOverlays, addon := overlay.GetConfiguredAddonsOverlay(cfg, reg)
 
-	overlays := make([]string, 0, len(carriersOverlay)+len(addonOverlays))
-	overlays = append(overlays, carriersOverlay...)
+	overlays := make([]string, 0, len(carrierOverlays)+len(addonOverlays))
+	overlays = append(overlays, carrierOverlays...)
 	overlays = append(overlays, addonOverlays...)
 
 	result.ReloadedCarriers = append(result.ReloadedCarriers, carriers...)
-	result.ReloadedAddons = append(result.ReloadedAddons, overlayName)
+	if addon != "" {
+		result.ReloadedAddons = append(result.ReloadedAddons, addon)
+	}
 
 	exec, recorder := executor.Real(), executor.NewRecorder()
 	if dryRun {

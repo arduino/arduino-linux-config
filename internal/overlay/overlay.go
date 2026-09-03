@@ -75,15 +75,6 @@ func CollectDisabled(carrier registry.Carrier) []string {
 	return baseFiles
 }
 
-// Resolves the overlays for a carrier from its persisted status.
-func CollectForStatus(carrier registry.Carrier, current status.CarrierStatus) []string {
-	if !current.Enable {
-		return CollectDisabled(carrier)
-	}
-	files, _ := Collect(carrier, current.StatusDevices)
-	return files
-}
-
 func getIntersection(a, b []string) []string {
 	var result []string
 	for _, v := range a {
@@ -115,8 +106,14 @@ func GetConfiguredCarriersOverlay(cfg config.Configuration, reg registry.Registr
 		if err != nil {
 			feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
 		}
-		overlays = append(overlays, CollectForStatus(carrier, next)...)
-		carriers = append(carriers, string(carrier.Name))
+
+		if next.Enable {
+			files, _ := Collect(carrier, next.StatusDevices)
+			overlays = append(overlays, files...)
+			carriers = append(carriers, string(carrier.Name))
+		} else {
+			overlays = append(overlays, CollectDisabled(carrier)...)
+		}
 	}
 	return overlays, carriers
 }

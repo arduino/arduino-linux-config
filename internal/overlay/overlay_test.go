@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/arduino/arduino-linux-config/internal/registry"
-	"github.com/arduino/arduino-linux-config/internal/status"
 	"github.com/arduino/arduino-linux-config/internal/testutil"
 )
 
@@ -36,55 +35,4 @@ func TestCollectDisabled(t *testing.T) {
 	got := sorted(CollectDisabled(mediaCarrier(t)))
 	want := []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"}
 	require.Equal(t, want, got)
-}
-
-func TestCollectForStatus(t *testing.T) {
-	t.Cleanup(testutil.SetupUnoQDebian())
-	carrier := mediaCarrier(t)
-
-	tests := []struct {
-		name    string
-		current status.CarrierStatus
-		want    []string
-	}{
-		{
-			name:    "disabled falls back to base overlays",
-			current: status.CarrierStatus{Enable: false},
-			want:    []string{"qrb2210-arduino-imola-video_sound-usbc.dtbo"},
-		},
-		{
-			name: "enabled collects the configured overlays",
-			current: status.CarrierStatus{
-				Enable: true,
-				StatusDevices: []status.StatusDevice{
-					{Device: "camera0", Option: "type1-2lanes"},
-				},
-			},
-			want: []string{
-				"qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
-				"qrb2210-arduino-imola-carrier-media.dtbo",
-				"qrb2210-arduino-imola-video_sound-usbc.dtbo",
-			},
-		},
-		{
-			name: "enabled with incompatible base overlay removed",
-			current: status.CarrierStatus{
-				Enable: true,
-				StatusDevices: []status.StatusDevice{
-					{Device: "display", Option: "8-dsi-touch-a"},
-				},
-			},
-			want: []string{
-				"qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
-				"qrb2210-arduino-imola-carrier-media.dtbo",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := sorted(CollectForStatus(carrier, tt.current))
-			require.Equal(t, tt.want, got)
-		})
-	}
 }
