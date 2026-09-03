@@ -63,6 +63,23 @@ func GetAllAddons(cfg config.Configuration, reg registry.Registry) ([]AddonState
 	return resolveAddons(status, reg, currentBootId), nil
 }
 
+// GetNextConfiguredAddon returns the addon configured for the next boot, or
+// an empty name if every addon is disabled.
+func GetNextConfiguredAddon(cfg config.Configuration, reg registry.Registry) (registry.AddonName, error) {
+	states, err := GetAllAddons(cfg, reg)
+	if err != nil {
+		return "", err
+	}
+
+	for _, state := range states {
+		if state.Next {
+			return state.Name, nil
+		}
+	}
+
+	return "", nil
+}
+
 // UpdateAddons persists the enable/disable request described by changes. As for
 // carriers, the request is stored in next_status and only becomes current_status
 // after a reboot (tracked via the boot-id)

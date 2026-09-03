@@ -16,6 +16,7 @@ import (
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/executor"
+	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -65,7 +66,8 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 		exec = recorder
 	}
 
-	if err := board.Apply(ctx, exec, []string{}); err != nil {
+	configuredCarrierOverlays, _ := overlay.GetConfiguredCarriersOverlay(cfg, reg)
+	if err := board.Apply(ctx, exec, configuredCarrierOverlays); err != nil {
 		feedback.Fatal(fmt.Sprintf("failed to disable addons %v", err), feedback.ErrGeneric)
 	}
 

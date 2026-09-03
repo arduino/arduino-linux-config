@@ -95,6 +95,8 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		exec = recorder
 	}
 
+	configuredAddonOverlays, _ := overlay.GetConfiguredAddonsOverlay(cfg, reg)
+	overlayList = append(overlayList, configuredAddonOverlays...)
 	if err := board.Apply(ctx, exec, overlayList); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
