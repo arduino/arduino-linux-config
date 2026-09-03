@@ -31,6 +31,7 @@ type UnoQ struct {
 }
 
 type VentunoQ struct {
+	BaseDtbPath *paths.Path
 	BaseDtbFile string
 	OverlaysDir *paths.Path
 	DtbFileName string
@@ -44,8 +45,9 @@ func (b UnoQ) Apply(ctx context.Context, overlays []string, dryRun bool) (string
 	// race conditions when multiple instances run concurrently
 	tempFileName := fmt.Sprintf("temporaryDeviceTree.%d.temp", time.Now().UnixNano())
 	temporaryDtb := b.OverlaysDir.Join(tempFileName)
+	fullPathBaseDtbFile := b.OverlaysDir.Join(b.BaseDtbFile)
 
-	args := buildOverlayCommand(b.OverlaysDir, b.BaseDtbFile, temporaryDtb, overlays)
+	args := buildOverlayCommand(b.OverlaysDir, fullPathBaseDtbFile.String(), temporaryDtb, overlays)
 	command := strings.Join(args, " ")
 
 	if dryRun {
@@ -89,8 +91,9 @@ func (b VentunoQ) Apply(ctx context.Context, overlays []string, dryRun bool) (st
 	// race conditions when multiple instances run concurrently
 	tempFileName := fmt.Sprintf("temporaryDeviceTree.%d.temp", time.Now().UnixNano())
 	temporaryDtb := paths.New(mountPoint).Join(tempFileName)
+	fullPathBaseDtbFile := b.BaseDtbPath.Join(b.BaseDtbFile)
 
-	args := buildOverlayCommand(b.OverlaysDir, b.BaseDtbFile, temporaryDtb, overlays)
+	args := buildOverlayCommand(b.OverlaysDir, fullPathBaseDtbFile.String(), temporaryDtb, overlays)
 	command := strings.Join(args, " ")
 
 	if dryRun {
