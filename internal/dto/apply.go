@@ -47,35 +47,38 @@ func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []stri
 }
 
 func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
-	const mountPoint = "/run/arduino-linux-config/dtb"
-	if err := exec.MkdirAll(paths.New(mountPoint)); err != nil {
+	mountPoint := paths.New("/run/arduino-linux-config/dtb")
+	if err := exec.MkdirAll(mountPoint); err != nil {
 		return fmt.Errorf("failed to create mountPoint: %w", err)
 	}
 
 	// mount the device tree partition dtb_a
-	unmount, err := mountDeviceTree(ctx, exec, "/dev/disk/by-partlabel/dtb_a", mountPoint)
+	unmount, err := mountDeviceTree(ctx, exec, "/dev/disk/by-partlabel/dtb_a", mountPoint.String())
 	if err != nil {
 		return err
 	}
 	defer unmount()
 
-	monzaBaseDeviceTree, unpacked, err := unpack(exec, b.BaseDtbFullPath, mountPoint)
+	unpacked, err := unpackCombinedDtb(exec, b.BaseDtbFullPath, mountPoint)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = exec.Remove(unpacked.monza) }()
 
-	temporaryDtb := paths.New(mountPoint).Join(temporaryDtbName())
+	temporaryDtb := mountPoint.Join(temporaryDtbName())
 	defer func() { _ = exec.Remove(temporaryDtb) }()
 
-	args := buildOverlayCommand(b.OverlaysDir, monzaBaseDeviceTree, temporaryDtb, uniqueOverlays(overlays))
+	args := buildOverlayCommand(b.OverlaysDir, unpacked.monza.String(), temporaryDtb, uniqueOverlays(overlays))
 	if err := exec.Run(ctx, args...); err != nil {
 		return err
 	}
 
-	packedDtb, err := pack(exec, temporaryDtb, unpacked)
+	packedDtb, err := packCombinedDtb(exec, temporaryDtb, unpacked)
+	if err != nil {
+		return err
+	}
 
-	return moveDeviceTree(exec, packedDtb, paths.New(mountPoint).Join(b.DtbFileName))
+	return moveDeviceTree(exec, packedDtb, mountPoint.Join(b.DtbFileName))
 }
 
 func uniqueOverlays(overlays []string) []string {

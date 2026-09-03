@@ -104,7 +104,7 @@ func TestPackUnchangedDeviceTreePreservesCombinedDtb(t *testing.T) {
 	temporaryDtb := mountPoint.Join("temporary.dtb")
 	require.NoError(t, temporaryDtb.WriteFile(monza))
 
-	packedDtb, err := pack(executor.Real(), temporaryDtb, &unpackedDeviceTree{
+	packedDtb, err := packCombinedDtb(executor.Real(), temporaryDtb, &unpackedDeviceTree{
 		mountPoint:  mountPoint,
 		monzaIndex:  1,
 		deviceTrees: [][]byte{other, monza},

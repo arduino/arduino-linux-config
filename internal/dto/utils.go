@@ -53,6 +53,7 @@ func buildOverlayCommand(overlaysDir *paths.Path, baseDtbFile string, temporaryD
 
 func moveDeviceTree(exec executor.Executor, temporaryDtb *paths.Path, destinationDtb *paths.Path) error {
 	if err := exec.Rename(temporaryDtb, destinationDtb); err != nil {
+		_ = exec.Remove(temporaryDtb) // best effort cleanup
 		return fmt.Errorf("failed to move %s to %s: %w", temporaryDtb, destinationDtb, err)
 	}
 
@@ -68,7 +69,6 @@ const (
 	// Every flattened device tree starts with this magic, followed by its total size.
 	fdtMagic              = 0xd00dfeed
 	fdtHeaderSize         = 8
-	fdtAlignment          = 8
 	monzaCompatibleString = "arduino,monza"
 )
 
@@ -82,44 +82,47 @@ type unpackedDeviceTree struct {
 
 // Splits a combined dtb into its device trees and writes the one describing the Monza
 // board into the mount point, so that fdtoverlay can take it as input.
-func unpack(exec executor.Executor, combinedDtb string, mountPoint string) (string, *unpackedDeviceTree, error) {
+func unpackCombinedDtb(exec executor.Executor, combinedDtb string, mountPoint *paths.Path) (*unpackedDeviceTree, error) {
 	data, err := os.ReadFile(combinedDtb)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to read %s: %w", combinedDtb, err)
+		return nil, fmt.Errorf("failed to read %s: %w", combinedDtb, err)
 	}
 
 	deviceTrees, err := splitDeviceTrees(data)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to split %s: %w", combinedDtb, err)
+		return nil, fmt.Errorf("failed to split %s: %w", combinedDtb, err)
 	}
 
-	unpacked := &unpackedDeviceTree{
-		mountPoint:  paths.New(mountPoint),
-		monzaIndex:  -1,
-		deviceTrees: deviceTrees,
-	}
+	monzaIndex := -1
 	for i, deviceTree := range deviceTrees {
+		// TODO: we could improve this by decompiling the dtb and check that the compatible contains exactly
+		// the monza one, instead of searching on the whole binary.
 		if bytes.Contains(deviceTree, []byte(monzaCompatibleString)) {
-			unpacked.monzaIndex = i
+			monzaIndex = i
 			break
 		}
 	}
 
-	if unpacked.monzaIndex < 0 {
-		return "", nil, fmt.Errorf("no %q device tree found in %s", monzaCompatibleString, combinedDtb)
+	if monzaIndex < 0 {
+		return nil, fmt.Errorf("no %q device tree found in %s", monzaCompatibleString, combinedDtb)
 	}
 
-	unpacked.monza = unpacked.mountPoint.Join("monza.dtb")
-	if err := exec.WriteFile(unpacked.monza, deviceTrees[unpacked.monzaIndex], 0600); err != nil {
-		return "", nil, fmt.Errorf("failed to write %s: %w", unpacked.monza, err)
+	monzaFileName := mountPoint.Join("monza.dtb")
+	if err := exec.WriteFile(monzaFileName, deviceTrees[monzaIndex], 0600); err != nil {
+		return nil, fmt.Errorf("failed to write %s: %w", monzaFileName, err)
 	}
 
-	return unpacked.monza.String(), unpacked, nil
+	return &unpackedDeviceTree{
+		mountPoint:  mountPoint,
+		monza:       monzaFileName,
+		monzaIndex:  monzaIndex,
+		deviceTrees: deviceTrees,
+	}, nil
 }
 
 // Puts the customized device tree back in place of the Monza one and rebuilds the
 // combined dtb, returning the path of the temporary file that holds it.
-func pack(exec executor.Executor, temporaryDtb *paths.Path, unpacked *unpackedDeviceTree) (*paths.Path, error) {
+func packCombinedDtb(exec executor.Executor, temporaryDtb *paths.Path, unpacked *unpackedDeviceTree) (*paths.Path, error) {
 	customized, err := os.ReadFile(temporaryDtb.String())
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -128,15 +131,7 @@ func pack(exec executor.Executor, temporaryDtb *paths.Path, unpacked *unpackedDe
 		// Dry run: no device tree was actually customized, so the original one is used.
 		customized = unpacked.deviceTrees[unpacked.monzaIndex]
 	}
-	original := unpacked.deviceTrees[unpacked.monzaIndex]
-	if bytes.Equal(customized, original) {
-		// padding will change the resulting device tree file
-		// when no overlays are present we want the same dtb
-		// provided by the linux-image package
-		unpacked.deviceTrees[unpacked.monzaIndex] = original
-	} else {
-		unpacked.deviceTrees[unpacked.monzaIndex] = pad(customized)
-	}
+	unpacked.deviceTrees[unpacked.monzaIndex] = customized
 
 	packedDtb := unpacked.mountPoint.Join(temporaryDtbName())
 	if err := exec.WriteFile(packedDtb, bytes.Join(unpacked.deviceTrees, nil), 0600); err != nil {
@@ -180,12 +175,4 @@ func splitDeviceTrees(data []byte) ([][]byte, error) {
 
 func hasMagic(data []byte, offset int) bool {
 	return binary.BigEndian.Uint32(data[offset:]) == fdtMagic
-}
-
-func pad(deviceTree []byte) []byte {
-	remainder := len(deviceTree) % fdtAlignment
-	if remainder == 0 {
-		return deviceTree
-	}
-	return append(deviceTree, make([]byte, fdtAlignment-remainder)...)
 }

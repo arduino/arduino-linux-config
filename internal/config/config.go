@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/arduino/go-paths-helper"
-	"go.bug.st/f"
 
 	"github.com/arduino/arduino-linux-config/internal/dto"
 )
@@ -43,10 +42,14 @@ func GetBoard() (dto.DeviceTreeApplier, error) {
 			DtbFileName: "qrb2210-arduino-imola.dtb",
 		}, nil
 	case "ventunoq":
+		baseDtbFullPath, err := deviceTreeDiscover()
+		if err != nil {
+			return nil, fmt.Errorf("failed to discover device tree: %w", err)
+		}
 		return dto.VentunoQ{
-			BaseDtbFullPath: f.Must(deviceTreeDiscover()),
+			BaseDtbFullPath: baseDtbFullPath,
 			OverlaysDir:     paths.New("/var/lib/arduino-linux-config/overlays/"),
-			DtbFileName:     "combined-dtb.dtb",
+			DtbFileName:     filepath.Base(baseDtbFullPath),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported board/os")
