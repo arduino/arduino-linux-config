@@ -3,16 +3,13 @@
 // SPDX-FileCopyrightText: Arduino s.r.l. and/or its affiliated companies
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// Package overlay centralizes the logic that translates a carrier configuration
+// Package overlay centralizes the logic that translates a mount configuration
 // into the list of device tree overlay (dtbo) files that must be applied
 package overlay
 
 import (
-	"fmt"
 	"slices"
 
-	"github.com/arduino/arduino-linux-config/cmd/feedback"
-	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
@@ -20,11 +17,11 @@ import (
 // Collect returns the overlay files required to enable a carrier according to the user selection.
 // It also returns the base overlays that were removed because they were incompatible with the
 // selected options.
-func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]string, []string) {
+func Collect(carrier registry.Mount, userSelection []status.StatusDevice) ([]string, []string) {
 	var baseFiles, dtboFiles, incompatibleFiles []string
 
 	for _, selection := range userSelection {
-		device, exist := carrier.FindDeviceByName(registry.CarrierDeviceName(selection.Device))
+		device, exist := carrier.FindDeviceByName(registry.DeviceName(selection.Device))
 		if !exist {
 			continue
 		}
@@ -59,7 +56,7 @@ func Collect(carrier registry.Carrier, userSelection []status.StatusDevice) ([]s
 }
 
 // Returns the overlay files needed to restore a carrier to its disabled state.
-func CollectDisabled(carrier registry.Carrier) []string {
+func CollectDisabled(carrier registry.Mount) []string {
 	baseFiles := make([]string, 0)
 
 	for _, device := range carrier.Devices {
@@ -75,6 +72,15 @@ func CollectDisabled(carrier registry.Carrier) []string {
 	return baseFiles
 }
 
+// Resolves the overlays for a mount from its persisted status, and the base
+// overlays removed because they were incompatible with the selection.
+func CollectForStatus(mount registry.Mount, current status.MountStatus) ([]string, []string) {
+	if !current.Enable {
+		return CollectDisabled(mount), nil
+	}
+	return Collect(mount, current.StatusDevices)
+}
+
 func getIntersection(a, b []string) []string {
 	var result []string
 	for _, v := range a {
@@ -84,46 +90,4 @@ func getIntersection(a, b []string) []string {
 	}
 	slices.Sort(result)
 	return slices.Compact(result)
-}
-
-func GetDtboForAddon(addons []registry.Addon, addonName registry.AddonName) []string {
-	for _, addon := range addons {
-		if addon.Name == addonName {
-			return addon.EnabledDtbos
-		}
-	}
-	return []string{}
-}
-
-// GetConfiguredCarriersOverlay returns the overlays required by the persisted
-// carrier configuration for the next boot and the reloaded carriers.
-func GetConfiguredCarriersOverlay(cfg config.Configuration, reg registry.Registry) ([]string, []string) {
-	overlays := make([]string, 0, len(reg.Carriers))
-	carriers := make([]string, 0, len(reg.Carriers))
-	for _, carrier := range reg.Carriers {
-		// A carrier without a persisted status is reported as disabled
-		_, next, err := status.Get(cfg, carrier)
-		if err != nil {
-			feedback.Fatal(fmt.Sprintf("failed to get status for carrier %s: %v", carrier.Name, err), feedback.ErrGeneric)
-		}
-
-		if next.Enable {
-			files, _ := Collect(carrier, next.StatusDevices)
-			overlays = append(overlays, files...)
-			carriers = append(carriers, string(carrier.Name))
-		} else {
-			overlays = append(overlays, CollectDisabled(carrier)...)
-		}
-	}
-	return overlays, carriers
-}
-
-// GetConfiguredAddonsOverlay returns the overlays required by the persisted
-// addon configuration for the current boot and its name
-func GetConfiguredAddonsOverlay(cfg config.Configuration, reg registry.Registry) ([]string, string) {
-	nextAddonName, err := status.GetNextConfiguredAddon(cfg, reg)
-	if err != nil {
-		feedback.Fatal(fmt.Sprintf("failed to get addons status: %v", err), feedback.ErrGeneric)
-	}
-	return GetDtboForAddon(reg.Addons, nextAddonName), string(nextAddonName)
 }

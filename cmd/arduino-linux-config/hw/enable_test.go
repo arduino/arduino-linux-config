@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Arduino s.r.l. and/or its affiliated companies
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package carrier
+package hw
 
 import (
 	"reflect"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
 	"github.com/arduino/arduino-linux-config/internal/testutil"
@@ -96,7 +97,7 @@ func TestCollectDtboFiles(t *testing.T) {
 	t.Cleanup(testutil.SetupUnoQDebian())
 
 	reg := registry.New()
-	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
+	mount, exists := reg.FindByName(string(registry.MediaCarrier))
 	if !exists {
 		t.Fatalf("Failed to initialize production test: MediaCarrier registry not found")
 	}
@@ -177,7 +178,7 @@ func TestCollectDtboFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			overlays := collectDtboFiles(carrier, tt.userSelection)
+			overlays, _ := overlay.Collect(mount, tt.userSelection)
 
 			slices.Sort(overlays)
 			overlays = slices.Compact(overlays)
@@ -188,12 +189,12 @@ func TestCollectDtboFiles(t *testing.T) {
 	}
 }
 
-func TestCollectDtboFilesVentunoqCarrier(t *testing.T) {
+func TestCollectDtboFilesVentunoqMount(t *testing.T) {
 	t.Cleanup(testutil.SetupVentunoQUbuntu())
 
 	reg := registry.New()
 	require.NotEmpty(t, reg)
-	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
+	mount, exists := reg.FindByName(string(registry.MediaCarrier))
 	if !exists {
 		t.Fatalf("Failed to initialize production test: MediaCarrier registry not found")
 	}
@@ -223,7 +224,7 @@ func TestCollectDtboFilesVentunoqCarrier(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			overlays := collectDtboFiles(carrier, tt.userSelection)
+			overlays, _ := overlay.Collect(mount, tt.userSelection)
 
 			slices.Sort(overlays)
 			overlays = slices.Compact(overlays)

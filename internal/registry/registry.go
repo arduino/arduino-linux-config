@@ -17,51 +17,66 @@ const (
 )
 
 type Registry struct {
-	Carriers []Carrier
-	Addons   []Addon
+	Mounts []Mount
 }
 
-func (r Registry) FindByName(carrier string) (Carrier, bool) {
-	for _, c := range r.Carriers {
-		if string(c.Name) == carrier {
-			return c, true
+// Mount names are unique over every kind, so the name alone selects a part.
+func (r Registry) FindByName(name string) (Mount, bool) {
+	for _, m := range r.Mounts {
+		if string(m.Name) == name {
+			return m, true
 		}
 	}
-	return Carrier{}, false
+	return Mount{}, false
 }
 
-func (r Registry) FindAddonByName(addon string) (Addon, bool) {
-	for _, a := range r.Addons {
-		if string(a.Name) == addon {
-			return a, true
+// ByKind returns every mount when kind is empty.
+func (r Registry) ByKind(kind Kind) Registry {
+	mounts := make([]Mount, 0, len(r.Mounts))
+	for _, m := range r.Mounts {
+		if kind == "" || m.Kind == kind {
+			mounts = append(mounts, m)
 		}
 	}
-	return Addon{}, false
+	return Registry{Mounts: mounts}
 }
 
-type CarrierDeviceName string
+// Kind groups the mounts by the connector they use.
+type Kind string
 
 const (
-	None    CarrierDeviceName = "none"
-	Camera0 CarrierDeviceName = "camera0"
-	Camera1 CarrierDeviceName = "camera1"
-	Display CarrierDeviceName = "display"
+	KindCarrier Kind = "carrier"
+	KindHat     Kind = "hat"
 )
 
-type CarrierName string
+type DeviceName string
 
 const (
-	MediaCarrier CarrierName = "media-carrier"
+	None    DeviceName = "none"
+	Camera0 DeviceName = "camera0"
+	Camera1 DeviceName = "camera1"
+	Display DeviceName = "display"
 )
 
-type Carrier struct {
-	Name          CarrierName
+type MountName string
+
+const (
+	MediaCarrier   MountName = "media-carrier"
+	AudioCodecZero MountName = "audio-codec-zero"
+	Automation     MountName = "automation"
+)
+
+// Mount is a part that plugs into the board and adds device tree overlays.
+// A carrier and a hat differ only by Kind and by the connector they use.
+type Mount struct {
+	Name          MountName
+	Kind          Kind
 	EnabledDtbos  []string
 	DisabledDtbos []string
-	Devices       []Device
+	Devices       []Device // empty for the hats available today
 }
 
-func (c Carrier) FindDeviceByName(deviceName CarrierDeviceName) (Device, bool) {
+func (c Mount) FindDeviceByName(deviceName DeviceName) (Device, bool) {
 	for _, d := range c.Devices {
 		if d.Name == deviceName {
 			return d, true
@@ -70,9 +85,9 @@ func (c Carrier) FindDeviceByName(deviceName CarrierDeviceName) (Device, bool) {
 	return Device{}, false
 }
 
-// Device represents a configurable hardware device on a carrier
+// Device represents a configurable hardware device on a mount
 type Device struct {
-	Name       CarrierDeviceName
+	Name       DeviceName
 	DeviceType DeviceType
 	Options    []DeviceOption
 }
@@ -84,40 +99,28 @@ type DeviceOption struct {
 	IncompatibleDtbo []string
 }
 
-// Start addon section
-type Addon struct {
-	Name         AddonName
-	EnabledDtbos []string
-}
-
-type AddonName string
-
-const (
-	AudioCodecZero AddonName = "audio-codec-zero"
-	Automation     AddonName = "automation"
-)
-
 func New() Registry {
 	board := config.GetBoardID()
 	boardOs := config.GetLinuxDistribution()
 
 	switch {
 	case board == "unoq":
+		// unoq has no hat connector, so it declares no mount of kind hat.
 		return Registry{
-			Carriers: []Carrier{unoqMediaCarrier},
+			Mounts: []Mount{unoqMediaCarrier},
 		}
 	case board == "ventunoq" && boardOs == "ubuntu":
 		return Registry{
-			Carriers: []Carrier{ventunoqUbuntuMediaCarrier},
-			Addons:   ventunoqUbuntuAddons,
+			Mounts: append([]Mount{ventunoqUbuntuMediaCarrier}, ventunoqUbuntuHats...),
 		}
 	default:
 		return Registry{}
 	}
 }
 
-var unoqMediaCarrier = Carrier{
+var unoqMediaCarrier = Mount{
 	Name: MediaCarrier,
+	Kind: KindCarrier,
 	EnabledDtbos: []string{
 		"qrb2210-arduino-imola-carrier-media.dtbo",
 		"qrb2210-arduino-imola-video_sound-usbc.dtbo",
@@ -221,23 +224,26 @@ var unoqMediaCarrier = Carrier{
 	},
 }
 
-var ventunoqUbuntuAddons = []Addon{
+var ventunoqUbuntuHats = []Mount{
 	{ // TODO update
 		Name: AudioCodecZero,
+		Kind: KindHat,
 		EnabledDtbos: []string{
 			"monaco-addons-iqaudio-codeczero-monza.dtbo",
 		},
 	},
 	{
 		Name: Automation,
+		Kind: KindHat,
 		EnabledDtbos: []string{
 			"monaco-monza-automation-hat.dtbo",
 		},
 	},
 }
 
-var ventunoqUbuntuMediaCarrier = Carrier{
+var ventunoqUbuntuMediaCarrier = Mount{
 	Name: MediaCarrier,
+	Kind: KindCarrier,
 	Devices: []Device{
 		{
 			Name:       "display",
