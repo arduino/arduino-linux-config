@@ -19,7 +19,7 @@ type Configuration struct {
 
 func New() Configuration {
 	return Configuration{
-		statusDir: paths.New("/var/lib/arduino-linux-config/status"),
+		statusDir: paths.New(RootDir(), "var/lib/arduino-linux-config/status"),
 	}
 }
 

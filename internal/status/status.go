@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/arduino/go-paths-helper"
 
@@ -200,8 +201,10 @@ func saveStatusFile(statusFile *paths.Path, status StatusFile) error {
 	return nil
 }
 
+// Reads the boot-id from the root FS, or from COMPATIBLE_ROOT_DIR if set
+// (used in integration tests).
 func getCurrentBootID() (string, error) {
-	bootID, err := os.ReadFile("/proc/sys/kernel/random/boot_id")
+	bootID, err := os.ReadFile(filepath.Join(config.RootDir(), "proc/sys/kernel/random/boot_id"))
 	if err != nil {
 		return "", err
 	}
