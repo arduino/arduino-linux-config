@@ -9,6 +9,8 @@ package integration
 
 import (
 	"encoding/json"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -226,4 +228,70 @@ func TestWriteReadFromConfigFile(t *testing.T) {
 
 	require.Equal(t, expectedCurrent, result.Current)
 	require.Equal(t, expectedNext, result.Next)
+}
+
+// The temporary dtb name embeds a nanosecond timestamp, so the fdtoverlay
+// command run on the UnoQ (arduino,imola) board is matched by its stable prefix.
+var unoqFdtoverlayRe = regexp.MustCompile(
+	`^fdtoverlay -i /boot/efi/dtb/qcom/qrb2210-arduino-imola-base\.dtb ` +
+		`-o /boot/efi/dtb/qcom/temporaryDeviceTree\.\d+\.temp (.*)$`,
+)
+
+// extractUnoqFdtoverlayOverlays returns the overlays passed to fdtoverlay, in
+// the exact order they were passed, so the caller can assert an exact match.
+func extractUnoqFdtoverlayOverlays(t *testing.T, effects []string) []string {
+	t.Helper()
+	for _, e := range effects {
+		if m := unoqFdtoverlayRe.FindStringSubmatch(e); m != nil {
+			return strings.Fields(m[1])
+		}
+	}
+	t.Fatalf("no fdtoverlay effect found in: %v", effects)
+	return nil
+}
+
+func dryRunHwEnableCommand(t *testing.T, args ...string) dryRunResult {
+	t.Helper()
+	full := append([]string{"arduino-linux-config", "hw", "enable"}, args...)
+	full = append(full, "--dry-run", "--format", "json")
+	out := execInContainer(t, full...)
+
+	var result dryRunResult
+	require.NoError(t, json.Unmarshal([]byte(out), &result), "output should be valid JSON: %s", out)
+	return result
+}
+
+// TestCarrierEnableDryRunMatchesFdtoverlay verifies that the fdtoverlay command
+// applied by "hw enable" for the media-carrier is exactly reproduced by a
+// subsequent --dry-run of the same command: no overlay is missing or extra.
+func TestCarrierEnableDryRunMatchesFdtoverlay(t *testing.T) {
+	startDockerContainer(t)
+	t.Cleanup(func() { stopDockerContainer(t) })
+
+	// Fresh install: no persisted state is expected.
+	statusDir := execInContainer(t, "ls", "-A", "/var/lib/arduino-linux-config/status")
+	require.Empty(t, strings.TrimSpace(statusDir), "status directory should be empty on a fresh install")
+
+	const (
+		csi0Overlay  = "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo"
+		csi1Overlay  = "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo"
+		mediaOverlay = "qrb2210-arduino-imola-carrier-media.dtbo"
+		usbcOverlay  = "qrb2210-arduino-imola-video_sound-usbc.dtbo"
+	)
+
+	// Persist the camera0 configuration; the dry-run re-run must produce the exact same overlays, in the same order.
+	execInContainer(t, "arduino-linux-config", "hw", "enable", "media-carrier", "camera0=type1-2lanes")
+	result := dryRunHwEnableCommand(t, "media-carrier", "camera0=type1-2lanes")
+	require.Equal(t,
+		[]string{csi0Overlay, mediaOverlay, usbcOverlay},
+		extractUnoqFdtoverlayOverlays(t, result.Effects),
+	)
+
+	// Persist the camera1 configuration; the dry-run re-run must produce the exact same overlays, in the same order.
+	execInContainer(t, "arduino-linux-config", "hw", "enable", "media-carrier", "camera1=type1-4lanes")
+	result = dryRunHwEnableCommand(t, "media-carrier", "camera1=type1-4lanes")
+	require.Equal(t,
+		[]string{csi1Overlay, mediaOverlay, usbcOverlay},
+		extractUnoqFdtoverlayOverlays(t, result.Effects),
+	)
 }
