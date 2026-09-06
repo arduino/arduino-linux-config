@@ -78,5 +78,5 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 	}
 
 	feedback.Warnf("Disabled (will take effect on next boot)")
-	showHandler(cfg, reg, shown)
+	showHandler(cfg, reg, "")
 }

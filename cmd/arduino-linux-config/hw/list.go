@@ -78,7 +78,7 @@ func (r listResult) String() string {
 		header string
 	}{
 		{registry.KindCarrier, "CARRIER"},
-		{registry.KindHat, "HAT"},
+		{registry.KindHat, "HATS"},
 	} {
 		mounts := make([]listMount, 0, len(r.Mounts))
 		withDevices := false
