@@ -45,3 +45,10 @@ RUN set -eu; \
         dtc -I dts -O dtb -o "/var/lib/arduino-linux-config/overlays/$name.dtbo" /tmp/overlay.dts; \
     done; \
     rm /tmp/overlay.dts
+
+# The media-carrier display overlay uses characters not allowed in DT node names,
+# so the file name and the internal node name are decoupled.
+RUN set -eu; \
+    printf '/dts-v1/;\n/plugin/;\n/ {\n  fragment@0 {\n    target-path = "/";\n    __overlay__ {\n      dsi-waveshare-8-touch-a { status = "okay"; };\n    };\n  };\n};\n' > /tmp/overlay.dts; \
+    dtc -I dts -O dtb -o '/var/lib/arduino-linux-config/overlays/monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo' /tmp/overlay.dts; \
+    rm /tmp/overlay.dts
