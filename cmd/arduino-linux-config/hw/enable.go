@@ -87,7 +87,7 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 	if len(incompatible) > 0 {
-		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
+		feedback.Warnf("Incompatible overlays, removed %v", incompatible)
 	}
 
 	if dryRun {
