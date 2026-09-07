@@ -33,13 +33,9 @@ type Outcome struct {
 
 // Rebuild regenerates the device tree from every mount of the board and then
 // stores the requested changes. With an empty Desired it reloads the state on
-// disk without any change.
+// disk without any change. The Outcome is fully populated even when the error
+// is non-nil, so a dry-run caller can degrade gracefully.
 func Rebuild(ctx context.Context, exec executor.Executor, reg registry.Registry, cfg config.Configuration, desired Desired) (Outcome, error) {
-	applier, err := config.GetBoard()
-	if err != nil {
-		return Outcome{}, err
-	}
-
 	overlays := make([]string, 0, len(reg.Mounts))
 	var currentOverlays []string
 	var incompatible []string
@@ -63,6 +59,11 @@ func Rebuild(ctx context.Context, exec executor.Executor, reg registry.Registry,
 	outcome := Outcome{
 		Incompatible:   incompatible,
 		RebootRequired: !slices.Equal(sortedUnique(currentOverlays), sortedUnique(overlays)),
+	}
+
+	applier, err := config.GetBoard()
+	if err != nil {
+		return outcome, err
 	}
 
 	if err := applier.Apply(ctx, exec, overlays); err != nil {

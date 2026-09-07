@@ -84,7 +84,13 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 
 	outcome, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
 	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		if !dryRun {
+			feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		}
+		// On dry-run, a failure to simulate the effects (typically because
+		// board discovery needs root) does not prevent the reboot-required
+		// answer from being reported.
+		feedback.Warnf("Could not simulate full effects: %v", err)
 	}
 	if len(outcome.Incompatible) > 0 {
 		feedback.Warnf("Incompatible overlays, removed %v", outcome.Incompatible)

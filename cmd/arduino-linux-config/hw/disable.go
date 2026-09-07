@@ -73,7 +73,10 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 
 	outcome, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
 	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		if !dryRun {
+			feedback.Fatal(err.Error(), feedback.ErrGeneric)
+		}
+		feedback.Warnf("Could not simulate full effects: %v", err)
 	}
 	if len(outcome.Incompatible) > 0 {
 		feedback.Warnf("Incompatible overlays, removing %v", outcome.Incompatible)
