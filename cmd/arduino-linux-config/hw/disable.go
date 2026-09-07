@@ -71,19 +71,26 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 		exec = recorder
 	}
 
-	incompatible, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
+	outcome, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
 	if err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
-	if len(incompatible) > 0 {
-		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
+	if len(outcome.Incompatible) > 0 {
+		feedback.Warnf("Incompatible overlays, removing %v", outcome.Incompatible)
 	}
 
 	if dryRun {
-		feedback.PrintResult(dryrun.Result{Effects: recorder.Effects()})
+		feedback.PrintResult(dryrun.Result{
+			RebootRequired: outcome.RebootRequired,
+			Effects:        recorder.Effects(),
+		})
 		return
 	}
 
-	feedback.Warnf("Disabled (will take effect on next boot)")
+	if outcome.RebootRequired {
+		feedback.Warnf("Disabled (will take effect on next boot)")
+	} else {
+		feedback.Warnf("Disabled (no reboot required)")
+	}
 	showHandler(cfg, reg, "")
 }

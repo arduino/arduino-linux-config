@@ -10,6 +10,7 @@ package devicetree
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/executor"
@@ -22,32 +23,50 @@ import (
 // keeps the state stored on disk.
 type Desired map[registry.MountName]status.MountStatus
 
+// Outcome describes the result of a Rebuild: overlays dropped because
+// incompatible with the selection, and whether a reboot is required for the
+// new configuration to take effect.
+type Outcome struct {
+	Incompatible   []string
+	RebootRequired bool
+}
+
 // Rebuild regenerates the device tree from every mount of the board and then
 // stores the requested changes. With an empty Desired it reloads the state on
-// disk without any change. It also returns the base overlays dropped because
-// they were incompatible with the selection.
-func Rebuild(ctx context.Context, exec executor.Executor, reg registry.Registry, cfg config.Configuration, desired Desired) ([]string, error) {
+// disk without any change.
+func Rebuild(ctx context.Context, exec executor.Executor, reg registry.Registry, cfg config.Configuration, desired Desired) (Outcome, error) {
 	applier, err := config.GetBoard()
 	if err != nil {
-		return nil, err
+		return Outcome{}, err
 	}
 
 	overlays := make([]string, 0, len(reg.Mounts))
+	var currentOverlays []string
 	var incompatible []string
 	for _, mount := range reg.Mounts {
-		state, requested := desired[mount.Name]
-		if !requested {
-			if _, state, err = status.Get(cfg, mount); err != nil {
-				return nil, fmt.Errorf("failed to get status for %s: %w", mount.Name, err)
-			}
+		current, next, err := status.Get(cfg, mount)
+		if err != nil {
+			return Outcome{}, fmt.Errorf("failed to get status for %s: %w", mount.Name, err)
+		}
+		curFiles, _ := overlay.CollectForStatus(mount, current)
+		currentOverlays = append(currentOverlays, curFiles...)
+
+		state := next
+		if d, requested := desired[mount.Name]; requested {
+			state = d
 		}
 		files, removed := overlay.CollectForStatus(mount, state)
 		overlays = append(overlays, files...)
 		incompatible = append(incompatible, removed...)
 	}
 
+	outcome := Outcome{
+		Incompatible:   incompatible,
+		RebootRequired: !slices.Equal(sortedUnique(currentOverlays), sortedUnique(overlays)),
+	}
+
 	if err := applier.Apply(ctx, exec, overlays); err != nil {
-		return incompatible, err
+		return outcome, err
 	}
 
 	// The registry order keeps the written files, and so the reported effects,
@@ -58,8 +77,14 @@ func Rebuild(ctx context.Context, exec executor.Executor, reg registry.Registry,
 			continue
 		}
 		if err := status.Update(exec, cfg, mount, state); err != nil {
-			return incompatible, fmt.Errorf("failed to update status for %s: %w", mount.Name, err)
+			return outcome, fmt.Errorf("failed to update status for %s: %w", mount.Name, err)
 		}
 	}
-	return incompatible, nil
+	return outcome, nil
+}
+
+func sortedUnique(files []string) []string {
+	out := slices.Clone(files)
+	slices.Sort(out)
+	return slices.Compact(out)
 }
