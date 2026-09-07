@@ -89,4 +89,10 @@ func TestCarrierHatDryRunCommands(t *testing.T) {
 	execInVentunoqContainer(t, "arduino-linux-config", "hw", "disable", "automation")
 	result = dryRunHwCommand(t, "disable", "automation")
 	require.ElementsMatch(t, []string{carrierOverlay}, extractFdtoverlayOverlays(t, result.Effects))
+
+	// Assert 3: disabling al hat must keep the carrier overlay in the reload.
+	execInVentunoqContainer(t, "arduino-linux-config", "hw", "disable", "hats")
+	result = dryRunHwCommand(t, "disable", "hats")
+	require.ElementsMatch(t, []string{carrierOverlay}, extractFdtoverlayOverlays(t, result.Effects))
+
 }

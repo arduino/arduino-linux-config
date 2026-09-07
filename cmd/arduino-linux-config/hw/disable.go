@@ -21,11 +21,14 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
+// allHats is the fixed keyword accepted instead of a mount name to disable every hat at once.
+const allHats = "hats"
+
 func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
-		Use:   "disable [name]",
-		Short: "Disable a carrier or a hat. With no name, disable everything",
+		Use:   "disable [name|hats]",
+		Short: "Disable a carrier, one or all hats. With no name, disable everything",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if os.Geteuid() != 0 && !dryRun {
@@ -38,7 +41,8 @@ func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comma
 			disableHandler(cmd.Context(), reg, cfg, name, dryRun)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteMountName(reg, toComplete)
+			completions, directive := completion.CompleteMountName(reg, toComplete)
+			return append(completions, cobra.Completion(allHats)), directive
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
@@ -46,17 +50,20 @@ func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comma
 }
 
 func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, dryRun bool) {
-	// With no name every mount is disabled, and the whole board is reported.
-	shown := ""
-	if name != "" {
-		shown = string(findMount(reg, name).Name)
-	}
-
 	desired := devicetree.Desired{}
-	for _, mount := range reg.Mounts {
-		if shown == "" || shown == string(mount.Name) {
+	switch name {
+	case "":
+		// With no name every mount is disabled.
+		for _, mount := range reg.Mounts {
 			desired[mount.Name] = status.MountStatus{Enable: false}
 		}
+	case allHats:
+		for _, mount := range reg.ByKind(registry.KindHat).Mounts {
+			desired[mount.Name] = status.MountStatus{Enable: false}
+		}
+	default:
+		mount := findMount(reg, name)
+		desired[mount.Name] = status.MountStatus{Enable: false}
 	}
 
 	exec, recorder := executor.Real(), executor.NewRecorder()
