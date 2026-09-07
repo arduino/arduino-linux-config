@@ -47,6 +47,7 @@ type Kind string
 const (
 	KindCarrier Kind = "carrier"
 	KindHat     Kind = "hat"
+	KindUsb     Kind = "usb"
 )
 
 type DeviceName string
@@ -64,6 +65,7 @@ const (
 	MediaCarrier   MountName = "media-carrier"
 	AudioCodecZero MountName = "audio-codec-zero"
 	Automation     MountName = "automation"
+	Usb            MountName = "usb"
 )
 
 // Mount is a part that plugs into the board and adds device tree overlays.
@@ -238,6 +240,11 @@ var ventunoqUbuntuHats = []Mount{
 		EnabledDtbos: []string{
 			"monaco-monza-automation-hat.dtbo",
 		},
+	},
+	{
+		Name:         Usb,
+		Kind:         KindUsb,
+		EnabledDtbos: []string{},
 	},
 }
 
