@@ -14,61 +14,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type addonsListResult struct {
-	Addons []string `json:"addons"`
-}
-
-func carrierNames(t *testing.T, out string) []string {
+// list prints every mount of the board, so the names are selected by kind.
+func mountNames(t *testing.T, out string, kind string) []string {
 	t.Helper()
 	var result listResult
 	require.NoError(t, json.Unmarshal([]byte(out), &result), "output should be valid JSON")
 
-	names := make([]string, 0, len(result.Carriers))
-	for _, carrier := range result.Carriers {
-		names = append(names, carrier.Name)
+	names := make([]string, 0, len(result.Mounts))
+	for _, mount := range result.Mounts {
+		if mount.Kind == kind {
+			names = append(names, mount.Name)
+		}
 	}
 	return names
 }
 
-func addonNames(t *testing.T, out string) []string {
-	t.Helper()
-	var result addonsListResult
-	require.NoError(t, json.Unmarshal([]byte(out), &result), "output should be valid JSON")
-	return result.Addons
-}
-
-// On VentunoQ with Ubuntu the addons are available, together with the media carrier.
+// On VentunoQ with Ubuntu the hats are available, together with the media carrier.
 func TestVentunoqUbuntuBoardSupport(t *testing.T) {
 	startVentunoqUbuntuDockerContainer(t)
 	t.Cleanup(func() { stopVentunoqDockerContainer(t) })
 
-	addons := addonNames(t, execInVentunoqContainer(t, "arduino-linux-config", "addons", "list", "--format", "json"))
-	require.ElementsMatch(t, []string{"audio-codec-zero", "automation"}, addons)
+	out := execInVentunoqContainer(t, "arduino-linux-config", "hw", "list", "--format", "json")
 
-	carriers := carrierNames(t, execInVentunoqContainer(t, "arduino-linux-config", "carrier", "list", "--format", "json"))
-	require.Equal(t, []string{"media-carrier"}, carriers)
+	require.ElementsMatch(t, []string{"audio-codec-zero", "automation"}, mountNames(t, out, "hat"))
+	require.Equal(t, []string{"media-carrier"}, mountNames(t, out, "carrier"))
 }
 
-// On UnoQ the addons are not supported, so the command is not even registered.
+// On UnoQ there is no hat connector, so the registry declares no hat.
 func TestUnoqBoardSupport(t *testing.T) {
 	startDockerContainer(t)
 	t.Cleanup(func() { stopDockerContainer(t) })
 
-	out, err := execInNamedContainerWithError(t, containerName, "arduino-linux-config", "addons", "list")
-	require.Error(t, err, "the addons command should not be available on UnoQ")
-	require.Contains(t, out, `unknown command "addons"`)
+	out := execInContainer(t, "arduino-linux-config", "hw", "list", "--format", "json")
 
-	carriers := carrierNames(t, execInContainer(t, "arduino-linux-config", "carrier", "list", "--format", "json"))
-	require.Equal(t, []string{"media-carrier"}, carriers)
+	require.Equal(t, []string{"media-carrier"}, mountNames(t, out, "carrier"))
+	require.Empty(t, mountNames(t, out, "hat"), "UnoQ has no hat connector")
 }
 
-// On VentunoQ the only supported distribution is Ubuntu: on Debian neither
-// carriers nor addons are available.
+// On VentunoQ the only supported distribution is Ubuntu: on Debian no mount
+// is available.
 func TestVentunoqDebianBoardSupport(t *testing.T) {
 	startVentunoqDebianDockerContainer(t)
 	t.Cleanup(func() { stopVentunoqDockerContainer(t) })
 
-	out, err := execInNamedContainerWithError(t, ventunoqContainerName, "arduino-linux-config", "carrier", "list", "--format", "json")
+	out, err := execInNamedContainerWithError(t, ventunoqContainerName, "arduino-linux-config", "hw", "list", "--format", "json")
 	require.Error(t, err)
 	require.Contains(t, out, `unsupported board/os`)
 }

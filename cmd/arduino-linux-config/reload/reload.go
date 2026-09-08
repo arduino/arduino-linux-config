@@ -16,9 +16,10 @@ import (
 
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/devicetree"
 	"github.com/arduino/arduino-linux-config/internal/executor"
-	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
+	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
 // Re-applies the currently persisted carrier configuration so the
@@ -47,30 +48,29 @@ func NewReloadCmd() *cobra.Command {
 	return cmd
 }
 
-// Re-applies to the device tree the persisted carrier configuration
+// Re-applies to the device tree the persisted configuration of every mount
 func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, dryRun bool) {
-	board, err := config.GetBoard()
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-
 	result := reloadResult{
 		BoardID:          config.GetBoardID(),
 		DryRun:           dryRun,
 		ReloadedCarriers: make([]string, 0),
-		ReloadedAddons:   make([]string, 0),
+		ReloadedHats:     make([]string, 0),
 	}
 
-	carrierOverlays, carriers := overlay.GetConfiguredCarriersOverlay(cfg, reg)
-	addonOverlays, addon := overlay.GetConfiguredAddonsOverlay(cfg, reg)
-
-	overlays := make([]string, 0, len(carrierOverlays)+len(addonOverlays))
-	overlays = append(overlays, carrierOverlays...)
-	overlays = append(overlays, addonOverlays...)
-
-	result.ReloadedCarriers = append(result.ReloadedCarriers, carriers...)
-	if addon != "" {
-		result.ReloadedAddons = append(result.ReloadedAddons, addon)
+	// Only the enabled mounts are reported: a disabled one adds no overlay.
+	for _, mount := range reg.Mounts {
+		_, next, err := status.Get(cfg, mount)
+		if err != nil {
+			feedback.Fatal(fmt.Sprintf("failed to get status for %s: %v", mount.Name, err), feedback.ErrGeneric)
+		}
+		if !next.Enable {
+			continue
+		}
+		if mount.Kind == registry.KindHat {
+			result.ReloadedHats = append(result.ReloadedHats, string(mount.Name))
+		} else {
+			result.ReloadedCarriers = append(result.ReloadedCarriers, string(mount.Name))
+		}
 	}
 
 	exec, recorder := executor.Real(), executor.NewRecorder()
@@ -78,7 +78,9 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		exec = recorder
 	}
 
-	if err := board.Apply(ctx, exec, overlays); err != nil {
+	// The incompatible overlays are not reported: reload applies a status that
+	// enable and disable already accepted.
+	if _, err := devicetree.Rebuild(ctx, exec, reg, cfg, nil); err != nil {
 		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
 
@@ -90,7 +92,7 @@ type reloadResult struct {
 	BoardID          string   `json:"board_id"`
 	DryRun           bool     `json:"dry_run"`
 	ReloadedCarriers []string `json:"reloaded_carriers"`
-	ReloadedAddons   []string `json:"reloaded_addons"`
+	ReloadedHats     []string `json:"reloaded_hats"`
 	Effects          []string `json:"effects,omitempty"`
 }
 
@@ -105,8 +107,8 @@ func (r reloadResult) String() string {
 	for _, name := range r.ReloadedCarriers {
 		fmt.Fprintf(w, "Reloaded carriers:\t%s\n", name)
 	}
-	for _, name := range r.ReloadedAddons {
-		fmt.Fprintf(w, "Reloaded addons:\t%s\n", name)
+	for _, name := range r.ReloadedHats {
+		fmt.Fprintf(w, "Reloaded hats:\t%s\n", name)
 	}
 
 	if r.DryRun {

@@ -10,8 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/addons"
-	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/carrier"
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/hw"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/reload"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
@@ -50,16 +49,12 @@ func run() error {
 	board := config.GetBoardID()
 	boardOs := config.GetLinuxDistribution()
 	switch {
-	case board == "unoq":
+	case board == "unoq", board == "ventunoq" && boardOs == "ubuntu":
+		// Every board gets the same commands. The registry decides what each
+		// command can list, so a board without a hat connector shows no hat.
 		rootCmd.AddCommand(
-			carrier.NewCarrierCmd(),
-			reload.NewReloadCmd(),
-			NewVersionCmd(),
-		)
-	case board == "ventunoq" && boardOs == "ubuntu":
-		rootCmd.AddCommand(
-			carrier.NewCarrierCmd(),
-			addons.NewAddonsCmd(),
+			hw.NewHwCmd(),
+			hw.NewCarrierCmd(),
 			reload.NewReloadCmd(),
 			NewVersionCmd(),
 		)

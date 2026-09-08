@@ -31,7 +31,7 @@ func TestReloadRestoresGeneratedDeviceTree(t *testing.T) {
 	t.Cleanup(func() { stopDockerContainer(t) })
 
 	// Enable the panel: the device tree must be regenerated with the panel overlay, this is the expectedDeviceTree
-	execInContainer(t, "arduino-linux-config", "carrier", "enable", "media-carrier", "display=8-dsi-touch-a")
+	execInContainer(t, "arduino-linux-config", "hw", "enable", "media-carrier", "display=8-dsi-touch-a")
 	expectedDeviceTree := md5InContainer(t, unoqGeneratedDtb)
 
 	// Corrupt the generated device tree.
@@ -49,7 +49,7 @@ type reloadResult struct {
 	BoardID          string   `json:"board_id"`
 	DryRun           bool     `json:"dry_run"`
 	ReloadedCarriers []string `json:"reloaded_carriers"`
-	ReloadedAddons   []string `json:"reloaded_addons"`
+	ReloadedHats     []string `json:"reloaded_hats"`
 }
 
 func TestReloadWithEmptyStatus(t *testing.T) {

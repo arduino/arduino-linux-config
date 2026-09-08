@@ -11,12 +11,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
+	"github.com/arduino/arduino-linux-config/internal/status"
 	"github.com/arduino/arduino-linux-config/internal/testutil"
 )
 
-func mediaCarrier(t *testing.T) registry.Carrier {
+func mediaCarrier(t *testing.T) registry.Mount {
 	t.Helper()
 	reg := registry.New()
 	carrier, exists := reg.FindByName(string(registry.MediaCarrier))
@@ -38,32 +38,38 @@ func TestCollectDisabled(t *testing.T) {
 	require.Equal(t, want, got)
 }
 
-func TestGetDtboForAddon(t *testing.T) {
-	addons := []registry.Addon{
-		{Name: "audio-codec-zero", EnabledDtbos: []string{"audio-codec-zero.dtbo"}},
-		{Name: "automation", EnabledDtbos: []string{"automation.dtbo"}},
-	}
-
-	require.Equal(t, []string{"automation.dtbo"}, GetDtboForAddon(addons, "automation"))
-	require.Equal(t, []string{}, GetDtboForAddon(addons, "unknown"))
-}
-
-func TestGetConfiguredCarriersOverlay(t *testing.T) {
+// CollectForStatus replaces the per-kind helpers: it resolves any mount from
+// its persisted status.
+func TestCollectForStatusDisabled(t *testing.T) {
 	t.Cleanup(testutil.SetupUnoQDebian())
 
-	// No status file is persisted, so every carrier is reported as disabled.
-	overlays, carriers := GetConfiguredCarriersOverlay(config.New(), registry.New())
+	files, incompatible := CollectForStatus(mediaCarrier(t), status.MountStatus{Enable: false})
 
-	require.Equal(t, []string{}, carriers)
-	require.Equal(t, CollectDisabled(mediaCarrier(t)), overlays)
+	require.Equal(t, CollectDisabled(mediaCarrier(t)), files)
+	require.Empty(t, incompatible)
 }
 
-func TestGetConfiguredAddonsOverlay(t *testing.T) {
+func TestCollectForStatusEnabled(t *testing.T) {
 	t.Cleanup(testutil.SetupVentunoQUbuntu())
 
-	// No status file is persisted, so no addon is configured for the next boot.
-	overlays, addonName := GetConfiguredAddonsOverlay(config.New(), registry.New())
+	files, incompatible := CollectForStatus(mediaCarrier(t), status.MountStatus{
+		Enable:        true,
+		StatusDevices: []status.StatusDevice{{Device: "display", Option: "8-dsi-touch-a"}},
+	})
 
-	require.Equal(t, "", addonName)
-	require.Equal(t, []string{}, overlays)
+	require.Equal(t, []string{"monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo"}, files)
+	require.Empty(t, incompatible)
+}
+
+// A hat has no device, so its overlays come from the registry alone.
+func TestCollectForStatusHat(t *testing.T) {
+	t.Cleanup(testutil.SetupVentunoQUbuntu())
+
+	hat, exists := registry.New().FindByName(string(registry.Automation))
+	require.True(t, exists, "automation not found in registry")
+
+	files, incompatible := CollectForStatus(hat, status.MountStatus{Enable: true})
+
+	require.Equal(t, []string{"monaco-monza-automation-hat.dtbo"}, files)
+	require.Empty(t, incompatible)
 }
