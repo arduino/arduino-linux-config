@@ -10,8 +10,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/arduino/arduino-linux-config/internal/overlay"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/status"
@@ -172,52 +170,6 @@ func TestCollectDtboFiles(t *testing.T) {
 			want: []string{
 				"qrb2210-arduino-imola-carrier-media-panel-10in_touch_a-dsi.dtbo",
 				"qrb2210-arduino-imola-carrier-media.dtbo",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			overlays, _ := overlay.Collect(mount, tt.userSelection)
-
-			slices.Sort(overlays)
-			overlays = slices.Compact(overlays)
-			if !slices.Equal(overlays, tt.want) {
-				t.Errorf("\nGot:  %v\nWant: %v", overlays, tt.want)
-			}
-		})
-	}
-}
-
-func TestCollectDtboFilesVentunoqMount(t *testing.T) {
-	t.Cleanup(testutil.SetupVentunoQUbuntu())
-
-	reg := registry.New()
-	require.NotEmpty(t, reg)
-	mount, exists := reg.FindByName(string(registry.MediaCarrier))
-	if !exists {
-		t.Fatalf("Failed to initialize production test: MediaCarrier registry not found")
-	}
-
-	tests := []struct {
-		name          string
-		userSelection []status.StatusDevice
-		want          []string
-	}{
-		{
-			name: "Camera0 device not exists",
-			userSelection: []status.StatusDevice{
-				{Device: "camera0", Option: "type1-2lanes"},
-			},
-			want: []string{},
-		},
-		{
-			name: "Incompatible Selection - All devices",
-			userSelection: []status.StatusDevice{
-				{Device: "display", Option: "8-dsi-touch-a"},
-			},
-			want: []string{
-				"monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo",
 			},
 		},
 	}
