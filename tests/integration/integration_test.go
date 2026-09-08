@@ -273,10 +273,10 @@ func TestCarrierEnableDryRunMatchesFdtoverlay(t *testing.T) {
 	require.Empty(t, strings.TrimSpace(statusDir), "status directory should be empty on a fresh install")
 
 	const (
-		csi0Overlay  = "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo"
-		csi1Overlay  = "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo"
-		mediaOverlay = "qrb2210-arduino-imola-carrier-media.dtbo"
-		usbcOverlay  = "qrb2210-arduino-imola-video_sound-usbc.dtbo"
+		csi0Overlay  = "/boot/efi/dtb/qcom/qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo"
+		csi1Overlay  = "/boot/efi/dtb/qcom/qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo"
+		mediaOverlay = "/boot/efi/dtb/qcom/qrb2210-arduino-imola-carrier-media.dtbo"
+		usbcOverlay  = "/boot/efi/dtb/qcom/qrb2210-arduino-imola-video_sound-usbc.dtbo"
 	)
 
 	// Persist the camera0 configuration; the dry-run re-run must produce the exact same overlays, in the same order.
