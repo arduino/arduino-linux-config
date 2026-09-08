@@ -27,7 +27,7 @@ func TestDeprecatedCarrierMirrorsHwCmd(t *testing.T) {
 	carrierCmd := NewCarrierCmd()
 	require.Equal(t, "carrier", carrierCmd.Name())
 	require.NotEmpty(t, carrierCmd.Deprecated)
-	require.Equal(t, []string{"disable", "enable", "list", "show"}, names(carrierCmd))
+	require.Equal(t, []string{"disable", "enable", "list", "reload", "show"}, names(carrierCmd))
 
 	hwCmd := NewHwCmd()
 	require.Empty(t, hwCmd.Deprecated)

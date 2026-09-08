@@ -11,7 +11,6 @@ import (
 	"log/slog"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/hw"
-	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/reload"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 
@@ -55,7 +54,6 @@ func run() error {
 		rootCmd.AddCommand(
 			hw.NewHwCmd(),
 			hw.NewCarrierCmd(),
-			reload.NewReloadCmd(),
 			NewVersionCmd(),
 		)
 	default:

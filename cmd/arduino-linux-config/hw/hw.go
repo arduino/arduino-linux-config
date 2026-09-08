@@ -35,6 +35,7 @@ func NewHwCmd() *cobra.Command {
 	hwCmd.AddCommand(newShowCmd(reg, cfg))
 	hwCmd.AddCommand(newEnableCmd(reg, cfg))
 	hwCmd.AddCommand(newDisableCmd(reg, cfg))
+	hwCmd.AddCommand(newReloadCmd(reg, cfg))
 
 	return hwCmd
 }

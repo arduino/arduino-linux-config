@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Arduino s.r.l. and/or its affiliated companies
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package reload
+package hw
 
 import (
 	"context"
@@ -24,17 +24,14 @@ import (
 
 // Re-applies the currently persisted carrier configuration so the
 // generated device tree is regenerated. The saved state remains unchanged.
-func NewReloadCmd() *cobra.Command {
-	cfg := config.New()
-	reg := registry.New()
-
+func newReloadCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "reload",
 		Short: "Reload the current configuration and regenerate the device tree",
 		Long:  "Re-apply the currently persisted carrier configuration without changing the saved state.",
 		Example: `  # Reload every configured carrier:
-  arduino-linux-config reload`,
+  arduino-linux-config hw reload`,
 		Args: cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			if os.Geteuid() != 0 && !dryRun {
