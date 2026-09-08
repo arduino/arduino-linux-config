@@ -12,9 +12,8 @@ import (
 
 type Result struct {
 	// Names what the command would change, for example "carrier 'media-carrier'".
-	Subject        string   `json:"subject,omitempty"`
-	RebootRequired bool     `json:"reboot_required"`
-	Effects        []string `json:"effects"`
+	Subject string   `json:"subject,omitempty"`
+	Effects []string `json:"effects"`
 }
 
 func (r Result) Data() interface{} {
@@ -26,9 +25,5 @@ func (r Result) String() string {
 	if r.Subject != "" {
 		header += " for " + r.Subject
 	}
-	rebootLine := "Reboot required: no"
-	if r.RebootRequired {
-		rebootLine = "Reboot required: yes"
-	}
-	return strings.Join(append([]string{header, rebootLine}, r.Effects...), "\n")
+	return strings.Join(append([]string{header}, r.Effects...), "\n")
 }

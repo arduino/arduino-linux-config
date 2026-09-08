@@ -82,35 +82,21 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		exec = recorder
 	}
 
-	outcome, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
+	incompatible, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
 	if err != nil {
-		if !dryRun {
-			feedback.Fatal(err.Error(), feedback.ErrGeneric)
-		}
-		// On dry-run, a failure to simulate the effects (typically because
-		// board discovery needs root) does not prevent the reboot-required
-		// answer from being reported.
-		feedback.Warnf("Could not simulate full effects: %v", err)
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
 	}
-	if len(outcome.Incompatible) > 0 {
-		feedback.Warnf("Incompatible overlays, removed %v", outcome.Incompatible)
+	if len(incompatible) > 0 {
+		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
 	}
 
 	if dryRun {
 		subject := fmt.Sprintf("%s '%s'", string(mount.Kind), mount.Name)
-		feedback.PrintResult(dryrun.Result{
-			Subject:        subject,
-			RebootRequired: outcome.RebootRequired,
-			Effects:        recorder.Effects(),
-		})
+		feedback.PrintResult(dryrun.Result{Subject: subject, Effects: recorder.Effects()})
 		return
 	}
 
-	if outcome.RebootRequired {
-		feedback.Warnf("Configuration enabled (will take effect on next boot)")
-	} else {
-		feedback.Warnf("Configuration enabled (no reboot required)")
-	}
+	feedback.Warnf("Configuration enabled (will take effect on next boot)")
 	// Every mount is shown, because enabling one disables the others of its kind.
 	showHandler(cfg, reg, "")
 }

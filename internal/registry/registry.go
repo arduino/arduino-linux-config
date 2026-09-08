@@ -47,7 +47,6 @@ type Kind string
 const (
 	KindCarrier Kind = "carrier"
 	KindHat     Kind = "hat"
-	KindUsb     Kind = "usb"
 )
 
 type DeviceName string
@@ -65,7 +64,6 @@ const (
 	MediaCarrier   MountName = "media-carrier"
 	AudioCodecZero MountName = "audio-codec-zero"
 	Automation     MountName = "automation"
-	Usb            MountName = "usb"
 )
 
 // Mount is a part that plugs into the board and adds device tree overlays.
@@ -113,7 +111,7 @@ func New() Registry {
 		}
 	case board == "ventunoq" && boardOs == "ubuntu":
 		return Registry{
-			Mounts: append([]Mount{ventunoqUbuntuMediaCarrier}, ventunoqUbuntuHats...),
+			Mounts: ventunoqUbuntuHats,
 		}
 	default:
 		return Registry{}
@@ -239,34 +237,6 @@ var ventunoqUbuntuHats = []Mount{
 		Kind: KindHat,
 		EnabledDtbos: []string{
 			"monaco-monza-automation-hat.dtbo",
-		},
-	},
-	{
-		Name:         Usb,
-		Kind:         KindUsb,
-		EnabledDtbos: []string{},
-	},
-}
-
-var ventunoqUbuntuMediaCarrier = Mount{
-	Name: MediaCarrier,
-	Kind: KindCarrier,
-	Devices: []Device{
-		{
-			Name:       "display",
-			DeviceType: DeviceTypeDisplay,
-			Options: []DeviceOption{
-				{
-					Name:      "none",
-					DtboFiles: []string{},
-				},
-				{
-					Name: "8-dsi-touch-a",
-					DtboFiles: []string{
-						"monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo",
-					},
-				},
-			},
 		},
 	},
 }
