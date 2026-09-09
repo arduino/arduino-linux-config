@@ -37,7 +37,6 @@ func TestVentunoqUbuntuBoardSupport(t *testing.T) {
 	out := execInVentunoqContainer(t, "arduino-linux-config", "hw", "list", "--format", "json")
 
 	require.ElementsMatch(t, []string{"audio-codec-zero", "automation"}, mountNames(t, out, "hat"))
-	require.Equal(t, []string{"media-carrier"}, mountNames(t, out, "carrier"))
 }
 
 // On UnoQ there is no hat connector, so the registry declares no hat.

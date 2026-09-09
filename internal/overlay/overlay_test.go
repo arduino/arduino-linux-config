@@ -49,18 +49,6 @@ func TestCollectForStatusDisabled(t *testing.T) {
 	require.Empty(t, incompatible)
 }
 
-func TestCollectForStatusEnabled(t *testing.T) {
-	t.Cleanup(testutil.SetupVentunoQUbuntu())
-
-	files, incompatible := CollectForStatus(mediaCarrier(t), status.MountStatus{
-		Enable:        true,
-		StatusDevices: []status.StatusDevice{{Device: "display", Option: "8-dsi-touch-a"}},
-	})
-
-	require.Equal(t, []string{"monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo"}, files)
-	require.Empty(t, incompatible)
-}
-
 // A hat has no device, so its overlays come from the registry alone.
 func TestCollectForStatusHat(t *testing.T) {
 	t.Cleanup(testutil.SetupVentunoQUbuntu())

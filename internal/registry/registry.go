@@ -111,7 +111,7 @@ func New() Registry {
 		}
 	case board == "ventunoq" && boardOs == "ubuntu":
 		return Registry{
-			Mounts: append([]Mount{ventunoqUbuntuMediaCarrier}, ventunoqUbuntuHats...),
+			Mounts: ventunoqUbuntuHats,
 		}
 	default:
 		return Registry{}
@@ -237,29 +237,6 @@ var ventunoqUbuntuHats = []Mount{
 		Kind: KindHat,
 		EnabledDtbos: []string{
 			"monaco-monza-automation-hat.dtbo",
-		},
-	},
-}
-
-var ventunoqUbuntuMediaCarrier = Mount{
-	Name: MediaCarrier,
-	Kind: KindCarrier,
-	Devices: []Device{
-		{
-			Name:       "display",
-			DeviceType: DeviceTypeDisplay,
-			Options: []DeviceOption{
-				{
-					Name:      "none",
-					DtboFiles: []string{},
-				},
-				{
-					Name: "8-dsi-touch-a",
-					DtboFiles: []string{
-						"monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo",
-					},
-				},
-			},
 		},
 	},
 }

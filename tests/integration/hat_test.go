@@ -61,7 +61,7 @@ func TestHatGeneratesDeviceTree(t *testing.T) {
 	t.Cleanup(func() { stopVentunoqDockerContainer(t) })
 
 	// Baseline: no hat enabled, the device tree is the one shipped by the board.
-	execInVentunoqContainer(t, "arduino-linux-config", "reload")
+	execInVentunoqContainer(t, "arduino-linux-config", "hw", "reload")
 	baseDeviceTree := generatedDtbMd5(t)
 
 	execInVentunoqContainer(t, "arduino-linux-config", "hw", "enable", "automation")
@@ -79,7 +79,7 @@ func TestHatGeneratesDeviceTree(t *testing.T) {
 
 	// Reload re-applies the persisted configuration and regenerates the device tree.
 	inDtbPartition(t, "rm /mnt/dtb/"+ventunoqGeneratedDtb)
-	execInVentunoqContainer(t, "arduino-linux-config", "reload")
+	execInVentunoqContainer(t, "arduino-linux-config", "hw", "reload")
 	reloadedDeviceTree := generatedDtbMd5(t)
 	require.Equal(t, audioDeviceTree, reloadedDeviceTree, "reload should restore the device tree of the enabled hat")
 
