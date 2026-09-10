@@ -23,6 +23,21 @@ var Version string = "0.0.0-dev"
 var format string
 var logLevelStr string
 
+// minVentunoQUbuntuBuildInfo is the oldest /etc/buildinfo BUILD_ID supported on
+// VentunoQ + Ubuntu. Older images ship an unsupported kernel.
+var minVentunoQUbuntuBuildInfo = config.BuildInfo{Date: 20260825, Increment: 260}
+
+func requireMinBuildInfo(min config.BuildInfo) error {
+	bi, err := config.GetBuildInfo()
+	if err != nil {
+		return fmt.Errorf("unsupported kernel version: %w", err)
+	}
+	if bi.LessThan(min) {
+		return fmt.Errorf("unsupported kernel version: BUILD_ID %s is older than the minimum required %s", bi, min)
+	}
+	return nil
+}
+
 func run() error {
 	rootCmd := &cobra.Command{
 		Use:   "arduino-linux-config",
@@ -49,6 +64,11 @@ func run() error {
 	boardOs := config.GetLinuxDistribution()
 	switch {
 	case board == "unoq", board == "ventunoq" && boardOs == "ubuntu":
+		if board == "ventunoq" && boardOs == "ubuntu" {
+			if err := requireMinBuildInfo(minVentunoQUbuntuBuildInfo); err != nil {
+				feedback.FatalError(err, feedback.ErrBadArgument)
+			}
+		}
 		// Every board gets the same commands. The registry decides what each
 		// command can list, so a board without a hat connector shows no hat.
 		rootCmd.AddCommand(

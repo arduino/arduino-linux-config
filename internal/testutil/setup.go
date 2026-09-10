@@ -43,6 +43,9 @@ func envRootSetup(board, osId string) func() {
 	if err := os.WriteFile(filepath.Join(etcPath, "os-release"), []byte(fmt.Sprintf("ID=%s\n", osId)), 0600); err != nil {
 		panic(err)
 	}
+	if err := os.WriteFile(filepath.Join(etcPath, "buildinfo"), []byte("BUILD_ID=20260825-260\n"), 0600); err != nil {
+		panic(err)
+	}
 
 	bootIdPath := filepath.Join(compatRootDir, "proc", "sys", "kernel", "random")
 	if err := os.MkdirAll(bootIdPath, 0755); err != nil {

@@ -21,6 +21,7 @@ RUN mkdir -p /tmp/compat-root/sys/firmware/devicetree/base \
     printf 'arduino,monza\0' > /tmp/compat-root/sys/firmware/devicetree/base/compatible && \
     printf 'test-boot-id\n' > /tmp/compat-root/proc/sys/kernel/random/boot_id && \
     printf 'ID=ubuntu\n' > /tmp/compat-root/etc/os-release && \
+    printf 'BUILD_ID=20260825-260\n' > /tmp/compat-root/etc/buildinfo && \
     printf 'linux /boot/vmlinuz-%s root=/dev/sda1\n' "${KERNEL_VERSION}" > /tmp/compat-root/boot/grub/grub.cfg
 
 # The base device tree is shipped as a combined dtb: a concatenation of flattened
