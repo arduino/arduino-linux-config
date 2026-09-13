@@ -10,8 +10,6 @@
 package hw
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/arduino/arduino-linux-config/internal/config"
@@ -40,17 +38,17 @@ func NewHwCmd() *cobra.Command {
 	return hwCmd
 }
 
-// NewCarrierCmd is the previous name of the hw group. Cobra prints the
-// deprecation on stderr, and keeps the command out of the help and of the
-// completion.
+// NewCarrierCmd is the previous name of the hw group. It stays out of the help
+// and of the completion, but it keeps working so that the existing scripts do
+// not break.
 func NewCarrierCmd() *cobra.Command {
 	carrierCmd := NewHwCmd()
 	carrierCmd.Use = "carrier"
 	carrierCmd.Aliases = nil
-	carrierCmd.Deprecated = `use "hw" instead`
+	carrierCmd.Hidden = true
 
 	for _, sub := range carrierCmd.Commands() {
-		sub.Deprecated = fmt.Sprintf("use %q instead of %q", "hw "+sub.Name(), "carrier "+sub.Name())
+		sub.Hidden = true
 	}
 	return carrierCmd
 }
