@@ -19,7 +19,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
+func newShowCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier bool) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show [name]",
 		Short: "Show the configuration of the board, or of one part of it",
@@ -29,7 +29,7 @@ func newShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command 
 			if len(args) > 0 {
 				mountName = string(findMount(reg, args[0]).Name)
 			}
-			showHandler(cfg, reg, mountName)
+			showHandler(cfg, reg, mountName, legacyCarrier)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			return completion.CompleteMountName(reg, toComplete)
@@ -38,7 +38,7 @@ func newShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command 
 }
 
 // With no name it shows the whole board, otherwise only the named mount.
-func showHandler(cfg config.Configuration, reg registry.Registry, mountName string) {
+func showHandler(cfg config.Configuration, reg registry.Registry, mountName string, legacyCarrier bool) {
 	result := showResult{Mounts: make([]showMount, 0, len(reg.Mounts))}
 	for _, mount := range reg.Mounts {
 		if mountName != "" && mountName != string(mount.Name) {

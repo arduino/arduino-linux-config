@@ -29,23 +29,33 @@ func NewHwCmd() *cobra.Command {
 		Long:    "Manage the carriers and the hats connected to the board, including listing, configuring and resetting.",
 	}
 
-	hwCmd.AddCommand(newListCmd(reg))
-	hwCmd.AddCommand(newShowCmd(reg, cfg))
-	hwCmd.AddCommand(newEnableCmd(reg, cfg))
-	hwCmd.AddCommand(newDisableCmd(reg, cfg))
-	hwCmd.AddCommand(newReloadCmd(reg, cfg))
+	hwCmd.AddCommand(newListCmd(reg, false))
+	hwCmd.AddCommand(newShowCmd(reg, cfg, false))
+	hwCmd.AddCommand(newEnableCmd(reg, cfg, false))
+	hwCmd.AddCommand(newDisableCmd(reg, cfg, false))
+	hwCmd.AddCommand(newReloadCmd(reg, cfg, false))
 
 	return hwCmd
 }
 
 // NewCarrierCmd is the previous name of the hw group. It stays out of the help
 // and of the completion, but it keeps working so that the existing scripts do
-// not break.
+// not break, with the behaviour of the v0.2.x releases.
 func NewCarrierCmd() *cobra.Command {
-	carrierCmd := NewHwCmd()
-	carrierCmd.Use = "carrier"
-	carrierCmd.Aliases = nil
-	carrierCmd.Hidden = true
+	cfg := config.New()
+	reg := registry.New()
+
+	carrierCmd := &cobra.Command{
+		Use:    "carrier",
+		Short:  "Manage the carriers connected to the board",
+		Hidden: true,
+	}
+
+	carrierCmd.AddCommand(newListCmd(reg, true))
+	carrierCmd.AddCommand(newShowCmd(reg, cfg, true))
+	carrierCmd.AddCommand(newEnableCmd(reg, cfg, true))
+	carrierCmd.AddCommand(newDisableCmd(reg, cfg, true))
+	carrierCmd.AddCommand(newReloadCmd(reg, cfg, true))
 
 	for _, sub := range carrierCmd.Commands() {
 		sub.Hidden = true

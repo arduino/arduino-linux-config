@@ -24,7 +24,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
+func newEnableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier bool) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "enable <name> [device=option...]",
@@ -39,7 +39,7 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 			if os.Geteuid() != 0 && !dryRun {
 				feedback.Fatal("Command 'enable' must be run as root", feedback.ErrPermissionDenied)
 			}
-			enableHandler(cmd.Context(), reg, cfg, args[0], args[1:], dryRun)
+			enableHandler(cmd.Context(), reg, cfg, args[0], args[1:], dryRun, legacyCarrier)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
@@ -58,7 +58,7 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 
 // Since a board reboot can occur asynchronously with the configuration, we must
 // track both the current and next states.
-func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, deviceArgs []string, dryRun bool) {
+func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, deviceArgs []string, dryRun bool, legacyCarrier bool) {
 	mount := findMount(reg, name)
 
 	selection, err := parseUserArgs(deviceArgs)
@@ -98,7 +98,7 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 
 	feedback.Warnf("Configuration enabled (will take effect on next boot)")
 	// Every mount is shown, because enabling one disables the others of its kind.
-	showHandler(cfg, reg, "")
+	showHandler(cfg, reg, "", legacyCarrier)
 }
 
 func parseUserArgs(args []string) ([]status.StatusDevice, error) {

@@ -16,18 +16,18 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
-func newListCmd(reg registry.Registry) *cobra.Command {
+func newListCmd(reg registry.Registry, legacyCarrier bool) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List the carriers and the hats available for this board",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			feedback.PrintResult(buildListResult(reg))
+			feedback.PrintResult(buildListResult(reg, legacyCarrier))
 		},
 	}
 }
 
-func buildListResult(reg registry.Registry) listResult {
+func buildListResult(reg registry.Registry, legacyCarrier bool) listResult {
 	result := listResult{Mounts: make([]listMount, 0, len(reg.Mounts))}
 	for _, mount := range reg.Mounts {
 		devices := make([]listDevice, 0, len(mount.Devices))

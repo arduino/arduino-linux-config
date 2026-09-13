@@ -24,7 +24,7 @@ import (
 
 // Re-applies the currently persisted carrier configuration so the
 // generated device tree is regenerated. The saved state remains unchanged.
-func newReloadCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
+func newReloadCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier bool) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "reload",
@@ -38,7 +38,7 @@ func newReloadCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 				feedback.Fatal("Command 'reload' must be run as root", feedback.ErrPermissionDenied)
 			}
 
-			reloadHandler(cmd.Context(), reg, cfg, dryRun)
+			reloadHandler(cmd.Context(), reg, cfg, dryRun, legacyCarrier)
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
@@ -46,7 +46,7 @@ func newReloadCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comman
 }
 
 // Re-applies to the device tree the persisted configuration of every mount
-func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, dryRun bool) {
+func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, dryRun bool, legacyCarrier bool) {
 	result := reloadResult{
 		BoardID:          config.GetBoardID(),
 		DryRun:           dryRun,

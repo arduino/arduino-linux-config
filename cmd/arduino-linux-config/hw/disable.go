@@ -21,7 +21,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
+func newDisableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier bool) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "disable [name]",
@@ -35,7 +35,7 @@ func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comma
 			if len(args) > 0 {
 				name = args[0]
 			}
-			disableHandler(cmd.Context(), reg, cfg, name, dryRun)
+			disableHandler(cmd.Context(), reg, cfg, name, dryRun, legacyCarrier)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			return completion.CompleteMountName(reg, toComplete)
@@ -45,7 +45,7 @@ func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Comma
 	return cmd
 }
 
-func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, dryRun bool) {
+func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, dryRun bool, legacyCarrier bool) {
 	// With no name every mount is disabled, and the whole board is reported.
 	shown := ""
 	if name != "" {
@@ -78,5 +78,5 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 	}
 
 	feedback.Warnf("Disabled (will take effect on next boot)")
-	showHandler(cfg, reg, "")
+	showHandler(cfg, reg, "", legacyCarrier)
 }
