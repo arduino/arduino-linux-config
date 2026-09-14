@@ -69,26 +69,12 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		feedback.Fatal(err.Error(), feedback.ErrBadArgument)
 	}
 
-	// The tool keeps one mount of a kind enabled, so the others are disabled.
-	desired := devicetree.Desired{mount.Name: {Enable: true, StatusDevices: selection}}
-	for _, other := range reg.ByKind(mount.Kind).Mounts {
-		if other.Name != mount.Name {
-			desired[other.Name] = status.MountStatus{Enable: false}
-		}
-	}
-
 	exec, recorder := executor.Real(), executor.NewRecorder()
 	if dryRun {
 		exec = recorder
 	}
 
-	incompatible, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
-	if err != nil {
-		feedback.Fatal(err.Error(), feedback.ErrGeneric)
-	}
-	if len(incompatible) > 0 {
-		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
-	}
+	applyEnable(ctx, reg, cfg, mount, selection, exec)
 
 	if dryRun {
 		subject := fmt.Sprintf("%s '%s'", string(mount.Kind), mount.Name)
@@ -99,6 +85,26 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 	feedback.Warnf("Configuration enabled (will take effect on next boot)")
 	// Every mount is shown, because enabling one disables the others of its kind.
 	showHandler(cfg, reg, "")
+}
+
+// applyEnable rebuilds the device tree for the requested mount using the given
+// executor. Pass a recorder to preview the effects without touching the system.
+func applyEnable(ctx context.Context, reg registry.Registry, cfg config.Configuration, mount registry.Mount, selection []status.StatusDevice, exec executor.Executor) {
+	// The tool keeps one mount of a kind enabled, so the others are disabled.
+	desired := devicetree.Desired{mount.Name: {Enable: true, StatusDevices: selection}}
+	for _, other := range reg.ByKind(mount.Kind).Mounts {
+		if other.Name != mount.Name {
+			desired[other.Name] = status.MountStatus{Enable: false}
+		}
+	}
+
+	incompatible, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+	if len(incompatible) > 0 {
+		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
+	}
 }
 
 func parseUserArgs(args []string) ([]status.StatusDevice, error) {

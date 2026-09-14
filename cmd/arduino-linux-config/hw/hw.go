@@ -10,16 +10,12 @@
 package hw
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
-// NewHwCmd groups the commands that configure the parts connected to the board.
-// The board itself keeps its own command group.
 func NewHwCmd() *cobra.Command {
 	cfg := config.New()
 	reg := registry.New()
@@ -40,17 +36,26 @@ func NewHwCmd() *cobra.Command {
 	return hwCmd
 }
 
-// NewCarrierCmd is the previous name of the hw group. Cobra prints the
-// deprecation on stderr, and keeps the command out of the help and of the
-// completion.
+// NewCarrierCmd is the previous name of the hw group.
+// It is used to handle legacy code, it is hidded in the new versions.
 func NewCarrierCmd() *cobra.Command {
-	carrierCmd := NewHwCmd()
-	carrierCmd.Use = "carrier"
-	carrierCmd.Aliases = nil
-	carrierCmd.Deprecated = `use "hw" instead`
+	cfg := config.New()
+	reg := registry.New()
+
+	carrierCmd := &cobra.Command{
+		Use:    "carrier",
+		Short:  "Manage the carriers connected to the board",
+		Hidden: true,
+	}
+
+	carrierCmd.AddCommand(newLegacyListCmd(reg))
+	carrierCmd.AddCommand(newLegacyShowCmd(reg, cfg))
+	carrierCmd.AddCommand(newLegacyEnableCmd(reg, cfg))
+	carrierCmd.AddCommand(newLegacyDisableCmd(reg, cfg))
+	carrierCmd.AddCommand(newLegacyReloadCmd(reg, cfg))
 
 	for _, sub := range carrierCmd.Commands() {
-		sub.Deprecated = fmt.Sprintf("use %q instead of %q", "hw "+sub.Name(), "carrier "+sub.Name())
+		sub.Hidden = true
 	}
 	return carrierCmd
 }

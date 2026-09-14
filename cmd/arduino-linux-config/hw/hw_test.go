@@ -13,25 +13,28 @@ import (
 )
 
 // The carrier group is the old name of hw, so it offers the same commands and
-// warns on every one of them.
-func TestDeprecatedCarrierMirrorsHwCmd(t *testing.T) {
+// stays hidden on every one of them.
+func TestHiddenCarrierMirrorsHwCmd(t *testing.T) {
 	names := func(cmd *cobra.Command) []string {
 		result := make([]string, 0, len(cmd.Commands()))
 		for _, sub := range cmd.Commands() {
 			result = append(result, sub.Name())
-			require.NotEmpty(t, sub.Deprecated, "%s %s must warn", cmd.Name(), sub.Name())
+			require.True(t, sub.Hidden, "%s %s must be hidden", cmd.Name(), sub.Name())
+			require.Empty(t, sub.Deprecated, "%s %s must not warn", cmd.Name(), sub.Name())
 		}
 		return result
 	}
 
 	carrierCmd := NewCarrierCmd()
 	require.Equal(t, "carrier", carrierCmd.Name())
-	require.NotEmpty(t, carrierCmd.Deprecated)
+	require.True(t, carrierCmd.Hidden)
+	require.Empty(t, carrierCmd.Deprecated)
 	require.Equal(t, []string{"disable", "enable", "list", "reload", "show"}, names(carrierCmd))
 
 	hwCmd := NewHwCmd()
-	require.Empty(t, hwCmd.Deprecated)
+	require.False(t, hwCmd.Hidden)
 	for _, sub := range hwCmd.Commands() {
+		require.False(t, sub.Hidden, "hw %s must not be hidden", sub.Name())
 		require.Empty(t, sub.Deprecated, "hw %s must not warn", sub.Name())
 	}
 }
