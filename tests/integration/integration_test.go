@@ -295,3 +295,38 @@ func TestCarrierEnableDryRunMatchesFdtoverlay(t *testing.T) {
 		extractUnoqFdtoverlayOverlays(t, result.Effects),
 	)
 }
+
+// TestMountEnableConfigureDisableChangesDeviceTree verifies that each state
+// transition (disabled -> enabled -> reconfigured -> disabled) of the media
+// carrier produces a distinct generated device tree, and that disabling
+// restores the original one.
+func TestMountEnableConfigureDisableChangesDeviceTree(t *testing.T) {
+	startDockerContainer(t)
+	t.Cleanup(func() { stopDockerContainer(t) })
+
+	execInContainer(t, "fdtoverlay",
+		"-i", "/boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb",
+		"-o", unoqGeneratedDtb,
+		"/boot/efi/dtb/qcom/qrb2210-arduino-imola-video_sound-usbc.dtbo",
+	)
+	deviceTreeA := md5InContainer(t, unoqGeneratedDtb)
+	t.Logf("deviceTreeA: %s", deviceTreeA)
+	require.Equal(t, deviceTreeA, deviceTreeA, "disabling the media carrier should restore the original device tree")
+
+	execInContainer(t, "arduino-linux-config", "hw", "enable", "media-carrier")
+	deviceTreeB := md5InContainer(t, unoqGeneratedDtb)
+	t.Logf("deviceTreeA: %s", deviceTreeB)
+
+	require.NotEqual(t, deviceTreeA, deviceTreeB, "enabling the media carrier should change the device tree")
+
+	execInContainer(t, "arduino-linux-config", "hw", "enable", "media-carrier", "camera0=type1-2lanes")
+	deviceTreeC := md5InContainer(t, unoqGeneratedDtb)
+	t.Logf("deviceTreeA: %s", deviceTreeC)
+	require.NotEqual(t, deviceTreeB, deviceTreeC, "configuring camera0 should change the device tree")
+	require.NotEqual(t, deviceTreeA, deviceTreeC, "configuring camera0 should not restore the original device tree")
+
+	execInContainer(t, "arduino-linux-config", "hw", "disable", "media-carrier")
+	deviceTreeD := md5InContainer(t, unoqGeneratedDtb)
+	t.Logf("deviceTreeA: %s", deviceTreeD)
+	require.Equal(t, deviceTreeA, deviceTreeD, "disabling the media carrier should restore the original device tree")
+}

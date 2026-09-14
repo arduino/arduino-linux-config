@@ -18,10 +18,15 @@ RUN mkdir -p /boot/efi/dtb/qcom
 
 RUN apt-get install -y device-tree-compiler
 
-RUN echo '/dts-v1/; / {};' > /tmp/empty.dts && \
-    dtc -I dts -O dtb -o /boot/efi/dtb/qcom/qrb2210-arduino-imola-base.dtb /tmp/empty.dts && \
-    dtc -I dts -O dtb -o /boot/efi/dtb/qcom/qrb2210-arduino-imola.dtb /tmp/empty.dts && \
-    rm /tmp/empty.dts
+# Each base dtb gets a distinct node so its md5 is unique and fdtoverlay has a
+# valid, non-empty tree to merge overlays into.
+RUN set -eu; \
+    for pair in "base:qrb2210-arduino-imola-base.dtb" "imola:qrb2210-arduino-imola.dtb"; do \
+        node=${pair%%:*}; file=${pair#*:}; \
+        printf '/dts-v1/;\n/ {\n  compatible = "arduino,imola";\n  model = "Arduino Imola";\n  %s { status = "okay"; };\n};\n' "$node" > /tmp/root.dts; \
+        dtc -I dts -O dtb -o "/boot/efi/dtb/qcom/$file" /tmp/root.dts; \
+    done; \
+    rm /tmp/root.dts
 
 # Each overlay adds a node named after itself, so that the generated device tree
 # differs depending on which overlays get applied.
