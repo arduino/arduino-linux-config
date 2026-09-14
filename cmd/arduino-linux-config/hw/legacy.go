@@ -5,9 +5,43 @@
 
 package hw
 
+import (
+	"github.com/spf13/cobra"
+
+	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/registry"
+)
+
 // The JSON of the "carrier" group keeps the shape of the v0.2.x releases, so
 // the tools that read it keep working. Only the carriers are reported, because
 // the old releases knew nothing about the hats.
+
+func newLegacyListCmd(reg registry.Registry) *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List the carriers available for this board",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			feedback.PrintResult(buildLegacyListResult(reg))
+		},
+	}
+}
+
+func buildLegacyListResult(reg registry.Registry) legacyListResult {
+	return legacyListResult{inner: buildListResult(reg.ByKind(registry.KindCarrier))}
+}
+
+type legacyListResult struct {
+	inner listResult
+}
+
+func (r legacyListResult) String() string {
+	return r.inner.String()
+}
+
+func (r legacyListResult) Data() interface{} {
+	return legacyListData(r.inner.Mounts)
+}
 
 type legacyCarriersResult struct {
 	Carriers []legacyCarrierResult `json:"carriers"`

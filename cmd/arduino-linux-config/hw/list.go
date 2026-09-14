@@ -16,20 +16,20 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
-func newListCmd(reg registry.Registry, legacyCarrier bool) *cobra.Command {
+func newListCmd(reg registry.Registry) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List the carriers and the hats available for this board",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			feedback.PrintResult(buildListResult(reg, legacyCarrier))
+			feedback.PrintResult(buildListResult(reg))
 		},
 	}
 }
 
-func buildListResult(reg registry.Registry, legacyCarrier bool) listResult {
-	mounts := selected(reg, legacyCarrier).Mounts
-	result := listResult{Mounts: make([]listMount, 0, len(mounts)), legacy: legacyCarrier}
+func buildListResult(reg registry.Registry) listResult {
+	mounts := reg.Mounts
+	result := listResult{Mounts: make([]listMount, 0, len(mounts))}
 	for _, mount := range mounts {
 		devices := make([]listDevice, 0, len(mount.Devices))
 		for _, device := range mount.Devices {
@@ -54,8 +54,6 @@ func buildListResult(reg registry.Registry, legacyCarrier bool) listResult {
 
 type listResult struct {
 	Mounts []listMount `json:"mounts"`
-
-	legacy bool
 }
 
 type listMount struct {
@@ -134,8 +132,5 @@ func (r listResult) String() string {
 }
 
 func (r listResult) Data() interface{} {
-	if r.legacy {
-		return legacyListData(r.Mounts)
-	}
 	return r
 }

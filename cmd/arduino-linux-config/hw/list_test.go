@@ -28,7 +28,7 @@ var listTestRegistry = registry.Registry{Mounts: []registry.Mount{
 }}
 
 func TestListDataKeepsTheNewShapeForHw(t *testing.T) {
-	data, err := json.Marshal(buildListResult(listTestRegistry, false).Data())
+	data, err := json.Marshal(buildListResult(listTestRegistry).Data())
 	require.NoError(t, err)
 	require.JSONEq(t, `{
 		"mounts": [
@@ -47,7 +47,7 @@ func TestListDataKeepsTheNewShapeForHw(t *testing.T) {
 // The v0.2.x JSON has no hat and no kind, and calls the options
 // "available_devices".
 func TestListDataKeepsTheOldShapeForCarrier(t *testing.T) {
-	data, err := json.Marshal(buildListResult(listTestRegistry, true).Data())
+	data, err := json.Marshal(buildLegacyListResult(listTestRegistry).Data())
 	require.NoError(t, err)
 	require.JSONEq(t, `{
 		"carriers": [

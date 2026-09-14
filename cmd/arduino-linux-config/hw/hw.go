@@ -16,8 +16,6 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
-// NewHwCmd groups the commands that configure the parts connected to the board.
-// The board itself keeps its own command group.
 func NewHwCmd() *cobra.Command {
 	cfg := config.New()
 	reg := registry.New()
@@ -29,7 +27,7 @@ func NewHwCmd() *cobra.Command {
 		Long:    "Manage the carriers and the hats connected to the board, including listing, configuring and resetting.",
 	}
 
-	hwCmd.AddCommand(newListCmd(reg, false))
+	hwCmd.AddCommand(newListCmd(reg))
 	hwCmd.AddCommand(newShowCmd(reg, cfg, false))
 	hwCmd.AddCommand(newEnableCmd(reg, cfg, false))
 	hwCmd.AddCommand(newDisableCmd(reg, cfg, false))
@@ -50,7 +48,7 @@ func NewCarrierCmd() *cobra.Command {
 		Hidden: true,
 	}
 
-	carrierCmd.AddCommand(newListCmd(reg, true))
+	carrierCmd.AddCommand(newLegacyListCmd(reg))
 	carrierCmd.AddCommand(newShowCmd(reg, cfg, true))
 	carrierCmd.AddCommand(newEnableCmd(reg, cfg, true))
 	carrierCmd.AddCommand(newDisableCmd(reg, cfg, true))
