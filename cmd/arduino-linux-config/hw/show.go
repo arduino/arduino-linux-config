@@ -26,7 +26,7 @@ func newShowCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier b
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var mountName string
-			if len(args) > 0 {
+			if len(args) > 0 && args[0] != "" {
 				mountName = string(findMount(selected(reg, legacyCarrier), args[0]).Name)
 			}
 			showHandler(cfg, reg, mountName, legacyCarrier)
