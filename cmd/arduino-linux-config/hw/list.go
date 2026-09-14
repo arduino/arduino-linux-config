@@ -28,9 +28,8 @@ func newListCmd(reg registry.Registry) *cobra.Command {
 }
 
 func buildListResult(reg registry.Registry) listResult {
-	mounts := reg.Mounts
-	result := listResult{Mounts: make([]listMount, 0, len(mounts))}
-	for _, mount := range mounts {
+	result := listResult{Mounts: make([]listMount, 0, len(reg.Mounts))}
+	for _, mount := range reg.Mounts {
 		devices := make([]listDevice, 0, len(mount.Devices))
 		for _, device := range mount.Devices {
 			options := make([]string, len(device.Options))

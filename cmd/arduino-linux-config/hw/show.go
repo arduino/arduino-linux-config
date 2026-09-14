@@ -39,19 +39,14 @@ func newShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command 
 
 // With no name it shows the whole board, otherwise only the named mount.
 func showHandler(cfg config.Configuration, reg registry.Registry, mountName string) {
-	feedback.PrintResult(buildShowResult(cfg, reg, mountName))
-}
-
-func buildShowResult(cfg config.Configuration, reg registry.Registry, mountName string) showResult {
-	mounts := reg.Mounts
-	result := showResult{Mounts: make([]showMount, 0, len(mounts))}
-	for _, mount := range mounts {
+	result := showResult{Mounts: make([]showMount, 0, len(reg.Mounts))}
+	for _, mount := range reg.Mounts {
 		if mountName != "" && mountName != string(mount.Name) {
 			continue
 		}
 		result.Mounts = append(result.Mounts, toShowMount(cfg, mount))
 	}
-	return result
+	feedback.PrintResult(result)
 }
 
 // findMount resolves a name over every kind, because the name alone tells the

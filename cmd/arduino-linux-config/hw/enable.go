@@ -69,7 +69,16 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		feedback.Fatal(err.Error(), feedback.ErrBadArgument)
 	}
 
-	if applyEnable(ctx, reg, cfg, mount, selection, dryRun) {
+	exec, recorder := executor.Real(), executor.NewRecorder()
+	if dryRun {
+		exec = recorder
+	}
+
+	applyEnable(ctx, reg, cfg, mount, selection, exec)
+
+	if dryRun {
+		subject := fmt.Sprintf("%s '%s'", string(mount.Kind), mount.Name)
+		feedback.PrintResult(dryrun.Result{Subject: subject, Effects: recorder.Effects()})
 		return
 	}
 
@@ -78,20 +87,15 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 	showHandler(cfg, reg, "")
 }
 
-// applyEnable rebuilds the device tree for the requested mount. Returns true
-// when dry-run already printed its result and the caller should stop.
-func applyEnable(ctx context.Context, reg registry.Registry, cfg config.Configuration, mount registry.Mount, selection []status.StatusDevice, dryRun bool) bool {
+// applyEnable rebuilds the device tree for the requested mount using the given
+// executor. Pass a recorder to preview the effects without touching the system.
+func applyEnable(ctx context.Context, reg registry.Registry, cfg config.Configuration, mount registry.Mount, selection []status.StatusDevice, exec executor.Executor) {
 	// The tool keeps one mount of a kind enabled, so the others are disabled.
 	desired := devicetree.Desired{mount.Name: {Enable: true, StatusDevices: selection}}
 	for _, other := range reg.ByKind(mount.Kind).Mounts {
 		if other.Name != mount.Name {
 			desired[other.Name] = status.MountStatus{Enable: false}
 		}
-	}
-
-	exec, recorder := executor.Real(), executor.NewRecorder()
-	if dryRun {
-		exec = recorder
 	}
 
 	incompatible, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
@@ -101,13 +105,6 @@ func applyEnable(ctx context.Context, reg registry.Registry, cfg config.Configur
 	if len(incompatible) > 0 {
 		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
 	}
-
-	if dryRun {
-		subject := fmt.Sprintf("%s '%s'", string(mount.Kind), mount.Name)
-		feedback.PrintResult(dryrun.Result{Subject: subject, Effects: recorder.Effects()})
-		return true
-	}
-	return false
 }
 
 func parseUserArgs(args []string) ([]status.StatusDevice, error) {

@@ -139,7 +139,14 @@ func newLegacyShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Co
 // The v0.2.x enable and disable reported the affected carrier alone, out of any
 // list. Set single to keep that shape.
 func buildLegacyShowResult(cfg config.Configuration, reg registry.Registry, mountName string, single bool) legacyShow {
-	return legacyShow{inner: buildShowResult(cfg, reg, mountName), single: single}
+	inner := showResult{Mounts: make([]showMount, 0, len(reg.Mounts))}
+	for _, mount := range reg.Mounts {
+		if mountName != "" && mountName != string(mount.Name) {
+			continue
+		}
+		inner.Mounts = append(inner.Mounts, toShowMount(cfg, mount))
+	}
+	return legacyShow{inner: inner, single: single}
 }
 
 type legacyShow struct {
@@ -198,7 +205,16 @@ func legacyEnableHandler(ctx context.Context, reg registry.Registry, cfg config.
 		feedback.Fatal(err.Error(), feedback.ErrBadArgument)
 	}
 
-	if applyEnable(ctx, reg, cfg, mount, selection, dryRun) {
+	exec, recorder := executor.Real(), executor.NewRecorder()
+	if dryRun {
+		exec = recorder
+	}
+
+	applyEnable(ctx, reg, cfg, mount, selection, exec)
+
+	if dryRun {
+		subject := fmt.Sprintf("%s '%s'", string(mount.Kind), mount.Name)
+		feedback.PrintResult(dryrun.Result{Subject: subject, Effects: recorder.Effects()})
 		return
 	}
 
