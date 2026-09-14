@@ -42,3 +42,29 @@ func legacyListData(mounts []listMount) legacyCarriersResult {
 	}
 	return result
 }
+
+type legacyShowResult struct {
+	Carriers []legacyShowCarrierResult `json:"carriers"`
+}
+
+type legacyShowCarrierResult struct {
+	CarrierName    string         `json:"carrier_name"`
+	CurrentEnabled bool           `json:"current_enabled"`
+	NextEnabled    bool           `json:"next_enabled"`
+	CurrentDevices []deviceResult `json:"current"`
+	NextDevices    []deviceResult `json:"next"`
+}
+
+func legacyShowData(mounts []showMount) legacyShowResult {
+	result := legacyShowResult{Carriers: make([]legacyShowCarrierResult, 0, len(mounts))}
+	for _, mount := range mounts {
+		result.Carriers = append(result.Carriers, legacyShowCarrierResult{
+			CarrierName:    mount.Name,
+			CurrentEnabled: mount.CurrentEnabled,
+			NextEnabled:    mount.NextEnabled,
+			CurrentDevices: mount.CurrentDevices,
+			NextDevices:    mount.NextDevices,
+		})
+	}
+	return result
+}

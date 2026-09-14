@@ -40,7 +40,7 @@ func newShowCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier b
 // With no name it shows the whole board, otherwise only the named mount.
 func showHandler(cfg config.Configuration, reg registry.Registry, mountName string, legacyCarrier bool) {
 	mounts := selected(reg, legacyCarrier).Mounts
-	result := showResult{Mounts: make([]showMount, 0, len(mounts))}
+	result := showResult{Mounts: make([]showMount, 0, len(mounts)), legacy: legacyCarrier}
 	for _, mount := range mounts {
 		if mountName != "" && mountName != string(mount.Name) {
 			continue
@@ -77,6 +77,8 @@ func toShowMount(cfg config.Configuration, mount registry.Mount) showMount {
 
 type showResult struct {
 	Mounts []showMount `json:"mounts"`
+
+	legacy bool
 }
 
 type showMount struct {
@@ -129,6 +131,9 @@ func (r showResult) String() string {
 }
 
 func (r showResult) Data() any {
+	if r.legacy {
+		return legacyShowData(r.Mounts)
+	}
 	return r
 }
 
