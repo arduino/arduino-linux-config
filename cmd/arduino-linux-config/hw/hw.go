@@ -38,9 +38,8 @@ func NewHwCmd() *cobra.Command {
 	return hwCmd
 }
 
-// NewCarrierCmd is the previous name of the hw group. It stays out of the help
-// and of the completion, but it keeps working so that the existing scripts do
-// not break, with the behaviour of the v0.2.x releases.
+// NewCarrierCmd is the previous name of the hw group.
+// It is used to handle legacy code, it is hidded in the new versions.
 func NewCarrierCmd() *cobra.Command {
 	cfg := config.New()
 	reg := registry.New()
