@@ -58,13 +58,17 @@ type legacyShowCarrierResult struct {
 func legacyShowData(mounts []showMount) legacyShowResult {
 	result := legacyShowResult{Carriers: make([]legacyShowCarrierResult, 0, len(mounts))}
 	for _, mount := range mounts {
-		result.Carriers = append(result.Carriers, legacyShowCarrierResult{
-			CarrierName:    mount.Name,
-			CurrentEnabled: mount.CurrentEnabled,
-			NextEnabled:    mount.NextEnabled,
-			CurrentDevices: mount.CurrentDevices,
-			NextDevices:    mount.NextDevices,
-		})
+		result.Carriers = append(result.Carriers, legacyShowMount(mount))
 	}
 	return result
+}
+
+func legacyShowMount(mount showMount) legacyShowCarrierResult {
+	return legacyShowCarrierResult{
+		CarrierName:    mount.Name,
+		CurrentEnabled: mount.CurrentEnabled,
+		NextEnabled:    mount.NextEnabled,
+		CurrentDevices: mount.CurrentDevices,
+		NextDevices:    mount.NextDevices,
+	}
 }

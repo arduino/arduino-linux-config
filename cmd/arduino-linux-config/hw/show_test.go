@@ -58,3 +58,20 @@ func TestShowDataKeepsTheOldShapeForCarrier(t *testing.T) {
 		]
 	}`, string(data))
 }
+
+// The v0.2.x enable and disable reported the affected carrier out of any list.
+func TestShowDataOfASingleCarrierIsNotWrapped(t *testing.T) {
+	legacyResult := showTestResult
+	legacyResult.legacy = true
+	legacyResult.single = true
+
+	data, err := json.Marshal(legacyResult.Data())
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"carrier_name": "media-carrier",
+		"current_enabled": false,
+		"next_enabled": true,
+		"current": [],
+		"next": [{"device": "display", "option": "5-dsi-touch-a", "device_type": "display"}]
+	}`, string(data))
+}

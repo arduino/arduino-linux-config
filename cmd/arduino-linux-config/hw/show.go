@@ -39,6 +39,10 @@ func newShowCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier b
 
 // With no name it shows the whole board, otherwise only the named mount.
 func showHandler(cfg config.Configuration, reg registry.Registry, mountName string, legacyCarrier bool) {
+	feedback.PrintResult(buildShowResult(cfg, reg, mountName, legacyCarrier))
+}
+
+func buildShowResult(cfg config.Configuration, reg registry.Registry, mountName string, legacyCarrier bool) showResult {
 	mounts := selected(reg, legacyCarrier).Mounts
 	result := showResult{Mounts: make([]showMount, 0, len(mounts)), legacy: legacyCarrier}
 	for _, mount := range mounts {
@@ -47,7 +51,7 @@ func showHandler(cfg config.Configuration, reg registry.Registry, mountName stri
 		}
 		result.Mounts = append(result.Mounts, toShowMount(cfg, mount))
 	}
-	feedback.PrintResult(result)
+	return result
 }
 
 // findMount resolves a name over every kind, because the name alone tells the
@@ -79,6 +83,8 @@ type showResult struct {
 	Mounts []showMount `json:"mounts"`
 
 	legacy bool
+	// enable and disable reported the affected carrier alone, out of any list.
+	single bool
 }
 
 type showMount struct {
@@ -131,10 +137,13 @@ func (r showResult) String() string {
 }
 
 func (r showResult) Data() any {
-	if r.legacy {
-		return legacyShowData(r.Mounts)
+	if !r.legacy {
+		return r
 	}
-	return r
+	if r.single && len(r.Mounts) == 1 {
+		return legacyShowMount(r.Mounts[0])
+	}
+	return legacyShowData(r.Mounts)
 }
 
 func enabledLabel(enabled bool) string {

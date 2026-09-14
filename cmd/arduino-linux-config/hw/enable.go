@@ -96,9 +96,17 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		return
 	}
 
+	if legacyCarrier {
+		feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", mount.Name)
+		result := buildShowResult(cfg, reg, string(mount.Name), true)
+		result.single = true
+		feedback.PrintResult(result)
+		return
+	}
+
 	feedback.Warnf("Configuration enabled (will take effect on next boot)")
 	// Every mount is shown, because enabling one disables the others of its kind.
-	showHandler(cfg, reg, "", legacyCarrier)
+	showHandler(cfg, reg, "", false)
 }
 
 func parseUserArgs(args []string) ([]status.StatusDevice, error) {

@@ -77,6 +77,16 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 		return
 	}
 
+	if legacyCarrier {
+		result := buildShowResult(cfg, reg, shown, true)
+		for _, mount := range result.Mounts {
+			feedback.Warnf("Carrier '%s' disabled (will take effect on next boot)", mount.Name)
+		}
+		result.single = true
+		feedback.PrintResult(result)
+		return
+	}
+
 	feedback.Warnf("Disabled (will take effect on next boot)")
-	showHandler(cfg, reg, "", legacyCarrier)
+	showHandler(cfg, reg, "", false)
 }
