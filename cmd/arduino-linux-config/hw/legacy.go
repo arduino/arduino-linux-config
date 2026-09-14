@@ -7,14 +7,19 @@ package hw
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/dryrun"
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/hw/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
+	"github.com/arduino/arduino-linux-config/internal/devicetree"
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/registry"
+	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
 // The JSON of the "carrier" group keeps the shape of the v0.2.x releases, so
@@ -232,7 +237,28 @@ func legacyDisableHandler(ctx context.Context, reg registry.Registry, cfg config
 		shown = string(findMount(carriers, name).Name)
 	}
 
-	if applyDisable(ctx, reg, cfg, mountsMatching(carriers, shown), dryRun) {
+	desired := devicetree.Desired{}
+	for _, mount := range carriers.Mounts {
+		if shown == "" || shown == string(mount.Name) {
+			desired[mount.Name] = status.MountStatus{Enable: false}
+		}
+	}
+
+	exec, recorder := executor.Real(), executor.NewRecorder()
+	if dryRun {
+		exec = recorder
+	}
+
+	incompatible, err := devicetree.Rebuild(ctx, exec, reg, cfg, desired)
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+	if len(incompatible) > 0 {
+		feedback.Warnf("Incompatible overlays, removing %v", incompatible)
+	}
+
+	if dryRun {
+		feedback.PrintResult(dryrun.Result{Effects: recorder.Effects()})
 		return
 	}
 
@@ -240,5 +266,55 @@ func legacyDisableHandler(ctx context.Context, reg registry.Registry, cfg config
 	for _, mount := range result.inner.Mounts {
 		feedback.Warnf("Carrier '%s' disabled (will take effect on next boot)", mount.Name)
 	}
+	feedback.PrintResult(result)
+}
+
+func newLegacyReloadCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
+	var dryRun bool
+	cmd := &cobra.Command{
+		Use:   "reload",
+		Short: "Reload the current configuration and regenerate the device tree",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			if os.Geteuid() != 0 && !dryRun {
+				feedback.Fatal("Command 'reload' must be run as root", feedback.ErrPermissionDenied)
+			}
+			legacyReloadHandler(cmd.Context(), reg, cfg, dryRun)
+		},
+	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
+	return cmd
+}
+
+func legacyReloadHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, dryRun bool) {
+	result := reloadResult{
+		BoardID:          config.GetBoardID(),
+		DryRun:           dryRun,
+		ReloadedCarriers: make([]string, 0),
+		ReloadedHats:     make([]string, 0),
+	}
+
+	// Only the enabled carriers are reported: a disabled one adds no overlay.
+	for _, mount := range reg.ByKind(registry.KindCarrier).Mounts {
+		_, next, err := status.Get(cfg, mount)
+		if err != nil {
+			feedback.Fatal(fmt.Sprintf("failed to get status for %s: %v", mount.Name, err), feedback.ErrGeneric)
+		}
+		if !next.Enable {
+			continue
+		}
+		result.ReloadedCarriers = append(result.ReloadedCarriers, string(mount.Name))
+	}
+
+	exec, recorder := executor.Real(), executor.NewRecorder()
+	if dryRun {
+		exec = recorder
+	}
+
+	if _, err := devicetree.Rebuild(ctx, exec, reg, cfg, nil); err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrGeneric)
+	}
+
+	result.Effects = recorder.Effects()
 	feedback.PrintResult(result)
 }

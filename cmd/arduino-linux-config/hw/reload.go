@@ -24,7 +24,7 @@ import (
 
 // Re-applies the currently persisted carrier configuration so the
 // generated device tree is regenerated. The saved state remains unchanged.
-func newReloadCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier bool) *cobra.Command {
+func newReloadCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "reload",
@@ -38,7 +38,7 @@ func newReloadCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier
 				feedback.Fatal("Command 'reload' must be run as root", feedback.ErrPermissionDenied)
 			}
 
-			reloadHandler(cmd.Context(), reg, cfg, dryRun, legacyCarrier)
+			reloadHandler(cmd.Context(), reg, cfg, dryRun)
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
@@ -46,7 +46,7 @@ func newReloadCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier
 }
 
 // Re-applies to the device tree the persisted configuration of every mount
-func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, dryRun bool, legacyCarrier bool) {
+func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, dryRun bool) {
 	result := reloadResult{
 		BoardID:          config.GetBoardID(),
 		DryRun:           dryRun,
@@ -55,7 +55,7 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 	}
 
 	// Only the enabled mounts are reported: a disabled one adds no overlay.
-	for _, mount := range selected(reg, legacyCarrier).Mounts {
+	for _, mount := range reg.Mounts {
 		_, next, err := status.Get(cfg, mount)
 		if err != nil {
 			feedback.Fatal(fmt.Sprintf("failed to get status for %s: %v", mount.Name, err), feedback.ErrGeneric)

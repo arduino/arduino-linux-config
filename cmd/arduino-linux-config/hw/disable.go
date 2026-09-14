@@ -52,33 +52,11 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 		shown = string(findMount(reg, name).Name)
 	}
 
-	if applyDisable(ctx, reg, cfg, mountsMatching(reg, shown), dryRun) {
-		return
-	}
-
-	feedback.Warnf("Disabled (will take effect on next boot)")
-	showHandler(cfg, reg, "")
-}
-
-// mountsMatching returns every mount when name is empty, otherwise just the one
-// with that name.
-func mountsMatching(reg registry.Registry, name string) []registry.Mount {
-	result := make([]registry.Mount, 0, len(reg.Mounts))
-	for _, mount := range reg.Mounts {
-		if name == "" || name == string(mount.Name) {
-			result = append(result, mount)
-		}
-	}
-	return result
-}
-
-// applyDisable rebuilds the device tree with the given mounts turned off.
-// Returns true when dry-run already printed its result and the caller should
-// stop.
-func applyDisable(ctx context.Context, reg registry.Registry, cfg config.Configuration, mounts []registry.Mount, dryRun bool) bool {
 	desired := devicetree.Desired{}
-	for _, mount := range mounts {
-		desired[mount.Name] = status.MountStatus{Enable: false}
+	for _, mount := range reg.Mounts {
+		if shown == "" || shown == string(mount.Name) {
+			desired[mount.Name] = status.MountStatus{Enable: false}
+		}
 	}
 
 	exec, recorder := executor.Real(), executor.NewRecorder()
@@ -96,7 +74,9 @@ func applyDisable(ctx context.Context, reg registry.Registry, cfg config.Configu
 
 	if dryRun {
 		feedback.PrintResult(dryrun.Result{Effects: recorder.Effects()})
-		return true
+		return
 	}
-	return false
+
+	feedback.Warnf("Disabled (will take effect on next boot)")
+	showHandler(cfg, reg, "")
 }

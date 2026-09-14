@@ -31,7 +31,7 @@ func NewHwCmd() *cobra.Command {
 	hwCmd.AddCommand(newShowCmd(reg, cfg))
 	hwCmd.AddCommand(newEnableCmd(reg, cfg))
 	hwCmd.AddCommand(newDisableCmd(reg, cfg))
-	hwCmd.AddCommand(newReloadCmd(reg, cfg, false))
+	hwCmd.AddCommand(newReloadCmd(reg, cfg))
 
 	return hwCmd
 }
@@ -52,19 +52,10 @@ func NewCarrierCmd() *cobra.Command {
 	carrierCmd.AddCommand(newLegacyShowCmd(reg, cfg))
 	carrierCmd.AddCommand(newLegacyEnableCmd(reg, cfg))
 	carrierCmd.AddCommand(newLegacyDisableCmd(reg, cfg))
-	carrierCmd.AddCommand(newReloadCmd(reg, cfg, true))
+	carrierCmd.AddCommand(newLegacyReloadCmd(reg, cfg))
 
 	for _, sub := range carrierCmd.Commands() {
 		sub.Hidden = true
 	}
 	return carrierCmd
-}
-
-// The legacy "carrier" group selects and reports the carriers only, while the
-// device tree is still rebuilt from every mount of the board.
-func selected(reg registry.Registry, legacyCarrier bool) registry.Registry {
-	if legacyCarrier {
-		return reg.ByKind(registry.KindCarrier)
-	}
-	return reg
 }
