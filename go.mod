@@ -24,7 +24,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.55.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.55.0 // indirect
 	github.com/Ladicle/tabwriter v1.0.0 // indirect
-	github.com/Masterminds/semver/v3 v3.4.0 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/a8m/envsubst v1.4.3 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.0 // indirect

@@ -5,10 +5,6 @@
 
 package registry
 
-import (
-	"github.com/arduino/arduino-linux-config/internal/config"
-)
-
 type DeviceType string
 
 const (
@@ -37,6 +33,26 @@ func (r Registry) ByKind(kind Kind) Registry {
 		if kind == "" || m.Kind == kind {
 			mounts = append(mounts, m)
 		}
+	}
+	return Registry{Mounts: mounts}
+}
+
+// Supported drops the mounts whose OsSupport is false, and within the
+// remaining mounts, the devices whose OsSupport is false.
+func (r Registry) Supported() Registry {
+	mounts := make([]Mount, 0, len(r.Mounts))
+	for _, m := range r.Mounts {
+		if !m.OsSupport {
+			continue
+		}
+		devices := make([]Device, 0, len(m.Devices))
+		for _, d := range m.Devices {
+			if d.OsSupport {
+				devices = append(devices, d)
+			}
+		}
+		m.Devices = devices
+		mounts = append(mounts, m)
 	}
 	return Registry{Mounts: mounts}
 }
@@ -74,6 +90,7 @@ type Mount struct {
 	EnabledDtbos  []string
 	DisabledDtbos []string
 	Devices       []Device // empty for the hats available today
+	OsSupport     bool
 }
 
 func (c Mount) FindDeviceByName(deviceName DeviceName) (Device, bool) {
@@ -90,6 +107,7 @@ type Device struct {
 	Name       DeviceName
 	DeviceType DeviceType
 	Options    []DeviceOption
+	OsSupport  bool
 }
 
 // DeviceOption represents a configuration option for a device
@@ -100,22 +118,7 @@ type DeviceOption struct {
 }
 
 func New() Registry {
-	board := config.GetBoardID()
-	boardOs := config.GetLinuxDistribution()
-
-	switch {
-	case board == "unoq":
-		// unoq has no hat connector, so it declares no mount of kind hat.
-		return Registry{
-			Mounts: []Mount{unoqMediaCarrier},
-		}
-	case board == "ventunoq" && boardOs == "ubuntu":
-		return Registry{
-			Mounts: ventunoqUbuntuHats,
-		}
-	default:
-		return Registry{}
-	}
+	return NewFactory(NewSupportMatrix()).Create()
 }
 
 var unoqMediaCarrier = Mount{
@@ -225,7 +228,7 @@ var unoqMediaCarrier = Mount{
 }
 
 var ventunoqUbuntuHats = []Mount{
-	{ // TODO update
+	{
 		Name: AudioCodecZero,
 		Kind: KindHat,
 		EnabledDtbos: []string{
@@ -237,6 +240,31 @@ var ventunoqUbuntuHats = []Mount{
 		Kind: KindHat,
 		EnabledDtbos: []string{
 			"monaco-monza-automation-hat.dtbo",
+		},
+	},
+}
+
+var ventunoqMediaCarrier = Mount{
+	Name:          MediaCarrier,
+	Kind:          KindCarrier,
+	EnabledDtbos:  []string{},
+	DisabledDtbos: []string{},
+	Devices: []Device{
+		{
+			Name:       "display",
+			DeviceType: DeviceTypeDisplay,
+			Options: []DeviceOption{
+				{
+					Name:      "none",
+					DtboFiles: []string{},
+				},
+				{
+					Name: "8-dsi-touch-a",
+					DtboFiles: []string{
+						"monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo",
+					},
+				},
+			},
 		},
 	},
 }

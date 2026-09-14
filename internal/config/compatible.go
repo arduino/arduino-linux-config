@@ -12,10 +12,26 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 type Compatible []string
+
+func CompatibleRootDir() string {
+	root := "/"
+	if dir := os.Getenv("COMPATIBLE_ROOT_DIR"); dir != "" {
+		cleaned := filepath.Clean(dir)
+		if filepath.IsAbs(cleaned) && !strings.Contains(dir, "..") {
+			root = cleaned
+		}
+	}
+	return root
+}
+
+func compatibleRootDir() string {
+	return CompatibleRootDir()
+}
 
 func GetBoardID() string {
 	compatible := loadCompatible()
@@ -31,13 +47,32 @@ func GetBoardID() string {
 	return ""
 }
 
+func GetDtboSupportVerion() string {
+	root := compatibleRootDir()
+	return getDtboSupportVersionFromFS(os.DirFS(root), root)
+}
+
+func getDtboSupportVersionFromFS(fsys fs.FS, root string) string {
+	if f, err := fsys.Open("proc/sys/kernel/osrelease"); err == nil {
+		defer f.Close()
+		if data, err := io.ReadAll(f); err == nil && len(data) > 0 {
+			return strings.TrimSpace(string(data))
+		}
+	}
+	// #nosec G703 -- COMPATIBLE_ROOT_DIR is validated
+	if data, err := os.ReadFile(filepath.Join(root, "proc/sys/kernel/osrelease")); err == nil && len(data) > 0 {
+		return strings.TrimSpace(string(data))
+	}
+	if version, err := kernelVersionDiscover(root); err == nil {
+		return strings.TrimSpace(version)
+	}
+	return ""
+}
+
 // reads the os from the root FS,
 // or from COMPATIBLE_ROOT_DIR if set (used in integration tests).
 func GetLinuxDistribution() string {
-	root := "/"
-	if dir := os.Getenv("COMPATIBLE_ROOT_DIR"); dir != "" {
-		root = dir
-	}
+	root := compatibleRootDir()
 	return getLinuxDistributionFromFS(os.DirFS(root))
 }
 
@@ -75,10 +110,7 @@ func getLinuxDistributionFromFS(fs fs.FS) string {
 // loadCompatible reads the device-tree compatible strings from the root FS,
 // or from COMPATIBLE_ROOT_DIR if set (used in integration tests).
 func loadCompatible() Compatible {
-	root := "/"
-	if dir := os.Getenv("COMPATIBLE_ROOT_DIR"); dir != "" {
-		root = dir
-	}
+	root := compatibleRootDir()
 	return getCompatibleFromFS(os.DirFS(root))
 }
 
