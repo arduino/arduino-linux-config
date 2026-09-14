@@ -38,7 +38,7 @@ func newDisableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrie
 			disableHandler(cmd.Context(), reg, cfg, name, dryRun, legacyCarrier)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteMountName(reg, toComplete)
+			return completion.CompleteMountName(selected(reg, legacyCarrier), toComplete)
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
@@ -49,11 +49,11 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 	// With no name every mount is disabled, and the whole board is reported.
 	shown := ""
 	if name != "" {
-		shown = string(findMount(reg, name).Name)
+		shown = string(findMount(selected(reg, legacyCarrier), name).Name)
 	}
 
 	desired := devicetree.Desired{}
-	for _, mount := range reg.Mounts {
+	for _, mount := range selected(reg, legacyCarrier).Mounts {
 		if shown == "" || shown == string(mount.Name) {
 			desired[mount.Name] = status.MountStatus{Enable: false}
 		}

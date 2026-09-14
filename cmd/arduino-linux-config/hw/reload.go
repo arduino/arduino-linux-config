@@ -55,7 +55,7 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 	}
 
 	// Only the enabled mounts are reported: a disabled one adds no overlay.
-	for _, mount := range reg.Mounts {
+	for _, mount := range selected(reg, legacyCarrier).Mounts {
 		_, next, err := status.Get(cfg, mount)
 		if err != nil {
 			feedback.Fatal(fmt.Sprintf("failed to get status for %s: %v", mount.Name, err), feedback.ErrGeneric)

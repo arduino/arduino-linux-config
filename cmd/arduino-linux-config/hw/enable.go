@@ -43,9 +43,9 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				return completion.CompleteMountName(reg, toComplete)
+				return completion.CompleteMountName(selected(reg, legacyCarrier), toComplete)
 			}
-			mount, exist := reg.FindByName(args[0])
+			mount, exist := selected(reg, legacyCarrier).FindByName(args[0])
 			if !exist {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -59,7 +59,7 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier
 // Since a board reboot can occur asynchronously with the configuration, we must
 // track both the current and next states.
 func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, deviceArgs []string, dryRun bool, legacyCarrier bool) {
-	mount := findMount(reg, name)
+	mount := findMount(selected(reg, legacyCarrier), name)
 
 	selection, err := parseUserArgs(deviceArgs)
 	if err != nil {

@@ -27,20 +27,21 @@ func newShowCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier b
 		Run: func(cmd *cobra.Command, args []string) {
 			var mountName string
 			if len(args) > 0 {
-				mountName = string(findMount(reg, args[0]).Name)
+				mountName = string(findMount(selected(reg, legacyCarrier), args[0]).Name)
 			}
 			showHandler(cfg, reg, mountName, legacyCarrier)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteMountName(reg, toComplete)
+			return completion.CompleteMountName(selected(reg, legacyCarrier), toComplete)
 		},
 	}
 }
 
 // With no name it shows the whole board, otherwise only the named mount.
 func showHandler(cfg config.Configuration, reg registry.Registry, mountName string, legacyCarrier bool) {
-	result := showResult{Mounts: make([]showMount, 0, len(reg.Mounts))}
-	for _, mount := range reg.Mounts {
+	mounts := selected(reg, legacyCarrier).Mounts
+	result := showResult{Mounts: make([]showMount, 0, len(mounts))}
+	for _, mount := range mounts {
 		if mountName != "" && mountName != string(mount.Name) {
 			continue
 		}

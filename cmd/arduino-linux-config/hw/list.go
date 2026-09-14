@@ -28,8 +28,9 @@ func newListCmd(reg registry.Registry, legacyCarrier bool) *cobra.Command {
 }
 
 func buildListResult(reg registry.Registry, legacyCarrier bool) listResult {
-	result := listResult{Mounts: make([]listMount, 0, len(reg.Mounts))}
-	for _, mount := range reg.Mounts {
+	mounts := selected(reg, legacyCarrier).Mounts
+	result := listResult{Mounts: make([]listMount, 0, len(mounts))}
+	for _, mount := range mounts {
 		devices := make([]listDevice, 0, len(mount.Devices))
 		for _, device := range mount.Devices {
 			options := make([]string, len(device.Options))

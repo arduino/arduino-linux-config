@@ -62,3 +62,12 @@ func NewCarrierCmd() *cobra.Command {
 	}
 	return carrierCmd
 }
+
+// The legacy "carrier" group selects and reports the carriers only, while the
+// device tree is still rebuilt from every mount of the board.
+func selected(reg registry.Registry, legacyCarrier bool) registry.Registry {
+	if legacyCarrier {
+		return reg.ByKind(registry.KindCarrier)
+	}
+	return reg
+}

@@ -10,6 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+
+	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
 // The carrier group is the old name of hw, so it offers the same commands and
@@ -37,4 +39,15 @@ func TestHiddenCarrierMirrorsHwCmd(t *testing.T) {
 		require.False(t, sub.Hidden, "hw %s must not be hidden", sub.Name())
 		require.Empty(t, sub.Deprecated, "hw %s must not warn", sub.Name())
 	}
+}
+
+// The old carrier group knows nothing about the hats.
+func TestSelectedIgnoresTheHatsForTheLegacyCarrier(t *testing.T) {
+	reg := registry.Registry{Mounts: []registry.Mount{
+		{Name: registry.MediaCarrier, Kind: registry.KindCarrier},
+		{Name: registry.Automation, Kind: registry.KindHat},
+	}}
+
+	require.Equal(t, reg.Mounts, selected(reg, false).Mounts)
+	require.Equal(t, reg.Mounts[:1], selected(reg, true).Mounts)
 }
