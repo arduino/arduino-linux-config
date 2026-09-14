@@ -19,7 +19,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newShowCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier bool) *cobra.Command {
+func newShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show [name]",
 		Short: "Show the configuration of the board, or of one part of it",
@@ -27,24 +27,24 @@ func newShowCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier b
 		Run: func(cmd *cobra.Command, args []string) {
 			var mountName string
 			if len(args) > 0 && args[0] != "" {
-				mountName = string(findMount(selected(reg, legacyCarrier), args[0]).Name)
+				mountName = string(findMount(reg, args[0]).Name)
 			}
-			showHandler(cfg, reg, mountName, legacyCarrier)
+			showHandler(cfg, reg, mountName)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteMountName(selected(reg, legacyCarrier), toComplete)
+			return completion.CompleteMountName(reg, toComplete)
 		},
 	}
 }
 
 // With no name it shows the whole board, otherwise only the named mount.
-func showHandler(cfg config.Configuration, reg registry.Registry, mountName string, legacyCarrier bool) {
-	feedback.PrintResult(buildShowResult(cfg, reg, mountName, legacyCarrier))
+func showHandler(cfg config.Configuration, reg registry.Registry, mountName string) {
+	feedback.PrintResult(buildShowResult(cfg, reg, mountName))
 }
 
-func buildShowResult(cfg config.Configuration, reg registry.Registry, mountName string, legacyCarrier bool) showResult {
-	mounts := selected(reg, legacyCarrier).Mounts
-	result := showResult{Mounts: make([]showMount, 0, len(mounts)), legacy: legacyCarrier}
+func buildShowResult(cfg config.Configuration, reg registry.Registry, mountName string) showResult {
+	mounts := reg.Mounts
+	result := showResult{Mounts: make([]showMount, 0, len(mounts))}
 	for _, mount := range mounts {
 		if mountName != "" && mountName != string(mount.Name) {
 			continue
@@ -81,10 +81,6 @@ func toShowMount(cfg config.Configuration, mount registry.Mount) showMount {
 
 type showResult struct {
 	Mounts []showMount `json:"mounts"`
-
-	legacy bool
-	// enable and disable reported the affected carrier alone, out of any list.
-	single bool
 }
 
 type showMount struct {
@@ -137,13 +133,7 @@ func (r showResult) String() string {
 }
 
 func (r showResult) Data() any {
-	if !r.legacy {
-		return r
-	}
-	if r.single && len(r.Mounts) == 1 {
-		return legacyShowMount(r.Mounts[0])
-	}
-	return legacyShowData(r.Mounts)
+	return r
 }
 
 func enabledLabel(enabled bool) string {

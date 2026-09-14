@@ -24,7 +24,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newEnableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier bool) *cobra.Command {
+func newEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "enable <name> [device=option...]",
@@ -39,13 +39,13 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier
 			if os.Geteuid() != 0 && !dryRun {
 				feedback.Fatal("Command 'enable' must be run as root", feedback.ErrPermissionDenied)
 			}
-			enableHandler(cmd.Context(), reg, cfg, args[0], args[1:], dryRun, legacyCarrier)
+			enableHandler(cmd.Context(), reg, cfg, args[0], args[1:], dryRun)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				return completion.CompleteMountName(selected(reg, legacyCarrier), toComplete)
+				return completion.CompleteMountName(reg, toComplete)
 			}
-			mount, exist := selected(reg, legacyCarrier).FindByName(args[0])
+			mount, exist := reg.FindByName(args[0])
 			if !exist {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -58,8 +58,8 @@ func newEnableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier
 
 // Since a board reboot can occur asynchronously with the configuration, we must
 // track both the current and next states.
-func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, deviceArgs []string, dryRun bool, legacyCarrier bool) {
-	mount := findMount(selected(reg, legacyCarrier), name)
+func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, deviceArgs []string, dryRun bool) {
+	mount := findMount(reg, name)
 
 	selection, err := parseUserArgs(deviceArgs)
 	if err != nil {
@@ -69,6 +69,18 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		feedback.Fatal(err.Error(), feedback.ErrBadArgument)
 	}
 
+	if applyEnable(ctx, reg, cfg, mount, selection, dryRun) {
+		return
+	}
+
+	feedback.Warnf("Configuration enabled (will take effect on next boot)")
+	// Every mount is shown, because enabling one disables the others of its kind.
+	showHandler(cfg, reg, "")
+}
+
+// applyEnable rebuilds the device tree for the requested mount. Returns true
+// when dry-run already printed its result and the caller should stop.
+func applyEnable(ctx context.Context, reg registry.Registry, cfg config.Configuration, mount registry.Mount, selection []status.StatusDevice, dryRun bool) bool {
 	// The tool keeps one mount of a kind enabled, so the others are disabled.
 	desired := devicetree.Desired{mount.Name: {Enable: true, StatusDevices: selection}}
 	for _, other := range reg.ByKind(mount.Kind).Mounts {
@@ -93,20 +105,9 @@ func enableHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 	if dryRun {
 		subject := fmt.Sprintf("%s '%s'", string(mount.Kind), mount.Name)
 		feedback.PrintResult(dryrun.Result{Subject: subject, Effects: recorder.Effects()})
-		return
+		return true
 	}
-
-	if legacyCarrier {
-		feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", mount.Name)
-		result := buildShowResult(cfg, reg, string(mount.Name), true)
-		result.single = true
-		feedback.PrintResult(result)
-		return
-	}
-
-	feedback.Warnf("Configuration enabled (will take effect on next boot)")
-	// Every mount is shown, because enabling one disables the others of its kind.
-	showHandler(cfg, reg, "", false)
+	return false
 }
 
 func parseUserArgs(args []string) ([]status.StatusDevice, error) {

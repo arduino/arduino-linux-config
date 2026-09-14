@@ -6,9 +6,14 @@
 package hw
 
 import (
+	"context"
+	"os"
+
 	"github.com/spf13/cobra"
 
+	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/hw/completion"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
+	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 )
 
@@ -105,4 +110,135 @@ func legacyShowMount(mount showMount) legacyShowCarrierResult {
 		CurrentDevices: mount.CurrentDevices,
 		NextDevices:    mount.NextDevices,
 	}
+}
+
+func newLegacyShowCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show [name]",
+		Short: "Show the configuration of the board, or of one carrier",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			carriers := reg.ByKind(registry.KindCarrier)
+			var mountName string
+			if len(args) > 0 && args[0] != "" {
+				mountName = string(findMount(carriers, args[0]).Name)
+			}
+			feedback.PrintResult(buildLegacyShowResult(cfg, carriers, mountName, false))
+		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			return completion.CompleteMountName(reg.ByKind(registry.KindCarrier), toComplete)
+		},
+	}
+}
+
+// The v0.2.x enable and disable reported the affected carrier alone, out of any
+// list. Set single to keep that shape.
+func buildLegacyShowResult(cfg config.Configuration, reg registry.Registry, mountName string, single bool) legacyShow {
+	return legacyShow{inner: buildShowResult(cfg, reg, mountName), single: single}
+}
+
+type legacyShow struct {
+	inner  showResult
+	single bool
+}
+
+func (r legacyShow) String() string {
+	return r.inner.String()
+}
+
+func (r legacyShow) Data() any {
+	if r.single && len(r.inner.Mounts) == 1 {
+		return legacyShowMount(r.inner.Mounts[0])
+	}
+	return legacyShowData(r.inner.Mounts)
+}
+
+func newLegacyEnableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
+	var dryRun bool
+	cmd := &cobra.Command{
+		Use:   "enable <name> [device=option...]",
+		Short: "Enable a carrier, with its device options",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			if os.Geteuid() != 0 && !dryRun {
+				feedback.Fatal("Command 'enable' must be run as root", feedback.ErrPermissionDenied)
+			}
+			legacyEnableHandler(cmd.Context(), reg, cfg, args[0], args[1:], dryRun)
+		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			carriers := reg.ByKind(registry.KindCarrier)
+			if len(args) == 0 {
+				return completion.CompleteMountName(carriers, toComplete)
+			}
+			mount, exist := carriers.FindByName(args[0])
+			if !exist {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return completion.CompleteDeviceOption(mount, args[1:], toComplete)
+		},
+	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
+	return cmd
+}
+
+func legacyEnableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, deviceArgs []string, dryRun bool) {
+	carriers := reg.ByKind(registry.KindCarrier)
+	mount := findMount(carriers, name)
+
+	selection, err := parseUserArgs(deviceArgs)
+	if err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrBadArgument)
+	}
+	if err := validateUserConfiguration(mount, selection); err != nil {
+		feedback.Fatal(err.Error(), feedback.ErrBadArgument)
+	}
+
+	if applyEnable(ctx, reg, cfg, mount, selection, dryRun) {
+		return
+	}
+
+	feedback.Warnf("Carrier '%s' enabled (will take effect on next boot)", mount.Name)
+	feedback.PrintResult(buildLegacyShowResult(cfg, carriers, string(mount.Name), true))
+}
+
+func newLegacyDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
+	var dryRun bool
+	cmd := &cobra.Command{
+		Use:   "disable [name]",
+		Short: "Disable a carrier. With no name, disable every carrier",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			if os.Geteuid() != 0 && !dryRun {
+				feedback.Fatal("Command 'disable' must be run as root", feedback.ErrPermissionDenied)
+			}
+			name := ""
+			if len(args) > 0 {
+				name = args[0]
+			}
+			legacyDisableHandler(cmd.Context(), reg, cfg, name, dryRun)
+		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+			return completion.CompleteMountName(reg.ByKind(registry.KindCarrier), toComplete)
+		},
+	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
+	return cmd
+}
+
+func legacyDisableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, dryRun bool) {
+	carriers := reg.ByKind(registry.KindCarrier)
+	shown := ""
+	if name != "" {
+		shown = string(findMount(carriers, name).Name)
+	}
+
+	if applyDisable(ctx, reg, cfg, mountsMatching(carriers, shown), dryRun) {
+		return
+	}
+
+	result := buildLegacyShowResult(cfg, carriers, shown, true)
+	for _, mount := range result.inner.Mounts {
+		feedback.Warnf("Carrier '%s' disabled (will take effect on next boot)", mount.Name)
+	}
+	feedback.PrintResult(result)
 }

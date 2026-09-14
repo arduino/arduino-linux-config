@@ -28,9 +28,9 @@ func NewHwCmd() *cobra.Command {
 	}
 
 	hwCmd.AddCommand(newListCmd(reg))
-	hwCmd.AddCommand(newShowCmd(reg, cfg, false))
-	hwCmd.AddCommand(newEnableCmd(reg, cfg, false))
-	hwCmd.AddCommand(newDisableCmd(reg, cfg, false))
+	hwCmd.AddCommand(newShowCmd(reg, cfg))
+	hwCmd.AddCommand(newEnableCmd(reg, cfg))
+	hwCmd.AddCommand(newDisableCmd(reg, cfg))
 	hwCmd.AddCommand(newReloadCmd(reg, cfg, false))
 
 	return hwCmd
@@ -49,9 +49,9 @@ func NewCarrierCmd() *cobra.Command {
 	}
 
 	carrierCmd.AddCommand(newLegacyListCmd(reg))
-	carrierCmd.AddCommand(newShowCmd(reg, cfg, true))
-	carrierCmd.AddCommand(newEnableCmd(reg, cfg, true))
-	carrierCmd.AddCommand(newDisableCmd(reg, cfg, true))
+	carrierCmd.AddCommand(newLegacyShowCmd(reg, cfg))
+	carrierCmd.AddCommand(newLegacyEnableCmd(reg, cfg))
+	carrierCmd.AddCommand(newLegacyDisableCmd(reg, cfg))
 	carrierCmd.AddCommand(newReloadCmd(reg, cfg, true))
 
 	for _, sub := range carrierCmd.Commands() {

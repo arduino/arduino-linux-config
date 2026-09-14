@@ -21,7 +21,7 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/status"
 )
 
-func newDisableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrier bool) *cobra.Command {
+func newDisableCmd(reg registry.Registry, cfg config.Configuration) *cobra.Command {
 	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "disable [name]",
@@ -35,28 +35,50 @@ func newDisableCmd(reg registry.Registry, cfg config.Configuration, legacyCarrie
 			if len(args) > 0 {
 				name = args[0]
 			}
-			disableHandler(cmd.Context(), reg, cfg, name, dryRun, legacyCarrier)
+			disableHandler(cmd.Context(), reg, cfg, name, dryRun)
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			return completion.CompleteMountName(selected(reg, legacyCarrier), toComplete)
+			return completion.CompleteMountName(reg, toComplete)
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate the command without applying overlays or writing state")
 	return cmd
 }
 
-func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, dryRun bool, legacyCarrier bool) {
+func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Configuration, name string, dryRun bool) {
 	// With no name every mount is disabled, and the whole board is reported.
 	shown := ""
 	if name != "" {
-		shown = string(findMount(selected(reg, legacyCarrier), name).Name)
+		shown = string(findMount(reg, name).Name)
 	}
 
-	desired := devicetree.Desired{}
-	for _, mount := range selected(reg, legacyCarrier).Mounts {
-		if shown == "" || shown == string(mount.Name) {
-			desired[mount.Name] = status.MountStatus{Enable: false}
+	if applyDisable(ctx, reg, cfg, mountsMatching(reg, shown), dryRun) {
+		return
+	}
+
+	feedback.Warnf("Disabled (will take effect on next boot)")
+	showHandler(cfg, reg, "")
+}
+
+// mountsMatching returns every mount when name is empty, otherwise just the one
+// with that name.
+func mountsMatching(reg registry.Registry, name string) []registry.Mount {
+	result := make([]registry.Mount, 0, len(reg.Mounts))
+	for _, mount := range reg.Mounts {
+		if name == "" || name == string(mount.Name) {
+			result = append(result, mount)
 		}
+	}
+	return result
+}
+
+// applyDisable rebuilds the device tree with the given mounts turned off.
+// Returns true when dry-run already printed its result and the caller should
+// stop.
+func applyDisable(ctx context.Context, reg registry.Registry, cfg config.Configuration, mounts []registry.Mount, dryRun bool) bool {
+	desired := devicetree.Desired{}
+	for _, mount := range mounts {
+		desired[mount.Name] = status.MountStatus{Enable: false}
 	}
 
 	exec, recorder := executor.Real(), executor.NewRecorder()
@@ -74,19 +96,7 @@ func disableHandler(ctx context.Context, reg registry.Registry, cfg config.Confi
 
 	if dryRun {
 		feedback.PrintResult(dryrun.Result{Effects: recorder.Effects()})
-		return
+		return true
 	}
-
-	if legacyCarrier {
-		result := buildShowResult(cfg, reg, shown, true)
-		for _, mount := range result.Mounts {
-			feedback.Warnf("Carrier '%s' disabled (will take effect on next boot)", mount.Name)
-		}
-		result.single = true
-		feedback.PrintResult(result)
-		return
-	}
-
-	feedback.Warnf("Disabled (will take effect on next boot)")
-	showHandler(cfg, reg, "", false)
+	return false
 }

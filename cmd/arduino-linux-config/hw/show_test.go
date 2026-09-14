@@ -41,8 +41,7 @@ func TestShowDataKeepsTheNewShapeForHw(t *testing.T) {
 // The v0.2.x JSON groups the mounts under "carriers" and names them
 // "carrier_name", with no kind.
 func TestShowDataKeepsTheOldShapeForCarrier(t *testing.T) {
-	legacyResult := showTestResult
-	legacyResult.legacy = true
+	legacyResult := legacyShow{inner: showTestResult}
 
 	data, err := json.Marshal(legacyResult.Data())
 	require.NoError(t, err)
@@ -61,9 +60,7 @@ func TestShowDataKeepsTheOldShapeForCarrier(t *testing.T) {
 
 // The v0.2.x enable and disable reported the affected carrier out of any list.
 func TestShowDataOfASingleCarrierIsNotWrapped(t *testing.T) {
-	legacyResult := showTestResult
-	legacyResult.legacy = true
-	legacyResult.single = true
+	legacyResult := legacyShow{inner: showTestResult, single: true}
 
 	data, err := json.Marshal(legacyResult.Data())
 	require.NoError(t, err)
