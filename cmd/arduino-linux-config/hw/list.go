@@ -29,7 +29,7 @@ func newListCmd(reg registry.Registry, legacyCarrier bool) *cobra.Command {
 
 func buildListResult(reg registry.Registry, legacyCarrier bool) listResult {
 	mounts := selected(reg, legacyCarrier).Mounts
-	result := listResult{Mounts: make([]listMount, 0, len(mounts))}
+	result := listResult{Mounts: make([]listMount, 0, len(mounts)), legacy: legacyCarrier}
 	for _, mount := range mounts {
 		devices := make([]listDevice, 0, len(mount.Devices))
 		for _, device := range mount.Devices {
@@ -54,6 +54,8 @@ func buildListResult(reg registry.Registry, legacyCarrier bool) listResult {
 
 type listResult struct {
 	Mounts []listMount `json:"mounts"`
+
+	legacy bool
 }
 
 type listMount struct {
@@ -132,5 +134,8 @@ func (r listResult) String() string {
 }
 
 func (r listResult) Data() interface{} {
+	if r.legacy {
+		return legacyListData(r.Mounts)
+	}
 	return r
 }
