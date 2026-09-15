@@ -47,7 +47,7 @@ func GetBoardID() string {
 	return ""
 }
 
-func GetDtboSupportVerion() string {
+func GetDtboSupportVersion() string {
 	root := compatibleRootDir()
 	return getDtboSupportVersionFromFS(os.DirFS(root), root)
 }

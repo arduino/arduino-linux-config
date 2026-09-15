@@ -22,21 +22,13 @@ type SupportMatrix struct {
 	Support []DtboSupport
 }
 
-func (sm SupportMatrix) GetSupport(dtbo string) (DtboSupport, bool) {
+func (sm SupportMatrix) getSupport(dtbo string) (DtboSupport, bool) {
 	for _, s := range sm.Support {
 		if s.Dtbo == dtbo {
 			return s, true
 		}
 	}
 	return DtboSupport{}, false
-}
-
-func (sm SupportMatrix) GetMinRequirement(dtbo string) (string, bool) {
-	support, found := sm.GetSupport(dtbo)
-	if !found {
-		return "", false
-	}
-	return support.MinRequirement, true
 }
 
 // Factory builds a Registry based on target board specifications and configuration.
@@ -51,13 +43,14 @@ func NewFactory(supportMatrix SupportMatrix) *Factory {
 	return &Factory{
 		board:         config.GetBoardID(),
 		boardOS:       config.GetLinuxDistribution(),
-		dtboSuppport:  config.GetDtboSupportVerion(),
+		dtboSuppport:  config.GetDtboSupportVersion(),
 		supportMatrix: supportMatrix,
 	}
 }
 
+// if the overlay is not declared or its function is missing is unsupported
 func (f *Factory) isDtboSupported(dtbo string) bool {
-	support, found := f.supportMatrix.GetSupport(dtbo)
+	support, found := f.supportMatrix.getSupport(dtbo)
 	if !found || support.IsSupported == nil {
 		return false
 	}
