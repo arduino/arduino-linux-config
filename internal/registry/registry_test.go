@@ -40,6 +40,31 @@ func TestKernelVersionComparisons(t *testing.T) {
 	require.False(t, isVersionAtLeast("6.7.0-1078-qcom", "6.8.0-1078-qcom"))
 }
 
+func TestIsVersionAtLeast(t *testing.T) {
+	tests := []struct {
+		name     string
+		current  string
+		minReq   string
+		expected bool
+	}{
+		{"empty minReq is always satisfied", "6.8.0-1078-qcom", "", true},
+		{"identical strings are always satisfied", "6.8.0-1078-qcom", "6.8.0-1078-qcom", true},
+		{"empty current with non-empty minReq is unsatisfied", "", "6.8.0-1078-qcom", false},
+		{"higher ABI satisfies lower requirement", "6.8.0-1084-qcom", "6.8.0-1078-qcom", true},
+		{"lower ABI does not satisfy higher requirement", "6.8.0-1078-qcom", "6.8.0-1084-qcom", false},
+		{"lower kernel minor does not satisfy higher requirement", "6.7.0-1078-qcom", "6.8.0-1078-qcom", false},
+		// dpkg --compare-versions "6.8.0-999-qcom" gt "6.8.0-1000-qcom" agrees: false
+		{"ABI digit-count boundary is compared numerically", "6.8.0-999-qcom", "6.8.0-1000-qcom", false},
+		{"non-semver fallback uses lexical string comparison", "not-a-version", "also-not-a-version", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, isVersionAtLeast(tt.current, tt.minReq))
+		})
+	}
+}
+
 func TestSupportedDropsUnsupportedMountsAndDevices(t *testing.T) {
 	reg := Registry{Mounts: []Mount{
 		{
