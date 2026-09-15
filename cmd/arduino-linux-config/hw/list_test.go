@@ -16,30 +16,32 @@ import (
 
 var listTestRegistry = registry.Registry{Mounts: []registry.Mount{
 	{
-		Name: registry.MediaCarrier,
-		Kind: registry.KindCarrier,
+		Name:      registry.MediaCarrier,
+		Kind:      registry.KindCarrier,
+		OsSupport: true,
 		Devices: []registry.Device{{
 			Name:       registry.Display,
 			DeviceType: registry.DeviceTypeDisplay,
+			OsSupport:  true,
 			Options:    []registry.DeviceOption{{Name: "none"}, {Name: "5-dsi-touch-a"}},
 		}},
 	},
-	{Name: registry.Automation, Kind: registry.KindHat},
+	{Name: registry.Automation, Kind: registry.KindHat, OsSupport: false},
 }}
 
 func TestListDataKeepsTheNewShapeForHw(t *testing.T) {
-	data, err := json.Marshal(buildListResult(listTestRegistry).Data())
+	data, err := json.Marshal(buildListResult(listTestRegistry.Supported()).Data())
 	require.NoError(t, err)
 	require.JSONEq(t, `{
 		"mounts": [
 			{
 				"name": "media-carrier",
 				"kind": "carrier",
+				"os_support": true,
 				"devices": [
-					{"name": "display", "device_type": "display", "options": ["none", "5-dsi-touch-a"]}
+					{"name": "display", "device_type": "display", "options": ["none", "5-dsi-touch-a"], "os_support": true}
 				]
-			},
-			{"name": "automation", "kind": "hat", "devices": []}
+			}
 		]
 	}`, string(data))
 }

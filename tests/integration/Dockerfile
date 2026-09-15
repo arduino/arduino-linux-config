@@ -11,6 +11,10 @@ RUN mkdir -p /tmp/compat-root/sys/firmware/devicetree/base && \
 RUN mkdir -p /tmp/compat-root/proc/sys/kernel/random && \
     printf 'test-boot-id\n' > /tmp/compat-root/proc/sys/kernel/random/boot_id
 
+# osrelease holds only the release field of "uname -a", e.g. from
+# "Linux uno 7.0.0-g122c2c22d838 #1 SMP PREEMPT Tue May 19 15:08:13 UTC 2026 aarch64 GNU/Linux"
+RUN printf '7.0.0-g122c2c22d838\n' > /tmp/compat-root/proc/sys/kernel/osrelease
+
 ENV COMPATIBLE_ROOT_DIR=/tmp/compat-root
 
 # Create fake dtb directory and files

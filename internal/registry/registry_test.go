@@ -31,3 +31,94 @@ func TestMountNamesAreUnique(t *testing.T) {
 		})
 	}
 }
+
+func TestKernelVersionComparisons(t *testing.T) {
+	require.True(t, isVersionEqual("7.0.0-g122c2c22d838", "7.0.0-g122c2c22d838"))
+	require.False(t, isVersionEqual("7.0.0-g122c2c22d838", "7.0.1-g122c2c22d838"))
+	require.True(t, isVersionAtLeast("7.0.0-g122c2c22d838", "6.8.0-1078-qcom"))
+	require.True(t, isVersionAtLeast("6.8.0-1078-qcom", "6.8.0-1078-qcom"))
+	require.False(t, isVersionAtLeast("6.7.0-1078-qcom", "6.8.0-1078-qcom"))
+}
+
+func TestIsVersionAtLeast(t *testing.T) {
+	tests := []struct {
+		name     string
+		current  string
+		minReq   string
+		expected bool
+	}{
+		{"empty minReq is always satisfied", "6.8.0-1078-qcom", "", true},
+		{"identical strings are always satisfied", "6.8.0-1078-qcom", "6.8.0-1078-qcom", true},
+		{"empty current with non-empty minReq is unsatisfied", "", "6.8.0-1078-qcom", false},
+		{"higher ABI satisfies lower requirement", "6.8.0-1084-qcom", "6.8.0-1078-qcom", true},
+		{"lower ABI does not satisfy higher requirement", "6.8.0-1078-qcom", "6.8.0-1084-qcom", false},
+		{"lower kernel minor does not satisfy higher requirement", "6.7.0-1078-qcom", "6.8.0-1078-qcom", false},
+		// dpkg --compare-versions "6.8.0-999-qcom" gt "6.8.0-1000-qcom" agrees: false
+		{"ABI digit-count boundary is compared numerically", "6.8.0-999-qcom", "6.8.0-1000-qcom", false},
+		{"non-semver fallback uses lexical string comparison", "not-a-version", "also-not-a-version", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, isVersionAtLeast(tt.current, tt.minReq))
+		})
+	}
+}
+
+func TestSupportedDropsUnsupportedMountsAndDevices(t *testing.T) {
+	reg := Registry{Mounts: []Mount{
+		{
+			Name:      MediaCarrier,
+			Kind:      KindCarrier,
+			OsSupport: true,
+			Devices: []Device{
+				{Name: Display, DeviceType: DeviceTypeDisplay, OsSupport: true},
+				{Name: Camera0, DeviceType: DeviceTypeCamera, OsSupport: false},
+			},
+		},
+		{Name: Automation, Kind: KindHat, OsSupport: false},
+	}}
+
+	supported := reg.Supported()
+	require.Len(t, supported.Mounts, 1)
+	require.Equal(t, MediaCarrier, supported.Mounts[0].Name)
+	require.Len(t, supported.Mounts[0].Devices, 1)
+	require.Equal(t, Display, supported.Mounts[0].Devices[0].Name)
+}
+
+func TestSupportMatrixCoversRegistryDtboReferences(t *testing.T) {
+	matrixByDtbo := make(map[string]DtboSupport, len(NewSupportMatrix().Support))
+	for _, support := range NewSupportMatrix().Support {
+		matrixByDtbo[support.Dtbo] = support
+	}
+
+	seen := make(map[string]struct{})
+	for _, mount := range append([]Mount{unoqMediaCarrier}, append(ventunoqUbuntuHats, ventunoqMediaCarrier)...) {
+		for _, dtbo := range mount.EnabledDtbos {
+			seen[dtbo] = struct{}{}
+		}
+		for _, dtbo := range mount.DisabledDtbos {
+			seen[dtbo] = struct{}{}
+		}
+		for _, device := range mount.Devices {
+			for _, option := range device.Options {
+				for _, dtbo := range option.DtboFiles {
+					seen[dtbo] = struct{}{}
+				}
+				for _, dtbo := range option.IncompatibleDtbo {
+					seen[dtbo] = struct{}{}
+				}
+			}
+		}
+	}
+
+	var missing []string
+	for dtbo := range seen {
+		support, ok := matrixByDtbo[dtbo]
+		if !ok || support.IsSupported == nil {
+			missing = append(missing, dtbo)
+		}
+	}
+
+	require.Empty(t, missing, "missing support matrix entries for DTBO references in registry: %v", missing)
+}
