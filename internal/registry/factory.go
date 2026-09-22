@@ -177,7 +177,7 @@ func isVersionAtLeast(current, minReq string) bool {
 
 func NewSupportMatrix() SupportMatrix {
 	const unoQKernelVersion = "7.0.0-g122c2c22d838"
-	const ventunoQUbuntuKernelVersion = "6.8.0-1078-qcom"
+	const ventunoQUbuntuKernelVersion = "6.8.0-1087-qcom"
 
 	return SupportMatrix{
 		Support: []DtboSupport{
