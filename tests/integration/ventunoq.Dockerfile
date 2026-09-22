@@ -14,7 +14,7 @@ ENV KERNEL_VERSION=6.8.0-1-qcom
 # osrelease holds only the release field of "uname -a", e.g. from
 # Linux ventunoq 6.8.0-1084-qcom #89-Ubuntu SMP PREEMPT_DYNAMIC Thu Aug 20 09:02:55 UTC 2026 aarch64 aarch64 aarch64 GNU/Linux
 RUN mkdir -p /tmp/compat-root/proc/sys/kernel && \
-    printf '6.8.0-1084-qcom\n' > /tmp/compat-root/proc/sys/kernel/osrelease
+    printf '6.8.0-1087-qcom\n' > /tmp/compat-root/proc/sys/kernel/osrelease
 
 # Fake root used for board detection. The image is Debian, but the VentunoQ
 # code path (and therefore the addons) is only enabled on Ubuntu.
