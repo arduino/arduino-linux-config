@@ -248,21 +248,21 @@ func NewSupportMatrix() SupportMatrix {
 				Dtbo:           "monaco-addons-iqaudio-codeczero-monza.dtbo",
 				MinRequirement: ventunoQUbuntuKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, "6.8.0-1084-qcom")
+					return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "monaco-monza-automation-hat.dtbo",
 				MinRequirement: ventunoQUbuntuKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, "6.8.0-1080-qcom")
+					return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo",
 				MinRequirement: ventunoQUbuntuKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, "6.8.0-1084-qcom")
+					return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 				},
 			},
 		},
