@@ -6,9 +6,7 @@
 package registry
 
 import (
-	"strings"
-
-	"github.com/Masterminds/semver/v3"
+	debversion "github.com/knqyf263/go-deb-version"
 
 	"github.com/arduino/arduino-linux-config/internal/config"
 )
@@ -130,17 +128,6 @@ func (f *Factory) Create() Registry {
 	}
 }
 
-// semver treats "1078-qcom" as an alphanumeric identifier and compares it lexically.
-// normalizeKernelVersion turns Ubuntu/Debian style kernel versions and compare it numerically
-// dpkg --compare-versions "6.8.0-999-qcom" gt "6.8.0-1000-qcom" && echo "First version is newer"
-func normalizeKernelVersion(v string) string {
-	idx := strings.Index(v, "-")
-	if idx == -1 {
-		return v
-	}
-	return v[:idx+1] + strings.Replace(v[idx+1:], "-", ".", 1)
-}
-
 func isVersionEqual(current, expected string) bool {
 	if expected == "" || current == expected {
 		return true
@@ -149,8 +136,8 @@ func isVersionEqual(current, expected string) bool {
 		return false
 	}
 
-	vCurrent, err1 := semver.NewVersion(normalizeKernelVersion(current))
-	vExpected, err2 := semver.NewVersion(normalizeKernelVersion(expected))
+	vCurrent, err1 := debversion.NewVersion(current)
+	vExpected, err2 := debversion.NewVersion(expected)
 	if err1 == nil && err2 == nil {
 		return vCurrent.Equal(vExpected)
 	}
@@ -166,8 +153,8 @@ func isVersionAtLeast(current, minReq string) bool {
 		return false
 	}
 
-	vCurrent, err1 := semver.NewVersion(normalizeKernelVersion(current))
-	vMin, err2 := semver.NewVersion(normalizeKernelVersion(minReq))
+	vCurrent, err1 := debversion.NewVersion(current)
+	vMin, err2 := debversion.NewVersion(minReq)
 	if err1 == nil && err2 == nil {
 		return vCurrent.Compare(vMin) >= 0
 	}
