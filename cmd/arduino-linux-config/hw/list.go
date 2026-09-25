@@ -22,7 +22,7 @@ func newListCmd(reg registry.Registry) *cobra.Command {
 		Short: "List the carriers and the hats available for this board",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			feedback.PrintResult(buildListResult(reg))
+			feedback.PrintResult(buildListResult(reg.Supported()))
 		},
 	}
 }
@@ -40,12 +40,14 @@ func buildListResult(reg registry.Registry) listResult {
 				Name:       string(device.Name),
 				DeviceType: string(device.DeviceType),
 				Options:    options,
+				OsSupport:  device.OsSupport,
 			})
 		}
 		result.Mounts = append(result.Mounts, listMount{
-			Name:    string(mount.Name),
-			Kind:    string(mount.Kind),
-			Devices: devices,
+			Name:      string(mount.Name),
+			Kind:      string(mount.Kind),
+			Devices:   devices,
+			OsSupport: mount.OsSupport,
 		})
 	}
 	return result
@@ -56,15 +58,17 @@ type listResult struct {
 }
 
 type listMount struct {
-	Name    string       `json:"name"`
-	Kind    string       `json:"kind"`
-	Devices []listDevice `json:"devices"`
+	Name      string       `json:"name"`
+	Kind      string       `json:"kind"`
+	Devices   []listDevice `json:"devices"`
+	OsSupport bool         `json:"os_support"`
 }
 
 type listDevice struct {
 	Name       string   `json:"name"`
 	DeviceType string   `json:"device_type"`
 	Options    []string `json:"options"`
+	OsSupport  bool     `json:"os_support"`
 }
 
 // The parts are grouped by connector, because a carrier and a hat plug into

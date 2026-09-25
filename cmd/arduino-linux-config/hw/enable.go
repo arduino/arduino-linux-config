@@ -144,11 +144,20 @@ func parseUserArgs(args []string) ([]status.StatusDevice, error) {
 }
 
 func validateUserConfiguration(mount registry.Mount, selection []status.StatusDevice) error {
+	if !mount.OsSupport {
+		return fmt.Errorf("unsupported overlay for %s", mount.Name)
+	}
+
 	for _, s := range selection {
 		device, exist := mount.FindDeviceByName(registry.DeviceName(s.Device))
 		if !exist {
 			return fmt.Errorf("unknown device for %s: %q", mount.Name, s.Device)
 		}
+
+		if !device.OsSupport {
+			return fmt.Errorf("unsupported overlay for %s: %q", mount.Name, s.Device)
+		}
+
 		if !slices.ContainsFunc(device.Options, func(o registry.DeviceOption) bool { return o.Name == s.Option }) {
 			return fmt.Errorf("device %q does not support option %q", s.Device, s.Option)
 		}
