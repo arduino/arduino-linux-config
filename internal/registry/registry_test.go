@@ -33,10 +33,27 @@ func TestMountNamesAreUnique(t *testing.T) {
 }
 
 func TestKernelVersionComparisons(t *testing.T) {
-	require.True(t, isVersionEqual("7.0.0-g122c2c22d838", "7.0.0-g122c2c22d838"))
-	require.False(t, isVersionEqual("7.0.0-g122c2c22d838", "7.0.1-g122c2c22d838"))
-	require.True(t, isVersionAtLeast("7.0.0-g122c2c22d838", "6.8.0-1078-qcom"))
+	// Check patch
+	require.True(t, isVersionAtLeast("7.0.0-g122c2c22d838", "7.0.0-g122c2c22d838"))
+	require.False(t, isVersionAtLeast("7.0.0-g122c2c22d838", "7.0.1-g122c2c22d838"))
+	require.True(t, isVersionAtLeast("7.0.1-g122c2c22d838", "7.0.0-g122c2c22d838"))
+
+	// Check last string
+	require.True(t, isVersionAtLeast("7.0.0-g122c2c22d100", "7.0.0-g122c2c22d100"))
+	require.True(t, isVersionAtLeast("7.0.0-g122c2c22d100", "7.0.0-g122c2c22d099"))
+	require.False(t, isVersionAtLeast("7.0.0-g122c2c22d100", "7.0.0-g122c2c22d101"))
+
+	// Check minor
+	require.False(t, isVersionAtLeast("7.0.0-g122c2c22d838", "7.2.0-g122c2c22d838"))
+	require.True(t, isVersionAtLeast("7.2.0-g122c2c22d838", "7.0.0-g122c2c22d838"))
+
+	// Check major
+	require.True(t, isVersionAtLeast("9.2.0-g122c2c22d838", "8.2.0-g122c2c22d838"))
+	require.False(t, isVersionAtLeast("10.2.0-g122c2c22d838", "11.2.0-g122c2c22d838"))
+
 	require.True(t, isVersionAtLeast("6.8.0-1078-qcom", "6.8.0-1078-qcom"))
+	require.True(t, isVersionAtLeast("6.8.0-1099-qcom", "6.8.0-1087-qcom"))
+	require.False(t, isVersionAtLeast("6.8.0-1087-qcom", "6.8.0-1099-qcom"))
 	require.False(t, isVersionAtLeast("6.7.0-1078-qcom", "6.8.0-1078-qcom"))
 }
 

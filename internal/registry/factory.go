@@ -128,23 +128,6 @@ func (f *Factory) Create() Registry {
 	}
 }
 
-func isVersionEqual(current, expected string) bool {
-	if expected == "" || current == expected {
-		return true
-	}
-	if current == "" {
-		return false
-	}
-
-	vCurrent, err1 := debversion.NewVersion(current)
-	vExpected, err2 := debversion.NewVersion(expected)
-	if err1 == nil && err2 == nil {
-		return vCurrent.Equal(vExpected)
-	}
-
-	return current == expected
-}
-
 func isVersionAtLeast(current, minReq string) bool {
 	if minReq == "" || current == minReq {
 		return true
@@ -172,63 +155,63 @@ func NewSupportMatrix() SupportMatrix {
 				Dtbo:           "qrb2210-arduino-imola-carrier-media.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "qrb2210-arduino-imola-video_sound-usbc.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-5in_touch_a-dsi.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
 				Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-10in_touch_a-dsi.dtbo",
 				MinRequirement: unoQKernelVersion,
 				IsSupported: func(current string) bool {
-					return isVersionEqual(current, unoQKernelVersion)
+					return isVersionAtLeast(current, unoQKernelVersion)
 				},
 			},
 			{
