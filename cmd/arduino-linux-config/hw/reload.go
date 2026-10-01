@@ -52,6 +52,7 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		DryRun:           dryRun,
 		ReloadedCarriers: make([]string, 0),
 		ReloadedHats:     make([]string, 0),
+		ReloadedBuiltins: make([]string, 0),
 	}
 
 	// Only the enabled mounts are reported: a disabled one adds no overlay.
@@ -63,9 +64,12 @@ func reloadHandler(ctx context.Context, reg registry.Registry, cfg config.Config
 		if !next.Enable {
 			continue
 		}
-		if mount.Kind == registry.KindHat {
+		switch mount.Kind {
+		case registry.KindHat:
 			result.ReloadedHats = append(result.ReloadedHats, string(mount.Name))
-		} else {
+		case registry.KindBuiltin:
+			result.ReloadedBuiltins = append(result.ReloadedBuiltins, string(mount.Name))
+		default:
 			result.ReloadedCarriers = append(result.ReloadedCarriers, string(mount.Name))
 		}
 	}
@@ -90,6 +94,7 @@ type reloadResult struct {
 	DryRun           bool     `json:"dry_run"`
 	ReloadedCarriers []string `json:"reloaded_carriers"`
 	ReloadedHats     []string `json:"reloaded_hats"`
+	ReloadedBuiltins []string `json:"reloaded_builtins"`
 	Effects          []string `json:"effects,omitempty"`
 }
 
@@ -106,6 +111,9 @@ func (r reloadResult) String() string {
 	}
 	for _, name := range r.ReloadedHats {
 		fmt.Fprintf(w, "Reloaded hats:\t%s\n", name)
+	}
+	for _, name := range r.ReloadedBuiltins {
+		fmt.Fprintf(w, "Reloaded built-in:\t%s\n", name)
 	}
 
 	if r.DryRun {

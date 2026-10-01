@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Package hw implements the commands that list, enable, disable and show the
-// parts plugged into the board. A carrier and a hat use different connectors,
-// but the same model, the same status files and the same device tree. The user
-// selects a part by name, and the output shows what kind of part it is.
+// parts of the board: carriers and hats plug into a connector, builtin parts
+// are always physically present, but all share the same model, status files
+// and device tree. The user selects a part by name; the output shows its kind.
 package hw
 
 import (
@@ -23,8 +23,8 @@ func NewHwCmd() *cobra.Command {
 	hwCmd := &cobra.Command{
 		Use:     "hw",
 		Aliases: []string{"hardware"},
-		Short:   "Manage the carriers and the hats connected to the board",
-		Long:    "Manage the carriers and the hats connected to the board, including listing, configuring and resetting.",
+		Short:   "Manage the carriers, hats and built-in parts of the board",
+		Long:    "Manage the carriers, hats and built-in parts of the board, including listing, configuring and resetting.",
 	}
 
 	hwCmd.AddCommand(newListCmd(reg))

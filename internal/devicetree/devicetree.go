@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/arduino/arduino-linux-config/internal/cameraoverlay"
 	"github.com/arduino/arduino-linux-config/internal/config"
 	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/overlay"
@@ -44,6 +45,10 @@ func Rebuild(ctx context.Context, exec executor.Executor, reg registry.Registry,
 		files, removed := overlay.CollectForStatus(mount, state)
 		overlays = append(overlays, files...)
 		incompatible = append(incompatible, removed...)
+	}
+
+	if err := cameraoverlay.EnsureBuilt(ctx, exec, applier.OverlaysPath(), overlays); err != nil {
+		return incompatible, fmt.Errorf("failed to build camera overlays: %w", err)
 	}
 
 	if err := applier.Apply(ctx, exec, overlays); err != nil {

@@ -120,6 +120,27 @@ func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	}, effects)
 }
 
+// The base dtb is read directly (not through the executor) after mounting, so
+// a Recorder's never-really-mounted partition makes the whole dry run fail.
+func TestVentunoQDebianApplyFailsUnderDryRun(t *testing.T) {
+	recorder := executor.NewRecorder()
+
+	board := VentunoQDebian{
+		BaseDtbFileName: "combined-dtb-base.dtb",
+		OverlaysDir:     paths.New("/var/lib/overlays/"),
+		DtbFileName:     "combined-dtb.dtb",
+	}
+	err := board.Apply(t.Context(), recorder, []string{"b.dtbo", "a.dtbo", "a.dtbo"})
+	require.Error(t, err)
+
+	require.Equal(t, []string{
+		"mkdir -p /run/arduino-linux-config/dtb",
+		"mount -t vfat /dev/disk/by-partlabel/dtb_a /run/arduino-linux-config/dtb",
+		"sync",
+		"umount -l /run/arduino-linux-config/dtb",
+	}, recorder.Effects())
+}
+
 func TestPackUnchangedDeviceTreePreservesCombinedDtb(t *testing.T) {
 	mountPoint := paths.New(t.TempDir())
 	other := fakeDeviceTree("qcom,other")

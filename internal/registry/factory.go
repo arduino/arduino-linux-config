@@ -8,6 +8,7 @@ package registry
 import (
 	debversion "github.com/knqyf263/go-deb-version"
 
+	"github.com/arduino/arduino-linux-config/internal/cameraoverlay"
 	"github.com/arduino/arduino-linux-config/internal/config"
 )
 
@@ -114,6 +115,8 @@ func (f *Factory) Create() Registry {
 		mounts = []Mount{unoqMediaCarrier}
 	case f.board == "ventunoq" && f.boardOS == "ubuntu":
 		mounts = append([]Mount{ventunoqMediaCarrier}, ventunoqUbuntuHats...)
+	case f.board == "ventunoq" && f.boardOS == "debian":
+		mounts = []Mount{ventunoqBuiltinCameras}
 	default:
 		return Registry{}
 	}
@@ -148,93 +151,104 @@ func isVersionAtLeast(current, minReq string) bool {
 func NewSupportMatrix() SupportMatrix {
 	const unoQKernelVersion = "7.0.0-g122c2c22d838"
 	const ventunoQUbuntuKernelVersion = "6.8.0-1087-qcom"
+	const ventunoQDebianKernelVersion = "7.1.0-arduino1+"
 
-	return SupportMatrix{
-		Support: []DtboSupport{
-			{
-				Dtbo:           "qrb2210-arduino-imola-carrier-media.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+	support := []DtboSupport{
+		{
+			Dtbo:           "qrb2210-arduino-imola-carrier-media.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "qrb2210-arduino-imola-video_sound-usbc.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "qrb2210-arduino-imola-video_sound-usbc.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-2lanes.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi0-4lanes.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-2lanes.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "qrb2210-arduino-imola-carrier-media-camera-imx219-csi1-4lanes.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-5in_touch_a-dsi.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-5in_touch_a-dsi.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-8in_touch_a-dsi.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-10in_touch_a-dsi.dtbo",
-				MinRequirement: unoQKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, unoQKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "qrb2210-arduino-imola-carrier-media-panel-10in_touch_a-dsi.dtbo",
+			MinRequirement: unoQKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, unoQKernelVersion)
 			},
-			{
-				Dtbo:           "monaco-addons-iqaudio-codeczero-monza.dtbo",
-				MinRequirement: ventunoQUbuntuKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "monaco-addons-iqaudio-codeczero-monza.dtbo",
+			MinRequirement: ventunoQUbuntuKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 			},
-			{
-				Dtbo:           "monaco-monza-automation-hat.dtbo",
-				MinRequirement: ventunoQUbuntuKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "monaco-monza-automation-hat.dtbo",
+			MinRequirement: ventunoQUbuntuKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 			},
-			{
-				Dtbo:           "monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo",
-				MinRequirement: ventunoQUbuntuKernelVersion,
-				IsSupported: func(current string) bool {
-					return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
-				},
+		},
+		{
+			Dtbo:           "monaco-monza-dsi-waveshare,8.0-dsi-touch-a.dtbo",
+			MinRequirement: ventunoQUbuntuKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 			},
 		},
 	}
+
+	for _, filename := range cameraoverlay.Filenames() {
+		support = append(support, DtboSupport{
+			Dtbo:           filename,
+			MinRequirement: ventunoQDebianKernelVersion,
+			IsSupported: func(current string) bool {
+				return isVersionAtLeast(current, ventunoQDebianKernelVersion)
+			},
+		})
+	}
+
+	return SupportMatrix{Support: support}
 }

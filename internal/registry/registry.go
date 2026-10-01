@@ -5,6 +5,8 @@
 
 package registry
 
+import "github.com/arduino/arduino-linux-config/internal/cameraoverlay"
+
 type DeviceType string
 
 const (
@@ -57,12 +59,14 @@ func (r Registry) Supported() Registry {
 	return Registry{Mounts: mounts}
 }
 
-// Kind groups the mounts by the connector they use.
+// Kind groups the mounts by the connector they use; builtin has no connector,
+// grouping parts always physically present on the main board instead.
 type Kind string
 
 const (
 	KindCarrier Kind = "carrier"
 	KindHat     Kind = "hat"
+	KindBuiltin Kind = "builtin"
 )
 
 type DeviceName string
@@ -71,6 +75,7 @@ const (
 	None    DeviceName = "none"
 	Camera0 DeviceName = "camera0"
 	Camera1 DeviceName = "camera1"
+	Camera2 DeviceName = "camera2"
 	Display DeviceName = "display"
 )
 
@@ -80,6 +85,7 @@ const (
 	MediaCarrier   MountName = "media-carrier"
 	AudioCodecZero MountName = "audio-codec-zero"
 	Automation     MountName = "automation"
+	Cameras        MountName = "cameras"
 )
 
 // Mount is a part that plugs into the board and adds device tree overlays.
@@ -267,4 +273,26 @@ var ventunoqMediaCarrier = Mount{
 			},
 		},
 	},
+}
+
+// ventunoqBuiltinCameras is VentunoQ's 3 built-in CSI camera connectors,
+// built on the fly by cameraoverlay instead of shipped as pre-built dtbos.
+var ventunoqBuiltinCameras = Mount{
+	Name: Cameras,
+	Kind: KindBuiltin,
+	Devices: []Device{
+		cameraDevice(Camera0, cameraoverlay.Ports[0]),
+		cameraDevice(Camera1, cameraoverlay.Ports[1]),
+		cameraDevice(Camera2, cameraoverlay.Ports[2]),
+	},
+}
+
+// cameraDevice builds one port's options from the cameraoverlay catalog,
+// plus the "none" option every device needs to be disabled.
+func cameraDevice(name DeviceName, port cameraoverlay.Port) Device {
+	options := []DeviceOption{{Name: string(None), DtboFiles: []string{}}}
+	for _, option := range cameraoverlay.OptionsForPort(port) {
+		options = append(options, DeviceOption{Name: option.Name, DtboFiles: []string{option.DtboFile}})
+	}
+	return Device{Name: name, DeviceType: DeviceTypeCamera, Options: options}
 }

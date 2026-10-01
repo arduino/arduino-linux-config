@@ -19,6 +19,8 @@ import (
 type DeviceTreeApplier interface {
 	// Applies the device tree overlays through the given executor.
 	Apply(ctx context.Context, exec executor.Executor, overlays []string) error
+	// OverlaysPath returns the directory overlay dtbo files are read from.
+	OverlaysPath() *paths.Path
 }
 
 type UnoQ struct {
@@ -33,6 +35,10 @@ type VentunoQ struct {
 	DtbFileName     string
 }
 
+func (b UnoQ) OverlaysPath() *paths.Path {
+	return b.OverlaysDir
+}
+
 func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
 	temporaryDtb := b.OverlaysDir.Join(temporaryDtbName())
 	defer func() { _ = exec.Remove(temporaryDtb) }()
@@ -44,6 +50,10 @@ func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []stri
 	}
 
 	return moveDeviceTree(exec, temporaryDtb, b.OverlaysDir.Join(b.DtbFileName))
+}
+
+func (b VentunoQ) OverlaysPath() *paths.Path {
+	return b.OverlaysDir
 }
 
 func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
@@ -60,6 +70,54 @@ func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []
 	defer unmount()
 
 	unpacked, err := unpackCombinedDtb(exec, b.BaseDtbFullPath, mountPoint)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = exec.Remove(unpacked.monza) }()
+
+	temporaryDtb := mountPoint.Join(temporaryDtbName())
+	defer func() { _ = exec.Remove(temporaryDtb) }()
+
+	args := buildOverlayCommand(b.OverlaysDir, unpacked.monza.String(), temporaryDtb, uniqueOverlays(overlays))
+	if err := exec.Run(ctx, args...); err != nil {
+		return err
+	}
+
+	packedDtb, err := packCombinedDtb(exec, temporaryDtb, unpacked)
+	if err != nil {
+		return err
+	}
+
+	return moveDeviceTree(exec, packedDtb, mountPoint.Join(b.DtbFileName))
+}
+
+// VentunoQDebian is VentunoQ on Debian: BaseDtbFileName and DtbFileName are
+// both on the dtb_a partition rather than one on the rootfs and one on the ESP.
+type VentunoQDebian struct {
+	BaseDtbFileName string
+	OverlaysDir     *paths.Path
+	DtbFileName     string
+}
+
+func (b VentunoQDebian) OverlaysPath() *paths.Path {
+	return b.OverlaysDir
+}
+
+func (b VentunoQDebian) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
+	mountPoint := paths.New("/run/arduino-linux-config/dtb")
+	if err := exec.MkdirAll(mountPoint); err != nil {
+		return fmt.Errorf("failed to create mountPoint: %w", err)
+	}
+
+	// mount the device tree partition dtb_a
+	unmount, err := mountDeviceTree(ctx, exec, "/dev/disk/by-partlabel/dtb_a", mountPoint.String())
+	if err != nil {
+		return err
+	}
+	defer unmount()
+
+	baseDtbOnPartition := mountPoint.Join(b.BaseDtbFileName)
+	unpacked, err := unpackCombinedDtb(exec, baseDtbOnPartition.String(), mountPoint)
 	if err != nil {
 		return err
 	}

@@ -16,8 +16,9 @@ import (
 // The name alone selects a part, so a carrier and a hat must not share one.
 func TestMountNamesAreUnique(t *testing.T) {
 	for name, setup := range map[string]func() func(){
-		"unoq":     testutil.SetupUnoQDebian,
-		"ventunoq": testutil.SetupVentunoQUbuntu,
+		"unoq":            testutil.SetupUnoQDebian,
+		"ventunoq-ubuntu": testutil.SetupVentunoQUbuntu,
+		"ventunoq-debian": testutil.SetupVentunoQDebian,
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Cleanup(setup())
@@ -110,7 +111,8 @@ func TestSupportMatrixCoversRegistryDtboReferences(t *testing.T) {
 	}
 
 	seen := make(map[string]struct{})
-	for _, mount := range append([]Mount{unoqMediaCarrier}, append(ventunoqUbuntuHats, ventunoqMediaCarrier)...) {
+	mounts := append([]Mount{unoqMediaCarrier, ventunoqBuiltinCameras}, append(ventunoqUbuntuHats, ventunoqMediaCarrier)...)
+	for _, mount := range mounts {
 		for _, dtbo := range mount.EnabledDtbos {
 			seen[dtbo] = struct{}{}
 		}
