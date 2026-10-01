@@ -17,17 +17,27 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/executor"
 )
 
+// totalLanes sums every sensor's supported lane count, for sizing expectations
+// that shouldn't need updating every time the catalog grows.
+func totalLanes() int {
+	total := 0
+	for _, sensor := range Sensors {
+		total += len(sensor.Lanes)
+	}
+	return total
+}
+
 func TestOptionsForPort(t *testing.T) {
 	options := OptionsForPort(Port{Index: 1, ResetGPIO: 75})
-	require.ElementsMatch(t, []Option{
-		{Name: "imx219-2lanes", DtboFile: "monaco-monza-camera-csi1-imx219-2lane.dtbo"},
-		{Name: "imx219-4lanes", DtboFile: "monaco-monza-camera-csi1-imx219-4lane.dtbo"},
-	}, options)
+	require.Len(t, options, totalLanes())
+	require.Contains(t, options, Option{Name: "imx219-2lanes", DtboFile: "monaco-monza-camera-csi1-imx219-2lane.dtbo"})
+	require.Contains(t, options, Option{Name: "imx219-4lanes", DtboFile: "monaco-monza-camera-csi1-imx219-4lane.dtbo"})
+	require.Contains(t, options, Option{Name: "ov5647-2lanes", DtboFile: "monaco-monza-camera-csi1-ov5647-2lane.dtbo"})
 }
 
 func TestFilenamesCoverEveryPort(t *testing.T) {
 	filenames := Filenames()
-	require.Len(t, filenames, len(Ports)*len(Sensors)*len(Lanes))
+	require.Len(t, filenames, len(Ports)*totalLanes())
 	require.Contains(t, filenames, "monaco-monza-camera-csi0-imx219-2lane.dtbo")
 	require.Contains(t, filenames, "monaco-monza-camera-csi2-imx219-4lane.dtbo")
 }
@@ -72,7 +82,7 @@ func TestRenderedDtsCompiles(t *testing.T) {
 
 	for _, port := range Ports {
 		for _, sensor := range Sensors {
-			for _, lanes := range Lanes {
+			for _, lanes := range sensor.Lanes {
 				source := renderDts(spec{port: port, sensor: sensor, lanes: lanes})
 
 				dir := paths.New(t.TempDir())

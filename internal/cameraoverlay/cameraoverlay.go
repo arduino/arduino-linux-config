@@ -19,12 +19,14 @@ import (
 	"github.com/arduino/arduino-linux-config/internal/executor"
 )
 
-// Sensor describes a camera sensor this package knows how to wire up.
+// Sensor describes a camera sensor this package knows how to wire up. Lanes
+// lists every lane count the physical sensor actually supports.
 type Sensor struct {
 	Name            string
 	Compatible      string
 	I2CAddress      uint8
 	LinkFrequencyHz uint64
+	Lanes           []int
 }
 
 // Port describes one of VentunoQ's built-in CSI camera connectors.
@@ -39,9 +41,16 @@ type Option struct {
 	DtboFile string
 }
 
-// Sensors is the hardcoded catalog of supported camera sensors.
+// Sensors is the hardcoded catalog of supported camera sensors. Only imx219
+// is verified on this board (see the draft overlay this package replaced);
+// the rest use publicly documented Raspberry Pi/Arducam values and need
+// hardware validation, LinkFrequencyHz and Lanes especially.
 var Sensors = []Sensor{
-	{Name: "imx219", Compatible: "sony,imx219", I2CAddress: 0x10, LinkFrequencyHz: 456000000},
+	{Name: "imx219", Compatible: "sony,imx219", I2CAddress: 0x10, LinkFrequencyHz: 456000000, Lanes: []int{2, 4}},
+	{Name: "imx477", Compatible: "sony,imx477", I2CAddress: 0x1a, LinkFrequencyHz: 450000000, Lanes: []int{2}},
+	{Name: "imx708", Compatible: "sony,imx708", I2CAddress: 0x1a, LinkFrequencyHz: 450000000, Lanes: []int{2}},
+	{Name: "ov5647", Compatible: "ovti,ov5647", I2CAddress: 0x36, LinkFrequencyHz: 297000000, Lanes: []int{2}},
+	{Name: "imx519", Compatible: "sony,imx519", I2CAddress: 0x1a, LinkFrequencyHz: 456000000, Lanes: []int{2}},
 }
 
 // Ports is VentunoQ's 3 built-in CSI connectors, in cci0/1/2 order.
@@ -51,14 +60,11 @@ var Ports = []Port{
 	{Index: 2, ResetGPIO: 82},
 }
 
-// Lanes is every lane count the template supports.
-var Lanes = []int{2, 4}
-
 // OptionsForPort enumerates every sensor/lane combination available on a port.
 func OptionsForPort(port Port) []Option {
-	options := make([]Option, 0, len(Sensors)*len(Lanes))
+	options := make([]Option, 0, len(Sensors)*2)
 	for _, sensor := range Sensors {
-		for _, lanes := range Lanes {
+		for _, lanes := range sensor.Lanes {
 			name := fmt.Sprintf("%s-%dlanes", sensor.Name, lanes)
 			options = append(options, Option{Name: name, DtboFile: dtboFilename(port, sensor, lanes)})
 		}
@@ -69,7 +75,7 @@ func OptionsForPort(port Port) []Option {
 // Filenames lists every dtbo filename this package can build, across every
 // port/sensor/lanes combination.
 func Filenames() []string {
-	filenames := make([]string, 0, len(Ports)*len(Sensors)*len(Lanes))
+	filenames := make([]string, 0, len(Ports)*len(Sensors)*2)
 	for _, port := range Ports {
 		for _, option := range OptionsForPort(port) {
 			filenames = append(filenames, option.DtboFile)
@@ -104,10 +110,10 @@ type spec struct {
 
 // specsByFilename maps every buildable dtbo filename back to its spec.
 func specsByFilename() map[string]spec {
-	specs := make(map[string]spec, len(Ports)*len(Sensors)*len(Lanes))
+	specs := make(map[string]spec, len(Ports)*len(Sensors)*2)
 	for _, port := range Ports {
 		for _, sensor := range Sensors {
-			for _, lanes := range Lanes {
+			for _, lanes := range sensor.Lanes {
 				specs[dtboFilename(port, sensor, lanes)] = spec{port: port, sensor: sensor, lanes: lanes}
 			}
 		}
