@@ -54,7 +54,7 @@ func GetBoard() (dto.DeviceTreeApplier, error) {
 				DtbFileName:     filepath.Base(baseDtbFullPath),
 			}, nil
 		case "debian":
-			return dto.VentunoQDebian{
+			return dto.VentunoQ{
 				BaseDtbFileName: "combined-dtb-base.dtb",
 				OverlaysDir:     paths.New("/var/lib/arduino-linux-config/overlays/"),
 				DtbFileName:     "combined-dtb.dtb",

@@ -29,8 +29,12 @@ type UnoQ struct {
 	DtbFileName string
 }
 
+// On Ubuntu BaseDtbFullPath names a fresh rootfs source, read as-is. On
+// Debian there is no such source yet, so BaseDtbFileName is set instead: a
+// pristine dtb kept on the dtb_a partition itself, resolved once mounted.
 type VentunoQ struct {
 	BaseDtbFullPath string
+	BaseDtbFileName string
 	OverlaysDir     *paths.Path
 	DtbFileName     string
 }
@@ -69,55 +73,12 @@ func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []
 	}
 	defer unmount()
 
-	unpacked, err := unpackCombinedDtb(exec, b.BaseDtbFullPath, mountPoint)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = exec.Remove(unpacked.monza) }()
-
-	temporaryDtb := mountPoint.Join(temporaryDtbName())
-	defer func() { _ = exec.Remove(temporaryDtb) }()
-
-	args := buildOverlayCommand(b.OverlaysDir, unpacked.monza.String(), temporaryDtb, uniqueOverlays(overlays))
-	if err := exec.Run(ctx, args...); err != nil {
-		return err
+	baseDtb := b.BaseDtbFullPath
+	if baseDtb == "" {
+		baseDtb = mountPoint.Join(b.BaseDtbFileName).String()
 	}
 
-	packedDtb, err := packCombinedDtb(exec, temporaryDtb, unpacked)
-	if err != nil {
-		return err
-	}
-
-	return moveDeviceTree(exec, packedDtb, mountPoint.Join(b.DtbFileName))
-}
-
-// VentunoQDebian is VentunoQ on Debian: BaseDtbFileName and DtbFileName are
-// both on the dtb_a partition rather than one on the rootfs and one on the ESP.
-type VentunoQDebian struct {
-	BaseDtbFileName string
-	OverlaysDir     *paths.Path
-	DtbFileName     string
-}
-
-func (b VentunoQDebian) OverlaysPath() *paths.Path {
-	return b.OverlaysDir
-}
-
-func (b VentunoQDebian) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
-	mountPoint := paths.New("/run/arduino-linux-config/dtb")
-	if err := exec.MkdirAll(mountPoint); err != nil {
-		return fmt.Errorf("failed to create mountPoint: %w", err)
-	}
-
-	// mount the device tree partition dtb_a
-	unmount, err := mountDeviceTree(ctx, exec, "/dev/disk/by-partlabel/dtb_a", mountPoint.String())
-	if err != nil {
-		return err
-	}
-	defer unmount()
-
-	baseDtbOnPartition := mountPoint.Join(b.BaseDtbFileName)
-	unpacked, err := unpackCombinedDtb(exec, baseDtbOnPartition.String(), mountPoint)
+	unpacked, err := unpackCombinedDtb(exec, baseDtb, mountPoint)
 	if err != nil {
 		return err
 	}

@@ -120,12 +120,13 @@ func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	}, effects)
 }
 
-// The base dtb is read directly (not through the executor) after mounting, so
-// a Recorder's never-really-mounted partition makes the whole dry run fail.
-func TestVentunoQDebianApplyFailsUnderDryRun(t *testing.T) {
+// With BaseDtbFileName (Debian) the base dtb is resolved against the mount
+// point and read directly (not through the executor), so a Recorder's
+// never-really-mounted partition makes the whole dry run fail.
+func TestVentunoQApplyWithPartitionBaseFailsUnderDryRun(t *testing.T) {
 	recorder := executor.NewRecorder()
 
-	board := VentunoQDebian{
+	board := VentunoQ{
 		BaseDtbFileName: "combined-dtb-base.dtb",
 		OverlaysDir:     paths.New("/var/lib/overlays/"),
 		DtbFileName:     "combined-dtb.dtb",
