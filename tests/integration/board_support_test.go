@@ -50,13 +50,15 @@ func TestUnoqBoardSupport(t *testing.T) {
 	require.Empty(t, mountNames(t, out, "hat"), "UnoQ has no hat connector")
 }
 
-// On VentunoQ the only supported distribution is Ubuntu: on Debian no mount
-// is available.
+// On VentunoQ with Debian only the 3 built-in CSI cameras are supported so
+// far, built on the fly instead of shipped as pre-built dtbos.
 func TestVentunoqDebianBoardSupport(t *testing.T) {
 	startVentunoqDebianDockerContainer(t)
 	t.Cleanup(func() { stopVentunoqDockerContainer(t) })
 
-	out, err := execInNamedContainerWithError(t, ventunoqContainerName, "arduino-linux-config", "hw", "list", "--format", "json")
-	require.Error(t, err)
-	require.Contains(t, out, `unsupported board/os`)
+	out := execInVentunoqContainer(t, "arduino-linux-config", "hw", "list", "--format", "json")
+
+	require.Equal(t, []string{"cameras"}, mountNames(t, out, "builtin"))
+	require.Empty(t, mountNames(t, out, "carrier"), "VentunoQ Debian has no carrier support yet")
+	require.Empty(t, mountNames(t, out, "hat"), "VentunoQ Debian has no hat support yet")
 }

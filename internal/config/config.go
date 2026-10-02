@@ -42,18 +42,26 @@ func GetBoard() (dto.DeviceTreeApplier, error) {
 			DtbFileName: "qrb2210-arduino-imola.dtb",
 		}, nil
 	case "ventunoq":
-		baseDtbFullPath, err := deviceTreeDiscover()
-		if err != nil {
-			return nil, fmt.Errorf("failed to discover device tree: %w", err)
+		switch GetLinuxDistribution() {
+		case "ubuntu":
+			baseDtbFullPath, err := deviceTreeDiscover()
+			if err != nil {
+				return nil, fmt.Errorf("failed to discover device tree: %w", err)
+			}
+			return dto.VentunoQ{
+				BaseDtbFullPath: baseDtbFullPath,
+				OverlaysDir:     paths.New("/var/lib/arduino-linux-config/overlays/"),
+				DtbFileName:     filepath.Base(baseDtbFullPath),
+			}, nil
+		case "debian":
+			return dto.VentunoQ{
+				BaseDtbFileName: "combined-dtb-base.dtb",
+				OverlaysDir:     paths.New("/var/lib/arduino-linux-config/overlays/"),
+				DtbFileName:     "combined-dtb.dtb",
+			}, nil
 		}
-		return dto.VentunoQ{
-			BaseDtbFullPath: baseDtbFullPath,
-			OverlaysDir:     paths.New("/var/lib/arduino-linux-config/overlays/"),
-			DtbFileName:     filepath.Base(baseDtbFullPath),
-		}, nil
-	default:
-		return nil, fmt.Errorf("unsupported board/os")
 	}
+	return nil, fmt.Errorf("unsupported board/os")
 }
 
 func deviceTreeDiscover() (string, error) {
@@ -77,8 +85,16 @@ func deviceTreeDiscover() (string, error) {
 
 var kernelVersionPattern = regexp.MustCompile(`^[1-9]\.[0-9]\.[0-9]-`)
 
-// implement the same behavior of /etc/kernel/postinst.d/zzz-update-dtb
+// Prefers grub.cfg (the next kernel to boot); falls back to the one kernel
+// under /boot on boards with no grub.cfg (e.g. a U-Boot/EFI boot flow).
 func kernelVersionDiscover(root string) (string, error) {
+	if version, err := kernelVersionFromGrub(root); err == nil {
+		return version, nil
+	}
+	return kernelVersionFromBootDir(root)
+}
+
+func kernelVersionFromGrub(root string) (string, error) {
 	grubConfig := filepath.Join(root, "boot/grub/grub.cfg")
 	// #nosec G702 -- no shell or user input involved
 	//nolint:forbidigo // grep only reads, no side effect for --dry-run to report.
@@ -95,9 +111,22 @@ func kernelVersionDiscover(root string) (string, error) {
 	return strings.TrimPrefix(fields[1], "/boot/vmlinuz-"), nil
 }
 
+func kernelVersionFromBootDir(root string) (string, error) {
+	matches, err := filepath.Glob(filepath.Join(root, "boot/vmlinuz-*"))
+	if err != nil {
+		return "", err
+	}
+	if len(matches) != 1 {
+		return "", fmt.Errorf("expected exactly one /boot/vmlinuz-*, found %d", len(matches))
+	}
+	return strings.TrimPrefix(filepath.Base(matches[0]), "vmlinuz-"), nil
+}
+
 // implement the same behavior of /etc/kernel/postinst.d/zzz-update-dtb
 func deviceTreeDiscoverFromFS(root fs.FS, version string) (string, error) {
-	if getLinuxDistributionFromFS(root) != "ubuntu" {
+	switch getLinuxDistributionFromFS(root) {
+	case "ubuntu", "debian":
+	default:
 		return "", fmt.Errorf("unsupported distribution")
 	}
 

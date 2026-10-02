@@ -96,17 +96,36 @@ func startVentunoqDockerContainer(t *testing.T) {
 	}, "\n"))
 }
 
-// The image fakes an Ubuntu root, the only distribution supported on VentunoQ.
+// The image fakes an Ubuntu root; see startVentunoqDebianDockerContainer for Debian.
 func startVentunoqUbuntuDockerContainer(t *testing.T) {
 	t.Helper()
 	buildDockerImage(t, ventunoqDockerImageName, "tests/integration/ventunoq.Dockerfile")
 	runDockerContainer(t, ventunoqDockerImageName, ventunoqContainerName)
 }
 
+// Debian's kernel version scheme differs from Ubuntu's, so osrelease is
+// overridden too (see ventunoQDebianKernelVersion in factory.go).
 func startVentunoqDebianDockerContainer(t *testing.T) {
 	t.Helper()
 	startVentunoqUbuntuDockerContainer(t)
-	execInVentunoqContainer(t, "sh", "-c", `printf 'ID=debian\n' > /tmp/compat-root/etc/os-release`)
+	overrideVentunoqDebianOsRelease(t)
+}
+
+// Like startVentunoqDockerContainer, but also faking the Debian image: for
+// tests that need to actually apply camera overlays onto the dtb_a partition.
+func startVentunoqDebianPrivilegedDockerContainer(t *testing.T) {
+	t.Helper()
+	startVentunoqDockerContainer(t)
+	overrideVentunoqDebianOsRelease(t)
+}
+
+func overrideVentunoqDebianOsRelease(t *testing.T) {
+	t.Helper()
+	execInVentunoqContainer(t, "sh", "-c", strings.Join([]string{
+		"set -eu",
+		"printf 'ID=debian\\n' > /tmp/compat-root/etc/os-release",
+		"printf '7.1.0-arduino1+\\n' > /tmp/compat-root/proc/sys/kernel/osrelease",
+	}, "\n"))
 }
 
 func stopVentunoqDockerContainer(t *testing.T) {

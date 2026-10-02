@@ -48,7 +48,7 @@ func run() error {
 	board := config.GetBoardID()
 	boardOs := config.GetLinuxDistribution()
 	switch {
-	case board == "unoq", board == "ventunoq" && boardOs == "ubuntu":
+	case board == "unoq", board == "ventunoq" && (boardOs == "ubuntu" || boardOs == "debian"):
 		// Every board gets the same commands. The registry decides what each
 		// command can list, so a board without a hat connector shows no hat.
 		rootCmd.AddCommand(

@@ -10,14 +10,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/arduino/arduino-linux-config/internal/cameraoverlay"
 	"github.com/arduino/arduino-linux-config/internal/testutil"
 )
 
 // The name alone selects a part, so a carrier and a hat must not share one.
 func TestMountNamesAreUnique(t *testing.T) {
 	for name, setup := range map[string]func() func(){
-		"unoq":     testutil.SetupUnoQDebian,
-		"ventunoq": testutil.SetupVentunoQUbuntu,
+		"unoq":            testutil.SetupUnoQDebian,
+		"ventunoq-ubuntu": testutil.SetupVentunoQUbuntu,
+		"ventunoq-debian": testutil.SetupVentunoQDebian,
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Cleanup(setup())
@@ -103,6 +105,34 @@ func TestSupportedDropsUnsupportedMountsAndDevices(t *testing.T) {
 	require.Equal(t, Display, supported.Mounts[0].Devices[0].Name)
 }
 
+// Locks camera0/1/2 to the cameraoverlay catalog, so the two can't silently drift apart.
+func TestVentunoqBuiltinCamerasMatchesCatalog(t *testing.T) {
+	cases := []struct {
+		name DeviceName
+		port cameraoverlay.Port
+	}{
+		{Camera0, cameraoverlay.Ports[0]},
+		{Camera1, cameraoverlay.Ports[1]},
+		{Camera2, cameraoverlay.Ports[2]},
+	}
+
+	for _, c := range cases {
+		device, exists := ventunoqBuiltinCameras.FindDeviceByName(c.name)
+		require.True(t, exists, "%s not found in ventunoqBuiltinCameras", c.name)
+
+		wantNames := []string{string(None)}
+		for _, option := range cameraoverlay.OptionsForPort(c.port) {
+			wantNames = append(wantNames, option.Name)
+		}
+
+		gotNames := make([]string, len(device.Options))
+		for i, option := range device.Options {
+			gotNames[i] = option.Name
+		}
+		require.Equal(t, wantNames, gotNames, "%s options", c.name)
+	}
+}
+
 func TestSupportMatrixCoversRegistryDtboReferences(t *testing.T) {
 	matrixByDtbo := make(map[string]DtboSupport, len(NewSupportMatrix().Support))
 	for _, support := range NewSupportMatrix().Support {
@@ -110,7 +140,8 @@ func TestSupportMatrixCoversRegistryDtboReferences(t *testing.T) {
 	}
 
 	seen := make(map[string]struct{})
-	for _, mount := range append([]Mount{unoqMediaCarrier}, append(ventunoqUbuntuHats, ventunoqMediaCarrier)...) {
+	mounts := append([]Mount{unoqMediaCarrier, ventunoqBuiltinCameras}, append(ventunoqUbuntuHats, ventunoqMediaCarrier)...)
+	for _, mount := range mounts {
 		for _, dtbo := range mount.EnabledDtbos {
 			seen[dtbo] = struct{}{}
 		}

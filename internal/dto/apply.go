@@ -19,6 +19,8 @@ import (
 type DeviceTreeApplier interface {
 	// Applies the device tree overlays through the given executor.
 	Apply(ctx context.Context, exec executor.Executor, overlays []string) error
+	// OverlaysPath returns the directory overlay dtbo files are read from.
+	OverlaysPath() *paths.Path
 }
 
 type UnoQ struct {
@@ -27,10 +29,18 @@ type UnoQ struct {
 	DtbFileName string
 }
 
+// On Ubuntu BaseDtbFullPath names a fresh rootfs source, read as-is. On
+// Debian there is no such source yet, so BaseDtbFileName is set instead: a
+// pristine dtb kept on the dtb_a partition itself, resolved once mounted.
 type VentunoQ struct {
 	BaseDtbFullPath string
+	BaseDtbFileName string
 	OverlaysDir     *paths.Path
 	DtbFileName     string
+}
+
+func (b UnoQ) OverlaysPath() *paths.Path {
+	return b.OverlaysDir
 }
 
 func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
@@ -46,6 +56,10 @@ func (b UnoQ) Apply(ctx context.Context, exec executor.Executor, overlays []stri
 	return moveDeviceTree(exec, temporaryDtb, b.OverlaysDir.Join(b.DtbFileName))
 }
 
+func (b VentunoQ) OverlaysPath() *paths.Path {
+	return b.OverlaysDir
+}
+
 func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []string) error {
 	mountPoint := paths.New("/run/arduino-linux-config/dtb")
 	if err := exec.MkdirAll(mountPoint); err != nil {
@@ -59,7 +73,12 @@ func (b VentunoQ) Apply(ctx context.Context, exec executor.Executor, overlays []
 	}
 	defer unmount()
 
-	unpacked, err := unpackCombinedDtb(exec, b.BaseDtbFullPath, mountPoint)
+	baseDtb := b.BaseDtbFullPath
+	if baseDtb == "" {
+		baseDtb = mountPoint.Join(b.BaseDtbFileName).String()
+	}
+
+	unpacked, err := unpackCombinedDtb(exec, baseDtb, mountPoint)
 	if err != nil {
 		return err
 	}
