@@ -153,7 +153,8 @@ func NewSupportMatrix() SupportMatrix {
 	const ventunoQUbuntuKernelVersion = "6.8.0-1087-qcom"
 	const ventunoQDebianKernelVersion = "7.1.0-arduino1+"
 
-	support := []DtboSupport{
+	support := make([]DtboSupport, 0, 12+len(cameraoverlay.Filenames()))
+	support = append(support, []DtboSupport{
 		{
 			Dtbo:           "qrb2210-arduino-imola-carrier-media.dtbo",
 			MinRequirement: unoQKernelVersion,
@@ -238,7 +239,7 @@ func NewSupportMatrix() SupportMatrix {
 				return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 			},
 		},
-	}
+	}...)
 
 	for _, filename := range cameraoverlay.Filenames() {
 		support = append(support, DtboSupport{

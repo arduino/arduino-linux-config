@@ -19,11 +19,11 @@ func TestKernelVersionDiscoverPrefersGrub(t *testing.T) {
 	require.NoError(t, os.WriteFile(
 		filepath.Join(root, "boot/grub/grub.cfg"),
 		[]byte("linux /boot/vmlinuz-6.8.0-1087-qcom root=/dev/sda1\n"),
-		0644,
+		0600,
 	))
 	// Present but must be ignored: grub.cfg wins when it exists.
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "boot"), 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "boot/vmlinuz-9.9.9-other"), nil, 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "boot/vmlinuz-9.9.9-other"), nil, 0600))
 
 	version, err := kernelVersionDiscover(root)
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestKernelVersionDiscoverPrefersGrub(t *testing.T) {
 func TestKernelVersionDiscoverFallsBackToBootDirWithoutGrub(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "boot"), 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "boot/vmlinuz-7.1.0-arduino1+"), nil, 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "boot/vmlinuz-7.1.0-arduino1+"), nil, 0600))
 
 	version, err := kernelVersionDiscover(root)
 	require.NoError(t, err)
@@ -45,8 +45,8 @@ func TestKernelVersionDiscoverFallsBackToBootDirWithoutGrub(t *testing.T) {
 func TestKernelVersionDiscoverFailsWithAmbiguousBootDir(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "boot"), 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "boot/vmlinuz-1.0.0-a"), nil, 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(root, "boot/vmlinuz-2.0.0-b"), nil, 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "boot/vmlinuz-1.0.0-a"), nil, 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "boot/vmlinuz-2.0.0-b"), nil, 0600))
 
 	_, err := kernelVersionDiscover(root)
 	require.Error(t, err)

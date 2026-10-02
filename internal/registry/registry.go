@@ -290,8 +290,10 @@ var ventunoqBuiltinCameras = Mount{
 // cameraDevice builds one port's options from the cameraoverlay catalog,
 // plus the "none" option every device needs to be disabled.
 func cameraDevice(name DeviceName, port cameraoverlay.Port) Device {
-	options := []DeviceOption{{Name: string(None), DtboFiles: []string{}}}
-	for _, option := range cameraoverlay.OptionsForPort(port) {
+	portOptions := cameraoverlay.OptionsForPort(port)
+	options := make([]DeviceOption, 0, 1+len(portOptions))
+	options = append(options, DeviceOption{Name: string(None), DtboFiles: []string{}})
+	for _, option := range portOptions {
 		options = append(options, DeviceOption{Name: option.Name, DtboFiles: []string{option.DtboFile}})
 	}
 	return Device{Name: name, DeviceType: DeviceTypeCamera, Options: options}
