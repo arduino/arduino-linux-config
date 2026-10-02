@@ -108,6 +108,19 @@ func startVentunoqUbuntuDockerContainer(t *testing.T) {
 func startVentunoqDebianDockerContainer(t *testing.T) {
 	t.Helper()
 	startVentunoqUbuntuDockerContainer(t)
+	overrideVentunoqDebianOsRelease(t)
+}
+
+// Like startVentunoqDockerContainer, but also faking the Debian image: for
+// tests that need to actually apply camera overlays onto the dtb_a partition.
+func startVentunoqDebianPrivilegedDockerContainer(t *testing.T) {
+	t.Helper()
+	startVentunoqDockerContainer(t)
+	overrideVentunoqDebianOsRelease(t)
+}
+
+func overrideVentunoqDebianOsRelease(t *testing.T) {
+	t.Helper()
 	execInVentunoqContainer(t, "sh", "-c", strings.Join([]string{
 		"set -eu",
 		"printf 'ID=debian\\n' > /tmp/compat-root/etc/os-release",

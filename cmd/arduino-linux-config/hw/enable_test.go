@@ -186,3 +186,70 @@ func TestCollectDtboFiles(t *testing.T) {
 		})
 	}
 }
+
+// On VentunoQ Debian, cameras are generated on the fly by cameraoverlay
+// instead of being pre-built, but overlay.Collect resolves their filenames
+// through the registry the same way as any other static dtbo.
+func TestCollectDtboFilesVentunoqDebianCameras(t *testing.T) {
+	t.Cleanup(testutil.SetupVentunoQDebian())
+
+	reg := registry.New()
+	mount, exists := reg.FindByName(string(registry.Cameras))
+	if !exists {
+		t.Fatalf("Failed to initialize production test: Cameras registry not found")
+	}
+
+	tests := []struct {
+		name          string
+		userSelection []status.StatusDevice
+		want          []string
+	}{
+		{
+			name: "Single port selection",
+			userSelection: []status.StatusDevice{
+				{Device: "camera1", Option: "imx219-2lanes"},
+			},
+			want: []string{"monaco-monza-camera-csi1-imx219-2lane.dtbo"},
+		},
+		{
+			name: "All 3 ports at once, different sensors",
+			userSelection: []status.StatusDevice{
+				{Device: "camera0", Option: "imx219-4lanes"},
+				{Device: "camera1", Option: "imx477-2lanes"},
+				{Device: "camera2", Option: "ov5647-2lanes"},
+			},
+			want: []string{
+				"monaco-monza-camera-csi0-imx219-4lane.dtbo",
+				"monaco-monza-camera-csi1-imx477-2lane.dtbo",
+				"monaco-monza-camera-csi2-ov5647-2lane.dtbo",
+			},
+		},
+		{
+			name: "None selection produces no overlay",
+			userSelection: []status.StatusDevice{
+				{Device: "camera0", Option: "none"},
+			},
+			want: []string{},
+		},
+		{
+			name: "Invalid device and option are ignored",
+			userSelection: []status.StatusDevice{
+				{Device: "unknown-hw", Option: "none"},
+				{Device: "camera0", Option: "invalid-option-str"},
+			},
+			want: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			overlays, _ := overlay.Collect(mount, tt.userSelection)
+
+			slices.Sort(overlays)
+			overlays = slices.Compact(overlays)
+			if !slices.Equal(overlays, tt.want) {
+				t.Errorf("\nGot:  %v\nWant: %v", overlays, tt.want)
+			}
+		})
+	}
+}
