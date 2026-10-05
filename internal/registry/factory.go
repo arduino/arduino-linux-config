@@ -113,7 +113,7 @@ func (f *Factory) Create() Registry {
 	case f.board == "unoq":
 		mounts = []Mount{unoqMediaCarrier}
 	case f.board == "ventunoq" && f.boardOS == "ubuntu":
-		mounts = append([]Mount{ventunoqMediaCarrier}, ventunoqUbuntuHats...)
+		mounts = append([]Mount{}, ventunoqUbuntuHats...)
 	default:
 		return Registry{}
 	}
