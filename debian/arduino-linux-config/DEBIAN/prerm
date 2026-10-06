@@ -1,0 +1,15 @@
+#!/bin/sh
+
+set -e
+
+STATUS_DIR=/var/lib/arduino-linux-config/status
+STATUS_BACKUP=/var/lib/arduino-linux-config/status.bak
+
+case "$1" in
+    remove)
+        # Hide the status files so reload sees no persisted overlays and regenerates the original dtb.
+        [ -d "$STATUS_DIR" ] && mv "$STATUS_DIR" "$STATUS_BACKUP"
+        arduino-linux-config hw reload || true
+        [ -d "$STATUS_BACKUP" ] && mv "$STATUS_BACKUP" "$STATUS_DIR"
+        ;;
+esac

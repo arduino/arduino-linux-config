@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    purge)
+        # The dtb reset already happened in prerm, while the binary still existed.
+        rm -rf /var/lib/arduino-linux-config/status
+        ;;
+esac
