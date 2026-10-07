@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/arduino/go-paths-helper"
@@ -49,7 +50,7 @@ type StatusDevice struct {
 
 // Called by config and reset
 func Update(exec executor.Executor, cfg config.Configuration, carrier registry.Mount, statusUpdate MountStatus) error {
-	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
+	status, err := loadStatusFile(exec, getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return fmt.Errorf("failed to load status file %w", err)
 	}
@@ -70,7 +71,8 @@ func Update(exec executor.Executor, cfg config.Configuration, carrier registry.M
 // Called by show, load the status structure and apply status fixes before returning
 // Do not update the status file on the disk because show is running as non-root user
 func Get(cfg config.Configuration, carrier registry.Mount) (MountStatus, MountStatus, error) {
-	status, err := loadStatusFile(getStatusFile(cfg, carrier.Name))
+	// nil executor: a corrupted status file must not be removed by a non-root process
+	status, err := loadStatusFile(nil, getStatusFile(cfg, carrier.Name))
 	if err != nil {
 		return MountStatus{}, MountStatus{}, fmt.Errorf("failed to load status file %v", err)
 	}
@@ -160,28 +162,39 @@ func getStatusFile(cfg config.Configuration, carrierName registry.MountName) *pa
 	return cfg.StatusDir().Join(string(carrierName) + ".json")
 }
 
-func loadStatusFile(statusFile *paths.Path) (*StatusFile, error) {
+func newEmptyStatusFile() *StatusFile {
+	return &StatusFile{
+		CurrentStatus: StatusMount{
+			Devices: make(map[registry.DeviceName]StatusInfo),
+		},
+		NextStatus: StatusMount{
+			Devices: make(map[registry.DeviceName]StatusInfo),
+		},
+	}
+}
+
+// exec may be nil when the caller has no write access to disk: in that case a
+// corrupted status file is reported but left in place.
+func loadStatusFile(exec executor.Executor, statusFile *paths.Path) (*StatusFile, error) {
 	data, err := statusFile.ReadFile()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			newStatus := StatusFile{
-				CurrentStatus: StatusMount{
-					Devices: make(map[registry.DeviceName]StatusInfo),
-				},
-				NextStatus: StatusMount{
-					Devices: make(map[registry.DeviceName]StatusInfo),
-				},
-			}
-			return &newStatus, nil
-		} else {
-			return nil, err
+			return newEmptyStatusFile(), nil
 		}
+		return nil, err
 	}
 
 	var status StatusFile
 	err = json.Unmarshal(data, &status)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse json: %w", err)
+		// TODO: bubble this up as a warning returned by feedback instead of just logging it
+		slog.Error("corrupted status file detected", "file", statusFile, "error", err)
+		if exec != nil {
+			if rmErr := exec.Remove(statusFile); rmErr == nil {
+				slog.Error("corrupted status file, resetting", "file", statusFile, "error", err)
+			}
+		}
+		return newEmptyStatusFile(), nil
 	}
 
 	return &status, nil
