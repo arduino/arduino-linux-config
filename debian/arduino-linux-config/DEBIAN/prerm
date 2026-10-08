@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+
+STATUS_DIR=/var/lib/arduino-linux-config/status
+
+case "$1" in
+    remove)
+        rm -rf "$STATUS_DIR"
+        arduino-linux-config hw reload || true
+        ;;
+esac
