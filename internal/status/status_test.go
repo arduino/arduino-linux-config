@@ -6,6 +6,7 @@
 package status
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/arduino/go-paths-helper"
 	"github.com/stretchr/testify/require"
 
+	"github.com/arduino/arduino-linux-config/internal/executor"
 	"github.com/arduino/arduino-linux-config/internal/registry"
 	"github.com/arduino/arduino-linux-config/internal/testutil"
 )
@@ -195,6 +197,7 @@ func TestLoadStatusFile(t *testing.T) {
 		shouldExist   bool
 		wantErr       bool
 		checkContents bool
+		wantRemoved   bool
 	}{
 		{
 			name:        "File does not exist - returns initialized struct",
@@ -209,10 +212,11 @@ func TestLoadStatusFile(t *testing.T) {
 			checkContents: true,
 		},
 		{
-			name:        "Invalid JSON - returns error",
+			name:        "Invalid JSON - logs error, resets struct and removes the file",
 			shouldExist: true,
 			fileContent: `{"current_status": { invalid ]}`,
-			wantErr:     true,
+			wantErr:     false,
+			wantRemoved: true,
 		},
 	}
 
@@ -229,7 +233,7 @@ func TestLoadStatusFile(t *testing.T) {
 				}
 			}
 
-			status, err := loadStatusFile(p)
+			status, err := loadStatusFile(executor.Real(), p)
 
 			// 1. Check Error expectation
 			if (err != nil) != tt.wantErr {
@@ -251,6 +255,16 @@ func TestLoadStatusFile(t *testing.T) {
 			if tt.checkContents {
 				if _, ok := status.CurrentStatus.Devices["Cam0"]; !ok {
 					t.Error("Expected device 'Cam0' to be parsed from JSON")
+				}
+			}
+
+			// 4. Verify the corrupted file was removed from disk
+			if tt.wantRemoved {
+				if status.CurrentStatus.Devices == nil || status.NextStatus.Devices == nil {
+					t.Error("Maps should be initialized after a corrupted file is reset")
+				}
+				if _, err := os.Stat(filePath); !errors.Is(err, os.ErrNotExist) {
+					t.Errorf("expected corrupted status file to be removed, stat error = %v", err)
 				}
 			}
 		})
