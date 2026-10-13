@@ -9,13 +9,15 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/arduino/arduino-linux-config/cmd/arduino-linux-config/hw"
 	"github.com/arduino/arduino-linux-config/cmd/feedback"
 	"github.com/arduino/arduino-linux-config/internal/config"
 
 	"github.com/spf13/cobra"
-	"go.bug.st/cleanup"
 )
 
 // Version will be set a build time with -ldflags
@@ -60,8 +62,10 @@ func run() error {
 		feedback.Fatal("unsupported board/os", feedback.ErrBadArgument)
 	}
 
-	ctx := context.Background()
-	ctx, _ = cleanup.InterruptableContext(ctx)
+	// Signal handling just cancels the context; it has no --dry-run effect to lie about.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM) //nolint:forbidigo
+	defer stop()
+
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		return err
 	}

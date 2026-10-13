@@ -6,7 +6,6 @@ require (
 	github.com/knqyf263/go-deb-version v0.0.0-20241115132648-6f4aee6ccd23
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
-	go.bug.st/cleanup v1.0.0
 )
 
 require go.yaml.in/yaml/v3 v3.0.5 // indirect
