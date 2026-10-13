@@ -161,6 +161,11 @@ func FatalResult(res ErrorResult, exitCode ExitCode) {
 	os.Exit(int(exitCode))
 }
 
+// Fatalf formats an error message and exits with status exitCode.
+func Fatalf(exitCode ExitCode, format string, args ...interface{}) {
+	Fatal(fmt.Sprintf(format, args...), exitCode)
+}
+
 // Fatal outputs the errorMsg and exits with status exitCode.
 func Fatal(errorMsg string, exitCode ExitCode) {
 	if format == Text {
