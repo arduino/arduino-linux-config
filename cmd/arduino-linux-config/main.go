@@ -62,7 +62,8 @@ func run() error {
 		feedback.Fatal("unsupported board/os", feedback.ErrBadArgument)
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	// Signal handling just cancels the context; it has no --dry-run effect to lie about.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM) //nolint:forbidigo
 	defer stop()
 
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
