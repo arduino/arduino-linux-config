@@ -1,14 +1,13 @@
 module github.com/arduino/arduino-linux-config
 
-go 1.26.4
+go 1.27.3
 
 require (
+	github.com/arduino/go-paths-helper v1.14.0
 	github.com/knqyf263/go-deb-version v0.0.0-20241115132648-6f4aee6ccd23
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
 )
-
-require go.yaml.in/yaml/v3 v3.0.5 // indirect
 
 require (
 	cel.dev/expr v0.25.2 // indirect
@@ -32,7 +31,6 @@ require (
 	github.com/alecthomas/chroma/v2 v2.23.0 // indirect
 	github.com/alecthomas/participle/v2 v2.1.4 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/arduino/go-paths-helper v1.14.0
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.5 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
@@ -141,6 +139,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.45.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.45.0 // indirect
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
