@@ -114,6 +114,8 @@ func (f *Factory) Create() Registry {
 		mounts = []Mount{unoqMediaCarrier}
 	case f.board == "ventunoq" && f.boardOS == "ubuntu":
 		mounts = append([]Mount{}, ventunoqUbuntuHats...)
+	case f.board == "ventunoq" && f.boardOS == "debian":
+		mounts = []Mount{ventunoqDebianCameras}
 	default:
 		return Registry{}
 	}
@@ -234,6 +236,18 @@ func NewSupportMatrix() SupportMatrix {
 				IsSupported: func(current string) bool {
 					return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 				},
+			},
+			{
+				Dtbo:        "monza-camera-imx219.dtba@/flat0-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "monza-camera-imx219.dtba@/flat1-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "monza-camera-imx219.dtba@/flat2-connector",
+				IsSupported: func(string) bool { return true },
 			},
 		},
 	}

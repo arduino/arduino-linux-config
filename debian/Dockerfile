@@ -1,3 +1,6 @@
+# Used by the --platform of the dtc-addon stage
+ARG ARCH
+
 FROM golang:1.27.2 AS go
 
 ARG BINARY_NAME
@@ -24,6 +27,15 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
   export LDFLAGS=$([ -n "$RELEASE" ] && echo "-s -w" || echo "") \
   && GOOS=linux GOARCH=${ARCH} go build -ldflags "${LDFLAGS} -X 'main.Version=${VERSION}'" -o ${BINARY_NAME} ./cmd/${BINARY_NAME}
 
+FROM --platform=linux/${ARCH} debian:bookworm AS dtc-addon
+
+# fdtaddon and dtc from the device-tree addon RFC, with libfdt linked statically
+RUN apt-get update && apt-get install -y git meson ninja-build gcc flex bison pkg-config
+RUN git clone -b bootlin/support-for-addon-rfc-v2 https://github.com/bootlin/dtc.git /dtc && \
+  git -C /dtc checkout c68038e0ff4cde5de37a21419df8a082032ef994
+RUN meson setup /dtc/build /dtc -Ddefault_library=static -Dwerror=false -Dyaml=disabled -Dpython=disabled -Dtests=false && \
+  meson compile -C /dtc/build dtc fdtaddon
+
 FROM debian:bookworm AS debian
 
 ARG VERSION
@@ -40,6 +52,7 @@ RUN apt-get update && apt-get install -y sed
 
 COPY ./debian/${DEB_NAME} /${DEB_NAME}/
 COPY --from=go /app/${BINARY_NAME} /${DEB_NAME}/usr/bin/${BINARY_NAME}
+COPY --from=dtc-addon /dtc/build/dtc /dtc/build/fdtaddon /${DEB_NAME}/usr/lib/${BINARY_NAME}/addon/
 
 # Go application are tagged with `v` prefix, this remove the first v if present
 RUN export VERSION=$(echo "${VERSION}" | sed -e "s/^v\(.*\)/\1/") && \
