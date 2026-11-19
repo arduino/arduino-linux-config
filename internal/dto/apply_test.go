@@ -120,6 +120,72 @@ func TestApplyDryRunPrintsEveryEffect(t *testing.T) {
 	}, effects)
 }
 
+func TestVentunoQAddonApplyRecordsEveryEffect(t *testing.T) {
+	recorder := executor.NewRecorder()
+
+	board := VentunoQAddon{
+		AddonDir:    paths.New("/usr/lib/addon/"),
+		BaseDtbFile: "base.dtb",
+		DtbFileName: "combined-dtb.dtb",
+	}
+	require.NoError(t, board.Apply(t.Context(), recorder, []string{"cam.dtba@/flat1", "cam.dtba@/flat0", "cam.dtba@/flat0"}))
+
+	temp := regexp.MustCompile(`temporaryDeviceTree\.\d+\.temp`)
+	effects := recorder.Effects()
+	for i, effect := range effects {
+		effects[i] = temp.ReplaceAllString(effect, "TEMP")
+	}
+
+	require.Equal(t, []string{
+		"mkdir -p /run/arduino-linux-config/dtb",
+		"mount -t vfat /dev/disk/by-partlabel/dtb_a /run/arduino-linux-config/dtb",
+		"/usr/lib/addon/fdtaddon -i /usr/lib/addon/base.dtb -t /flat0 -o /run/arduino-linux-config/TEMP.0 /usr/lib/addon/cam.dtba",
+		"/usr/lib/addon/fdtaddon -i /run/arduino-linux-config/TEMP.0 -t /flat1 -o /run/arduino-linux-config/TEMP.1 /usr/lib/addon/cam.dtba",
+		"/usr/lib/addon/dtc -q -I dtb -O dtb -V 17 -o /run/arduino-linux-config/dtb/TEMP /run/arduino-linux-config/TEMP.1",
+		"mv /run/arduino-linux-config/dtb/TEMP /run/arduino-linux-config/dtb/combined-dtb.dtb",
+		"sync",
+		"rm -f /run/arduino-linux-config/dtb/TEMP",
+		"rm -f /run/arduino-linux-config/TEMP.0",
+		"rm -f /run/arduino-linux-config/TEMP.1",
+		"sync",
+		"umount -l /run/arduino-linux-config/dtb",
+	}, effects)
+}
+
+func TestVentunoQAddonApplyWithoutAddonsInstallsBase(t *testing.T) {
+	recorder := executor.NewRecorder()
+
+	board := VentunoQAddon{
+		AddonDir:    paths.New("/usr/lib/addon/"),
+		BaseDtbFile: "base.dtb",
+		DtbFileName: "combined-dtb.dtb",
+	}
+	require.NoError(t, board.Apply(t.Context(), recorder, nil))
+
+	temp := regexp.MustCompile(`temporaryDeviceTree\.\d+\.temp`)
+	effects := recorder.Effects()
+	for i, effect := range effects {
+		effects[i] = temp.ReplaceAllString(effect, "TEMP")
+	}
+
+	require.Equal(t, []string{
+		"mkdir -p /run/arduino-linux-config/dtb",
+		"mount -t vfat /dev/disk/by-partlabel/dtb_a /run/arduino-linux-config/dtb",
+		"/usr/lib/addon/dtc -q -I dtb -O dtb -V 17 -o /run/arduino-linux-config/dtb/TEMP /usr/lib/addon/base.dtb",
+		"mv /run/arduino-linux-config/dtb/TEMP /run/arduino-linux-config/dtb/combined-dtb.dtb",
+		"sync",
+		"rm -f /run/arduino-linux-config/dtb/TEMP",
+		"sync",
+		"umount -l /run/arduino-linux-config/dtb",
+	}, effects)
+}
+
+func TestVentunoQAddonApplyRejectsAddonWithoutConnector(t *testing.T) {
+	board := VentunoQAddon{AddonDir: paths.New("/usr/lib/addon/"), BaseDtbFile: "base.dtb", DtbFileName: "combined-dtb.dtb"}
+	err := board.Apply(t.Context(), executor.NewRecorder(), []string{"cam.dtba"})
+	require.ErrorContains(t, err, `invalid addon "cam.dtba"`)
+}
+
 func TestPackUnchangedDeviceTreePreservesCombinedDtb(t *testing.T) {
 	mountPoint := paths.New(t.TempDir())
 	other := fakeDeviceTree("qcom,other")

@@ -83,6 +83,7 @@ func (r listResult) String() string {
 	}{
 		{registry.KindCarrier, "CARRIER"},
 		{registry.KindHat, "HATS"},
+		{registry.KindBuiltin, "BUILT-IN"},
 	} {
 		mounts := make([]listMount, 0, len(r.Mounts))
 		withDevices := false

@@ -42,6 +42,13 @@ func GetBoard() (dto.DeviceTreeApplier, error) {
 			DtbFileName: "qrb2210-arduino-imola.dtb",
 		}, nil
 	case "ventunoq":
+		if GetLinuxDistribution() == "debian" {
+			return dto.VentunoQAddon{
+				AddonDir:    paths.New("/usr/lib/arduino-linux-config/addon/"),
+				BaseDtbFile: "monza-base.dtb",
+				DtbFileName: "combined-dtb.dtb",
+			}, nil
+		}
 		baseDtbFullPath, err := deviceTreeDiscover()
 		if err != nil {
 			return nil, fmt.Errorf("failed to discover device tree: %w", err)

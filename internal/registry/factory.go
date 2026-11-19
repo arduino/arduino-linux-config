@@ -114,6 +114,8 @@ func (f *Factory) Create() Registry {
 		mounts = []Mount{unoqMediaCarrier}
 	case f.board == "ventunoq" && f.boardOS == "ubuntu":
 		mounts = append([]Mount{}, ventunoqUbuntuHats...)
+	case f.board == "ventunoq" && f.boardOS == "debian":
+		mounts = []Mount{ventunoqDebianCameras}
 	default:
 		return Registry{}
 	}
@@ -234,6 +236,66 @@ func NewSupportMatrix() SupportMatrix {
 				IsSupported: func(current string) bool {
 					return isVersionAtLeast(current, ventunoQUbuntuKernelVersion)
 				},
+			},
+			{
+				Dtbo:        "arduino-camera-imx219-2lanes.dtba@/flat0-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-imx219-2lanes.dtba@/flat1-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-imx219-2lanes.dtba@/flat2-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-imx219-4lanes.dtba@/flat0-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-imx219-4lanes.dtba@/flat1-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-imx219-4lanes.dtba@/flat2-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-ov5647-2lanes.dtba@/flat0-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-ov5647-2lanes.dtba@/flat1-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-ov5647-2lanes.dtba@/flat2-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-imx296-1lane.dtba@/flat0-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-imx296-1lane.dtba@/flat1-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-imx296-1lane.dtba@/flat2-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-ov9281-2lanes.dtba@/flat0-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-ov9281-2lanes.dtba@/flat1-connector",
+				IsSupported: func(string) bool { return true },
+			},
+			{
+				Dtbo:        "arduino-camera-ov9281-2lanes.dtba@/flat2-connector",
+				IsSupported: func(string) bool { return true },
 			},
 		},
 	}

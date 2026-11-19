@@ -16,8 +16,9 @@ import (
 // The name alone selects a part, so a carrier and a hat must not share one.
 func TestMountNamesAreUnique(t *testing.T) {
 	for name, setup := range map[string]func() func(){
-		"unoq":     testutil.SetupUnoQDebian,
-		"ventunoq": testutil.SetupVentunoQUbuntu,
+		"unoq":            testutil.SetupUnoQDebian,
+		"ventunoq":        testutil.SetupVentunoQUbuntu,
+		"ventunoq-debian": testutil.SetupVentunoQDebian,
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Cleanup(setup())
@@ -110,7 +111,7 @@ func TestSupportMatrixCoversRegistryDtboReferences(t *testing.T) {
 	}
 
 	seen := make(map[string]struct{})
-	for _, mount := range append([]Mount{unoqMediaCarrier}, append(ventunoqUbuntuHats, ventunoqMediaCarrier)...) {
+	for _, mount := range append([]Mount{unoqMediaCarrier, ventunoqDebianCameras}, append(ventunoqUbuntuHats, ventunoqMediaCarrier)...) {
 		for _, dtbo := range mount.EnabledDtbos {
 			seen[dtbo] = struct{}{}
 		}
@@ -138,4 +139,31 @@ func TestSupportMatrixCoversRegistryDtboReferences(t *testing.T) {
 	}
 
 	require.Empty(t, missing, "missing support matrix entries for DTBO references in registry: %v", missing)
+}
+
+func TestVentunoQCamerasOnlyOnDebian(t *testing.T) {
+	mountNames := func(reg Registry) []MountName {
+		names := make([]MountName, 0, len(reg.Mounts))
+		for _, mount := range reg.Mounts {
+			names = append(names, mount.Name)
+		}
+		return names
+	}
+
+	t.Run("debian", func(t *testing.T) {
+		t.Cleanup(testutil.SetupVentunoQDebian())
+		reg := New()
+		require.Equal(t, []MountName{Cameras}, mountNames(reg))
+		require.Equal(t, KindBuiltin, reg.Mounts[0].Kind)
+	})
+
+	t.Run("ubuntu keeps only the hats", func(t *testing.T) {
+		t.Cleanup(testutil.SetupVentunoQUbuntu())
+		require.Equal(t, []MountName{AudioCodecZero, Automation}, mountNames(New()))
+	})
+
+	t.Run("unoq keeps the media carrier", func(t *testing.T) {
+		t.Cleanup(testutil.SetupUnoQDebian())
+		require.Equal(t, []MountName{MediaCarrier}, mountNames(New()))
+	})
 }

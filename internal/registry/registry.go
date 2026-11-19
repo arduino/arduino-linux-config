@@ -63,6 +63,7 @@ type Kind string
 const (
 	KindCarrier Kind = "carrier"
 	KindHat     Kind = "hat"
+	KindBuiltin Kind = "builtin"
 )
 
 type DeviceName string
@@ -71,6 +72,7 @@ const (
 	None    DeviceName = "none"
 	Camera0 DeviceName = "camera0"
 	Camera1 DeviceName = "camera1"
+	Camera2 DeviceName = "camera2"
 	Display DeviceName = "display"
 )
 
@@ -78,6 +80,7 @@ type MountName string
 
 const (
 	MediaCarrier   MountName = "media-carrier"
+	Cameras        MountName = "cameras"
 	AudioCodecZero MountName = "audio-codec-zero"
 	Automation     MountName = "automation"
 )
@@ -267,4 +270,26 @@ var ventunoqMediaCarrier = Mount{
 			},
 		},
 	},
+}
+
+// ventunoqDebianCameras plugs a camera addon into each FLAT CSI connector.
+var ventunoqDebianCameras = Mount{
+	Name: Cameras,
+	Kind: KindBuiltin,
+	Devices: []Device{
+		{Name: Camera0, DeviceType: DeviceTypeCamera, Options: cameraAddonOptions("/flat0-connector")},
+		{Name: Camera1, DeviceType: DeviceTypeCamera, Options: cameraAddonOptions("/flat1-connector")},
+		{Name: Camera2, DeviceType: DeviceTypeCamera, Options: cameraAddonOptions("/flat2-connector")},
+	},
+}
+
+func cameraAddonOptions(connector string) []DeviceOption {
+	return []DeviceOption{
+		{Name: string(None), DtboFiles: []string{}},
+		{Name: "imx219", DtboFiles: []string{"arduino-camera-imx219-2lanes.dtba@" + connector}},
+		{Name: "imx219-4lanes", DtboFiles: []string{"arduino-camera-imx219-4lanes.dtba@" + connector}},
+		{Name: "ov5647", DtboFiles: []string{"arduino-camera-ov5647-2lanes.dtba@" + connector}},
+		{Name: "imx296", DtboFiles: []string{"arduino-camera-imx296-1lane.dtba@" + connector}},
+		{Name: "ov9281", DtboFiles: []string{"arduino-camera-ov9281-2lanes.dtba@" + connector}},
+	}
 }
