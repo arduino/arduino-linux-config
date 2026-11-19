@@ -90,9 +90,12 @@ tasks:
   build-deb:
     desc: Build debian package using docker
     cmds:
-      - docker build --build-arg BINARY_NAME=arduino-linux-config --build-arg DEB_NAME=arduino-linux-config --build-arg VERSION={{ .VERSION }} --build-arg ARCH={{ .ARCH }} --build-arg RELEASE={{ .RELEASE }} --output={{ .OUTPUT }} -f debian/Dockerfile .
+      - docker build --build-arg BINARY_NAME=arduino-linux-config --build-arg DEB_NAME=arduino-linux-config --build-arg VERSION={{ .VERSION }} --build-arg ARCH={{ .ARCH }} --build-arg RELEASE={{ .RELEASE }} --build-arg KERNEL_REPO={{ .KERNEL_REPO }} --build-arg KERNEL_REF={{ .KERNEL_REF }} --output={{ .OUTPUT }} -f debian/Dockerfile .
     vars:
       ARCH: '{{.ARCH | default "arm64"}}'
+      # kernel commit with the device-tree sources of the base dtb and the camera addons
+      KERNEL_REPO: '{{.KERNEL_REPO | default "https://github.com/lucarin91/linux-qcom.git"}}'
+      KERNEL_REF: '{{.KERNEL_REF | default "241c2ea223061f33aea045afd8b14331767439b1"}}'
       OUTPUT: '{{.OUTPUT | default "./build"}}'
 
   build:

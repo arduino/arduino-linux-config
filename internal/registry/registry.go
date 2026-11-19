@@ -286,6 +286,10 @@ var ventunoqDebianCameras = Mount{
 func cameraAddonOptions(connector string) []DeviceOption {
 	return []DeviceOption{
 		{Name: string(None), DtboFiles: []string{}},
-		{Name: "imx219", DtboFiles: []string{"monza-camera-imx219.dtba@" + connector}},
+		{Name: "imx219", DtboFiles: []string{"arduino-camera-imx219-2lanes.dtba@" + connector}},
+		{Name: "imx219-4lanes", DtboFiles: []string{"arduino-camera-imx219-4lanes.dtba@" + connector}},
+		{Name: "ov5647", DtboFiles: []string{"arduino-camera-ov5647-2lanes.dtba@" + connector}},
+		{Name: "imx296", DtboFiles: []string{"arduino-camera-imx296-1lane.dtba@" + connector}},
+		{Name: "ov9281", DtboFiles: []string{"arduino-camera-ov9281-2lanes.dtba@" + connector}},
 	}
 }

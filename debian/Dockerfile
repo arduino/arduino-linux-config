@@ -36,6 +36,26 @@ RUN git clone -b bootlin/support-for-addon-rfc-v2 https://github.com/bootlin/dtc
 RUN meson setup /dtc/build /dtc -Ddefault_library=static -Dwerror=false -Dyaml=disabled -Dpython=disabled -Dtests=false && \
   meson compile -C /dtc/build dtc fdtaddon
 
+FROM dtc-addon AS devicetree
+
+# The base dtb and the camera addons, from the device-tree sources of the kernel
+ARG KERNEL_REPO
+RUN test -n "${KERNEL_REPO}" || (echo "Error: KERNEL_REPO is not set" && exit 1)
+ARG KERNEL_REF
+RUN test -n "${KERNEL_REF}" || (echo "Error: KERNEL_REF is not set" && exit 1)
+WORKDIR /kernel
+RUN git init -q . && git remote add origin ${KERNEL_REPO} && \
+  git sparse-checkout set --no-cone /arch/arm64/boot/dts/qcom/ /include/dt-bindings/ /include/uapi/linux/input-event-codes.h && \
+  git fetch -q --depth 1 --filter=blob:none origin ${KERNEL_REF} && git checkout -q FETCH_HEAD
+RUN QCOM=arch/arm64/boot/dts/qcom && mkdir /out && \
+  cpp -P -nostdinc -undef -D__DTS__ -DDT_ADDON_EXPORTS -x assembler-with-cpp -I ${QCOM} -I include \
+    ${QCOM}/monaco-arduino-monza.dts -o /tmp/monza-base.dts && \
+  /dtc/build/dtc -q -@ -I dts -O dtb -o /out/monza-base.dtb /tmp/monza-base.dts && \
+  for addon in ${QCOM}/arduino-camera-*.dtsa; do \
+    /dtc/build/dtc -q -I dts -O dtb -o /out/$(basename ${addon} .dtsa).dtba ${addon} || exit 1; \
+  done && \
+  /dtc/build/fdtaddon -i /out/monza-base.dtb -t /flat0-connector -o /tmp/check.dtb /out/arduino-camera-imx219-2lanes.dtba
+
 FROM debian:bookworm AS debian
 
 ARG VERSION
@@ -53,6 +73,7 @@ RUN apt-get update && apt-get install -y sed
 COPY ./debian/${DEB_NAME} /${DEB_NAME}/
 COPY --from=go /app/${BINARY_NAME} /${DEB_NAME}/usr/bin/${BINARY_NAME}
 COPY --from=dtc-addon /dtc/build/dtc /dtc/build/fdtaddon /${DEB_NAME}/usr/lib/${BINARY_NAME}/addon/
+COPY --from=devicetree /out/ /${DEB_NAME}/usr/lib/${BINARY_NAME}/addon/
 
 # Go application are tagged with `v` prefix, this remove the first v if present
 RUN export VERSION=$(echo "${VERSION}" | sed -e "s/^v\(.*\)/\1/") && \
